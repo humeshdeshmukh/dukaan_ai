@@ -27,6 +27,9 @@ import com.dukaan.feature.khata.domain.model.TransactionType
 import com.dukaan.feature.ocr.ui.BillScannerScreen
 import com.dukaan.feature.ocr.ui.OcrResultScreen
 import com.dukaan.feature.ocr.ui.OcrViewModel
+import com.dukaan.feature.ocr.ui.ScannedBillHistoryScreen
+import com.dukaan.feature.ocr.ui.ScannedBillHistoryViewModel
+import com.dukaan.feature.ocr.ui.WholesalerBillsScreen
 import com.dukaan.feature.orders.ui.WholesaleOrderScreen
 import com.dukaan.feature.orders.ui.OrderViewModel
 
@@ -51,6 +54,10 @@ sealed class Screen(val route: String) {
     }
     object Settings : Screen("settings")
     object Inventory : Screen("inventory")
+    object ScannedBillHistory : Screen("scanned_bill_history")
+    object WholesalerBills : Screen("wholesaler_bills/{sellerName}") {
+        fun createRoute(sellerName: String) = "wholesaler_bills/${java.net.URLEncoder.encode(sellerName, "UTF-8")}"
+    }
 }
 
 @Composable
@@ -79,7 +86,8 @@ fun AppNavigation(navController: NavHostController) {
                 onOrdersClick = { navController.navigate(Screen.WholesaleOrder.route) },
                 onInventoryClick = { navController.navigate(Screen.Inventory.route) },
                 onProfileClick = { navController.navigate(Screen.Settings.route) },
-                onBillHistoryClick = { navController.navigate(Screen.BillHistory.route) }
+                onBillHistoryClick = { navController.navigate(Screen.BillHistory.route) },
+                onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) }
             )
         }
 
@@ -131,7 +139,10 @@ fun AppNavigation(navController: NavHostController) {
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 BillScannerScreen(
                     viewModel = ocrViewModel,
-                    onBackClick = { navController.popBackStack() },
+                    onBackClick = {
+                        ocrViewModel.resetScan()
+                        navController.popBackStack()
+                    },
                     onBillDetected = { navController.navigate(Screen.OcrResult.route) }
                 )
             }
@@ -141,14 +152,20 @@ fun AppNavigation(navController: NavHostController) {
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 OcrResultScreen(
                     state = ocrViewModel.uiState.collectAsState().value,
-                    onBackClick = { navController.popBackStack() },
+                    onBackClick = {
+                        ocrViewModel.resetScan()
+                        navController.popBackStack()
+                    },
                     onSaveClick = {
                         ocrViewModel.saveBill()
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.Dashboard.route) { inclusive = true }
                         }
                     },
-                    onDeleteItem = { item -> ocrViewModel.deleteItem(item) }
+                    onDeleteItem = { item -> ocrViewModel.deleteItem(item) },
+                    onEditItem = { index, item -> ocrViewModel.editItem(index, item) },
+                    onAddItem = { item -> ocrViewModel.addItem(item) },
+                    onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) }
                 )
             }
         }
@@ -226,6 +243,35 @@ fun AppNavigation(navController: NavHostController) {
             val inventoryViewModel: InventoryViewModel = hiltViewModel()
             InventoryListScreen(
                 viewModel = inventoryViewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // Scanned Bill History (Purchase Bills by Wholesaler)
+        composable(Screen.ScannedBillHistory.route) {
+            val historyViewModel: ScannedBillHistoryViewModel = hiltViewModel()
+            ScannedBillHistoryScreen(
+                viewModel = historyViewModel,
+                onWholesalerClick = { sellerName ->
+                    navController.navigate(Screen.WholesalerBills.createRoute(sellerName))
+                },
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // Wholesaler Bills
+        composable(Screen.WholesalerBills.route) { backStackEntry ->
+            val sellerName = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("sellerName") ?: "",
+                "UTF-8"
+            )
+            val historyViewModel: ScannedBillHistoryViewModel = hiltViewModel()
+            WholesalerBillsScreen(
+                sellerName = sellerName,
+                viewModel = historyViewModel,
+                onBillClick = { billId ->
+                    navController.navigate(Screen.BillDetail.createRoute(billId))
+                },
                 onBackClick = { navController.popBackStack() }
             )
         }

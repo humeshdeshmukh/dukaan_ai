@@ -17,7 +17,7 @@ import com.dukaan.core.db.entity.*
         ShopProfileEntity::class,
         ProductEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

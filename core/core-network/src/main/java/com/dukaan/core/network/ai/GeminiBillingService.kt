@@ -45,11 +45,24 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     override suspend fun parseOcrText(rawText: String): Bill = withContext(Dispatchers.IO) {
         val prompt = """
-            You are an AI for Dukaan AI. Extract bill details from this OCR text: "$rawText"
-            Return ONLY a JSON object with:
-            "items": array of {name, quantity, unit, price},
-            "totalAmount": number
-            Focus on items, quantities, and their total prices.
+            You are an AI for Dukaan AI, a shop management app for Indian shopkeepers.
+            Extract bill/invoice details from this OCR text of a wholesale purchase bill.
+
+            OCR Text: "$rawText"
+
+            Return ONLY a valid JSON object with these fields:
+            - "sellerName": string (the wholesaler/seller/company name from the bill header. Look for names at the TOP of the bill, patterns like "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency". If not found, use "Unknown Seller")
+            - "billNumber": string (invoice/bill number if present as "Bill No.", "Invoice No.", "Inv#", etc. Empty string if not found)
+            - "items": array of objects, each with:
+                - "name": string (product name)
+                - "quantity": number
+                - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
+                - "price": number (total price for that line item, NOT per-unit price)
+            - "totalAmount": number (grand total. If not found, sum of item prices)
+
+            IMPORTANT:
+            - Indian bills may have Hindi text mixed with English. Parse both.
+            - Common formats: "Dal 5kg 450", "Sugar 10kg ₹380", "Soap 2dz 240"
         """.trimIndent()
 
         try {
@@ -58,7 +71,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             com.google.gson.Gson().fromJson(jsonString, Bill::class.java)
         } catch (e: Exception) {
             e.printStackTrace()
-            Bill(items = emptyList(), totalAmount = 0.0)
+            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
         }
     }
 

@@ -33,7 +33,8 @@ fun DashboardScreen(
     onOrdersClick: () -> Unit,
     onInventoryClick: () -> Unit,
     onProfileClick: () -> Unit = {},
-    onBillHistoryClick: () -> Unit = {}
+    onBillHistoryClick: () -> Unit = {},
+    onPurchaseBillsClick: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     var animated by remember { mutableStateOf(false) }
@@ -199,6 +200,25 @@ fun DashboardScreen(
                             onClick = onBillHistoryClick,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Row 4: Purchase Bills
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            label = "Purchase Bills",
+                            subtitle = "By Wholesaler",
+                            icon = Icons.Default.LocalShipping,
+                            accentColor = Color(0xFF9333EA),
+                            onClick = onPurchaseBillsClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                        // Empty spacer to keep grid alignment
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }

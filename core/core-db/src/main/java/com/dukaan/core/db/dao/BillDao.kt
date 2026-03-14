@@ -50,4 +50,15 @@ interface BillDao {
 
     @Query("SELECT COALESCE(SUM(totalAmount), 0.0) FROM bills WHERE timestamp >= :since")
     fun getTotalSalesSince(since: Long): Flow<Double>
+
+    @Query("SELECT DISTINCT sellerName FROM bills WHERE sellerName != '' ORDER BY sellerName ASC")
+    fun getAllSellerNames(): Flow<List<String>>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM bills WHERE sellerName = :sellerName ORDER BY timestamp DESC")
+    fun getBillsBySellerName(sellerName: String): Flow<List<BillWithItems>>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM bills WHERE source = 'OCR' ORDER BY timestamp DESC")
+    fun getScannedBills(): Flow<List<BillWithItems>>
 }

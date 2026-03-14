@@ -2,6 +2,8 @@ package com.dukaan.core.db.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dukaan.core.db.KhataDatabase
 import com.dukaan.core.db.dao.*
 import dagger.Module
@@ -15,6 +17,14 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE bills ADD COLUMN sellerName TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE bills ADD COLUMN billNumber TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE bills ADD COLUMN imagePath TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideKhataDatabase(
@@ -24,7 +34,8 @@ object DatabaseModule {
             context,
             KhataDatabase::class.java,
             "dukaan_khata.db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(MIGRATION_2_3)
+         .fallbackToDestructiveMigration().build()
     }
 
     @Provides

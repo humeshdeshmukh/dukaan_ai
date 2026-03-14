@@ -6,6 +6,8 @@ data class Bill(
     val id: Long = 0,
     val items: List<BillItem>,
     val totalAmount: Double,
+    val sellerName: String = "",
+    val billNumber: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )
 
