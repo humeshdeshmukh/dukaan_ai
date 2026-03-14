@@ -169,7 +169,8 @@ fun AppNavigation(navController: NavHostController) {
                     onDeleteItem = { item -> ocrViewModel.deleteItem(item) },
                     onEditItem = { index, item -> ocrViewModel.editItem(index, item) },
                     onAddItem = { item -> ocrViewModel.addItem(item) },
-                    onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) }
+                    onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
+                    onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) }
                 )
             }
         }

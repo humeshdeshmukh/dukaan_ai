@@ -28,7 +28,9 @@ data class OcrUiState(
     val scannedBill: Bill? = null,
     val error: String? = null,
     val isSaved: Boolean = false,
-    val capturedImageUri: String? = null
+    val capturedImageUri: String? = null,
+    val chatMessages: List<ChatMessage> = emptyList(),
+    val isAiTyping: Boolean = false
 )
 
 @HiltViewModel
@@ -43,6 +45,9 @@ class OcrViewModel @Inject constructor(
     val existingSellerNames: StateFlow<List<String>> = billingRepository.getAllSellerNames()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Cached bitmap for AI chat with image context
+    private var cachedBillBitmap: Bitmap? = null
+
     /** Process a captured camera image via Gemini vision */
     fun processCapturedImage(imagePath: String) {
         if (_uiState.value.isScanning) return
@@ -54,6 +59,7 @@ class OcrViewModel @Inject constructor(
                     BitmapFactory.decodeFile(imagePath)
                 }
                 if (bitmap != null) {
+                    cachedBillBitmap = bitmap
                     val bill = geminiService.parseBillImage(bitmap)
                     _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
                 } else {
@@ -83,7 +89,7 @@ class OcrViewModel @Inject constructor(
                         photoDir.mkdirs()
                         val photoFile = File(photoDir, "${System.currentTimeMillis()}.jpg")
                         photoFile.outputStream().use { out ->
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                         }
                         Pair(bitmap, photoFile.absolutePath)
                     } else {
@@ -93,6 +99,7 @@ class OcrViewModel @Inject constructor(
 
                 if (result != null) {
                     val (bitmap, savedPath) = result
+                    cachedBillBitmap = bitmap
                     _uiState.update { it.copy(capturedImageUri = savedPath) }
                     val bill = geminiService.parseBillImage(bitmap)
                     _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
@@ -116,6 +123,53 @@ class OcrViewModel @Inject constructor(
                 _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Parsing failed. Please try scanning again.", isScanning = false) }
+            }
+        }
+    }
+
+    /** Send a chat message to AI about the bill */
+    fun sendChatMessage(message: String) {
+        val bill = _uiState.value.scannedBill ?: return
+
+        // Add user message
+        _uiState.update { state ->
+            state.copy(
+                chatMessages = state.chatMessages + ChatMessage(isUser = true, text = message),
+                isAiTyping = true
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val billJson = buildString {
+                    append("Seller: ${bill.sellerName}, Bill#: ${bill.billNumber}\n")
+                    append("Items:\n")
+                    bill.items.forEachIndexed { i, item ->
+                        append("${i + 1}. ${item.name} - ${item.quantity} ${item.unit} x ₹${item.price} = ₹${item.total}\n")
+                    }
+                    append("Total: ₹${bill.totalAmount}")
+                }
+                val response = geminiService.chatAboutBill(
+                    billJson = billJson,
+                    userMessage = message,
+                    image = cachedBillBitmap
+                )
+                _uiState.update { state ->
+                    state.copy(
+                        chatMessages = state.chatMessages + ChatMessage(isUser = false, text = response),
+                        isAiTyping = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    state.copy(
+                        chatMessages = state.chatMessages + ChatMessage(
+                            isUser = false,
+                            text = "Sorry, something went wrong. Please try again."
+                        ),
+                        isAiTyping = false
+                    )
+                }
             }
         }
     }
@@ -165,6 +219,7 @@ class OcrViewModel @Inject constructor(
     }
 
     fun resetScan() {
+        cachedBillBitmap = null
         _uiState.value = OcrUiState()
     }
 }

@@ -3,6 +3,7 @@ package com.dukaan.feature.ocr.ui
 import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -37,15 +38,18 @@ fun OcrResultScreen(
     onDeleteItem: (BillItem) -> Unit,
     onEditItem: (Int, BillItem) -> Unit,
     onAddItem: (BillItem) -> Unit,
-    onSellerNameChanged: (String) -> Unit
+    onSellerNameChanged: (String) -> Unit,
+    onSendChatMessage: (String) -> Unit = {}
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var editingIndex by remember { mutableIntStateOf(-1) }
     var editingItem by remember { mutableStateOf<BillItem?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showImageViewer by remember { mutableStateOf(false) }
+    var showAiChat by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Show save success feedback then navigate (Toast doesn't block)
+    // Show save success feedback then navigate
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             val sellerName = state.scannedBill?.sellerName?.takeIf { it.isNotBlank() } ?: "Unknown"
@@ -76,21 +80,47 @@ fun OcrResultScreen(
                     )
                 }
             }
+        },
+        floatingActionButton = {
+            if (state.scannedBill != null && !state.isSaved) {
+                FloatingActionButton(
+                    onClick = { showAiChat = true },
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ) {
+                    Icon(Icons.Default.SmartToy, contentDescription = "AI Assistant")
+                }
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (state.isScanning) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "AI is reading your bill...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else if (state.scannedBill != null) {
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    // Bill photo thumbnail for verification
+                    // Bill photo thumbnail — tap to open fullscreen viewer
                     item {
-                        BillImageThumbnail(imagePath = state.capturedImageUri)
+                        BillImageThumbnail(
+                            imagePath = state.capturedImageUri,
+                            onClick = {
+                                if (state.capturedImageUri != null) {
+                                    showImageViewer = true
+                                }
+                            }
+                        )
                     }
 
-                    // Seller name field
+                    // Seller name field + existing wholesaler suggestions
                     item {
                         var sellerName by remember(state.scannedBill) {
                             mutableStateOf(state.scannedBill.sellerName)
@@ -113,7 +143,7 @@ fun OcrResultScreen(
                         // Existing wholesaler suggestions
                         if (existingSellerNames.isNotEmpty()) {
                             Text(
-                                text = "Existing wholesalers:",
+                                text = "Select existing wholesaler:",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -198,7 +228,6 @@ fun OcrResultScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
-                                // Edit button
                                 IconButton(onClick = {
                                     editingIndex = index
                                     editingItem = item
@@ -210,7 +239,6 @@ fun OcrResultScreen(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                // Delete button
                                 IconButton(onClick = { onDeleteItem(item) }) {
                                     Icon(
                                         Icons.Default.Delete,
@@ -279,6 +307,30 @@ fun OcrResultScreen(
         }
     }
 
+    // Fullscreen zoomable image viewer
+    if (showImageViewer && state.capturedImageUri != null) {
+        ZoomableImageViewer(
+            imagePath = state.capturedImageUri,
+            onDismiss = { showImageViewer = false }
+        )
+    }
+
+    // AI Chat bottom sheet
+    if (showAiChat) {
+        ModalBottomSheet(
+            onDismissRequest = { showAiChat = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            modifier = Modifier.fillMaxHeight(0.85f)
+        ) {
+            BillAiChatSheet(
+                messages = state.chatMessages,
+                isAiTyping = state.isAiTyping,
+                onSendMessage = onSendChatMessage,
+                onDismiss = { showAiChat = false }
+            )
+        }
+    }
+
     // Edit item dialog
     if (showEditDialog && editingItem != null) {
         EditItemDialog(
@@ -310,7 +362,7 @@ fun OcrResultScreen(
 }
 
 @Composable
-private fun BillImageThumbnail(imagePath: String?) {
+private fun BillImageThumbnail(imagePath: String?, onClick: () -> Unit = {}) {
     if (imagePath == null) return
 
     val bitmap = remember(imagePath) {
@@ -325,7 +377,8 @@ private fun BillImageThumbnail(imagePath: String?) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clickable(onClick = onClick),
             shape = RoundedCornerShape(12.dp)
         ) {
             Column {
@@ -338,12 +391,23 @@ private fun BillImageThumbnail(imagePath: String?) {
                         .clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
-                Text(
-                    text = "Bill photo for verification",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tap to view full image",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        Icons.Default.ZoomIn,
+                        contentDescription = "Zoom",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

@@ -16,6 +16,7 @@ interface GeminiBillingService {
     suspend fun parseBillingSpeech(speechText: String): List<BillItem>
     suspend fun parseOcrText(rawText: String): Bill
     suspend fun parseBillImage(image: Bitmap): Bill
+    suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null): String
     suspend fun parseOrderSpeech(speechText: String): List<OrderItem>
 }
 
@@ -37,7 +38,6 @@ class GeminiBillingServiceImpl @Inject constructor(
         try {
             val response = generativeModel.generateContent(prompt)
             val jsonString = response.text?.filterNot { it == '`' }?.removePrefix("json")?.trim() ?: "[]"
-            // Simple manual parsing or use Gson
             com.google.gson.Gson().fromJson(jsonString, Array<BillItem>::class.java).toList()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -53,18 +53,14 @@ class GeminiBillingServiceImpl @Inject constructor(
             OCR Text: "$rawText"
 
             Return ONLY a valid JSON object with these fields:
-            - "sellerName": string (the wholesaler/seller/company name from the bill header. Look for names at the TOP of the bill, patterns like "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency". If not found, use "Unknown Seller")
-            - "billNumber": string (invoice/bill number if present as "Bill No.", "Invoice No.", "Inv#", etc. Empty string if not found)
+            - "sellerName": string (the wholesaler/seller/company name)
+            - "billNumber": string (invoice/bill number, empty string if not found)
             - "items": array of objects, each with:
                 - "name": string (product name)
                 - "quantity": number
                 - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
-                - "price": number (PER-UNIT price. e.g. if "Dal 5kg 450" then quantity=5, price=90 i.e. 450/5)
-            - "totalAmount": number (grand total. If not found, sum of quantity*price for each item)
-
-            IMPORTANT:
-            - Indian bills may have Hindi text mixed with English. Parse both.
-            - Common formats: "Dal 5kg 450", "Sugar 10kg ₹380", "Soap 2dz 240"
+                - "price": number (PER-UNIT price)
+            - "totalAmount": number (grand total)
         """.trimIndent()
 
         try {
@@ -79,23 +75,55 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     override suspend fun parseBillImage(image: Bitmap): Bill = withContext(Dispatchers.IO) {
         val prompt = """
-            You are an AI for Dukaan AI, a shop management app for Indian shopkeepers.
-            Extract bill/invoice details from this image of a wholesale purchase bill.
+            You are an expert Indian wholesale bill reader for Dukaan AI app.
+            Your job is to digitize this bill image with 100% accuracy.
 
-            Return ONLY a valid JSON object with these fields:
-            - "sellerName": string (the wholesaler/seller/company name from the bill header. Look for names at the TOP of the bill, patterns like "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency". If not found, use "Unknown Seller")
-            - "billNumber": string (invoice/bill number if present as "Bill No.", "Invoice No.", "Inv#", etc. Empty string if not found)
-            - "items": array of objects, each with:
-                - "name": string (product name)
-                - "quantity": number
-                - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
-                - "price": number (PER-UNIT price. e.g. if "Dal 5kg 450" then quantity=5, price=90 i.e. 450/5)
-            - "totalAmount": number (grand total. If not found, sum of quantity*price for each item)
+            STEP 1 — READ THE BILL CAREFULLY:
+            Look at every single line of text in this bill image. Indian wholesale bills typically have:
+            • Header: Shop/company name, address, phone, GSTIN
+            • Bill info: Bill No., Date, Customer name
+            • Item table with columns: Sr.No, Item/Product, Qty, Rate, Amount
+            • Footer: Total, Discount, Net Amount, Signature
 
-            IMPORTANT:
-            - Indian bills may have Hindi text mixed with English. Parse both.
-            - Read all text visible in the image carefully.
-            - Common formats: "Dal 5kg 450", "Sugar 10kg ₹380", "Soap 2dz 240"
+            STEP 2 — EXTRACT SELLER NAME:
+            Find the SHOP/COMPANY name at the TOP of the bill. Look for:
+            • Large text or bold text at the top
+            • Patterns: "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency", "Store", "Bhandar", "भंडार", "ट्रेडर्स"
+            • If GSTIN is present, the name is usually above it
+
+            STEP 3 — EXTRACT EACH ITEM:
+            For EVERY item line in the bill:
+            • "name": exact product name as written (e.g. "Tata Salt 1kg", "Fortune Oil 1L", "Parle-G 50g")
+            • "quantity": the quantity number
+            • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
+            • "price": the PER-UNIT rate/price (NOT the line total)
+              - If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 40 (the rate column)
+              - If bill shows "Dal 5kg 450" with no rate column → price = 450/5 = 90
+              - If bill shows only total amount per line → divide by quantity to get per-unit price
+
+            STEP 4 — EXTRACT TOTAL:
+            • "totalAmount": the GRAND TOTAL / NET AMOUNT from the bottom of the bill
+            • If multiple totals exist (subtotal, tax, grand total), use the final/net amount
+            • If no total found, calculate: sum of (quantity × price) for all items
+
+            RETURN ONLY this JSON (no markdown, no explanation):
+            {
+              "sellerName": "Shop Name Here",
+              "billNumber": "Bill/Invoice number or empty string",
+              "items": [
+                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 45.0},
+                {"name": "Another Item", "quantity": 1.0, "unit": "pc", "price": 120.0}
+              ],
+              "totalAmount": 210.0
+            }
+
+            CRITICAL RULES:
+            - Read EVERY item. Do NOT skip any line item.
+            - Hindi/Devanagari text: transliterate to English (e.g. "चीनी" → "Cheeni/Sugar")
+            - "price" MUST be per-unit rate, never the line total
+            - Abbreviations: "dz"=dozen, "pkt"=packet, "L"=litre, "pcs"=pieces
+            - If handwritten, try your best to read accurately
+            - Do NOT invent items that aren't in the image
         """.trimIndent()
 
         try {
@@ -104,11 +132,52 @@ class GeminiBillingServiceImpl @Inject constructor(
                 text(prompt)
             }
             val response = generativeModel.generateContent(inputContent)
-            val jsonString = response.text?.filterNot { it == '`' }?.removePrefix("json")?.trim() ?: "{}"
+            val rawJson = response.text ?: "{}"
+            val jsonString = rawJson
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
             com.google.gson.Gson().fromJson(jsonString, Bill::class.java)
         } catch (e: Exception) {
             e.printStackTrace()
             Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+        }
+    }
+
+    override suspend fun chatAboutBill(
+        billJson: String,
+        userMessage: String,
+        image: Bitmap?
+    ): String = withContext(Dispatchers.IO) {
+        val prompt = """
+            You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
+            The user is looking at a scanned bill and wants to ask you about it.
+
+            Here is the digitized bill data:
+            $billJson
+
+            User's question: "$userMessage"
+
+            Respond helpfully and concisely in the same language the user asks in (Hindi or English).
+            If the user asks to correct an item, suggest the exact correction.
+            If the user asks about totals, verify by calculating from items.
+            Keep responses short and practical — this is for a shopkeeper.
+        """.trimIndent()
+
+        try {
+            val response = if (image != null) {
+                val inputContent = content {
+                    image(image)
+                    text(prompt)
+                }
+                generativeModel.generateContent(inputContent)
+            } else {
+                generativeModel.generateContent(prompt)
+            }
+            response.text ?: "Sorry, I couldn't process that. Please try again."
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "Error: ${e.message ?: "Failed to get response"}"
         }
     }
 

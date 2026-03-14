@@ -17,7 +17,7 @@ object NetworkModule {
         // NOTE: Replace with actual API key or fetch fromBuildConfig/SafeArgs
         return GenerativeModel(
                 modelName = "gemini-2.5-flash-lite",
-                apiKey = "AIzaSyCIupyQomMsgOxj-6l4QBh8mHRqIuQY9xk"
+                apiKey = "AIzaSyCRTsm2bzegLxHTGP3Ul3wX6KtTMjPwxVQ"
         )
     }
 }
