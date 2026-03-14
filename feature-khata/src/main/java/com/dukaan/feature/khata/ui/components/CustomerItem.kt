@@ -2,9 +2,9 @@ package com.dukaan.feature.khata.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,21 +20,19 @@ import java.util.*
 fun CustomerItem(
     customer: Customer,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
-    val balanceColor = if (customer.balance >= 0) {
-        Color(0xFF00B37E) // AccentGreen
-    } else {
-        Color(0xFFFF6B6B) // ErrorRed
-    }
+    val balanceColor = if (customer.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -43,20 +41,21 @@ fun CustomerItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                shape = MaterialTheme.shapes.medium,
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = customer.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -73,7 +72,7 @@ fun CustomerItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = if (customer.balance >= 0) "JAMA" else "BAKI",
+                    text = if (customer.balance >= 0) "BAKI" else "JAMA",
                     style = MaterialTheme.typography.labelSmall,
                     color = balanceColor,
                     fontWeight = FontWeight.Bold
@@ -89,7 +88,7 @@ fun CustomerItem(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = 4.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

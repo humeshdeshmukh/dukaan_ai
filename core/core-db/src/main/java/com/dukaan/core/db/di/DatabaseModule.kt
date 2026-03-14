@@ -3,7 +3,7 @@ package com.dukaan.core.db.di
 import android.content.Context
 import androidx.room.Room
 import com.dukaan.core.db.KhataDatabase
-import com.dukaan.core.db.dao.KhataDao
+import com.dukaan.core.db.dao.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,11 +24,31 @@ object DatabaseModule {
             context,
             KhataDatabase::class.java,
             "dukaan_khata.db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
     fun provideKhataDao(database: KhataDatabase): KhataDao {
         return database.khataDao()
+    }
+
+    @Provides
+    fun provideBillDao(database: KhataDatabase): BillDao {
+        return database.billDao()
+    }
+
+    @Provides
+    fun provideOrderDao(database: KhataDatabase): OrderDao {
+        return database.orderDao()
+    }
+
+    @Provides
+    fun provideShopProfileDao(database: KhataDatabase): ShopProfileDao {
+        return database.shopProfileDao()
+    }
+
+    @Provides
+    fun provideProductDao(database: KhataDatabase): ProductDao {
+        return database.productDao()
     }
 }

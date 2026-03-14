@@ -1,13 +1,11 @@
 package com.dukaan.feature.khata.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.dukaan.core.ui.components.ConfirmationDialog
+import com.dukaan.core.ui.components.EmptyStateView
 import com.dukaan.feature.khata.domain.model.Customer
 import com.dukaan.feature.khata.domain.model.Transaction
 import com.dukaan.feature.khata.domain.model.TransactionType
@@ -32,20 +31,45 @@ fun CustomerDetailScreen(
     onBackClick: () -> Unit
 ) {
     var customer by remember { mutableStateOf<Customer?>(null) }
+    var selectedFilter by remember { mutableStateOf("All") }
     val transactions by viewModel.getTransactions(customerId).collectAsState(initial = emptyList())
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+
+    var showEditDialog by remember { mutableStateOf(false) }
+    var transactionToDelete by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(customerId) {
         customer = viewModel.getCustomerById(customerId)
     }
 
+    // Filter transactions by date
+    val filteredTransactions = remember(transactions, selectedFilter) {
+        val now = System.currentTimeMillis()
+        when (selectedFilter) {
+            "Week" -> {
+                val weekAgo = now - 7 * 24 * 60 * 60 * 1000L
+                transactions.filter { it.date >= weekAgo }
+            }
+            "Month" -> {
+                val monthAgo = now - 30L * 24 * 60 * 60 * 1000L
+                transactions.filter { it.date >= monthAgo }
+            }
+            else -> transactions
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(customer?.name ?: "Customer Details", fontWeight = FontWeight.Bold) },
+                title = { Text(customer?.name ?: "Customer", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
                 }
             )
@@ -56,46 +80,88 @@ fun CustomerDetailScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            // Hero section with balance
-            customer?.let {
-                Card(
+            // Balance Hero Card
+            customer?.let { c ->
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (c.balance >= 0) Color(0xFF00B37E).copy(alpha = 0.1f) else Color(0xFFEF4444).copy(alpha = 0.1f)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = if (it.balance >= 0) "Total Amount to Pay" else "Total Amount to Collect",
-                            style = MaterialTheme.typography.labelLarge
+                            text = if (c.balance >= 0) "Total BAKI (to collect)" else "Total JAMA (to pay)",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = currencyFormat.format(Math.abs(it.balance)),
+                            text = currencyFormat.format(Math.abs(c.balance)),
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (it.balance >= 0) Color(0xFF00B37E) else Color(0xFFFF6B6B)
+                            color = if (c.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = c.phone,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
+            // Date Filter Chips
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("All", "Week", "Month").forEach { filter ->
+                    FilterChip(
+                        selected = selectedFilter == filter,
+                        onClick = { selectedFilter = filter },
+                        label = { Text(filter) },
+                        leadingIcon = if (selectedFilter == filter) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = "Transaction History",
+                text = "Transactions (${filteredTransactions.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(transactions) { transaction ->
-                    TransactionItem(transaction, currencyFormat)
+            if (filteredTransactions.isEmpty()) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    EmptyStateView(
+                        icon = Icons.Default.ReceiptLong,
+                        title = "No Transactions",
+                        subtitle = "Add a payment or credit to get started"
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filteredTransactions, key = { it.id }) { transaction ->
+                        TransactionItem(
+                            transaction = transaction,
+                            currencyFormat = currencyFormat,
+                            onDeleteClick = { transactionToDelete = transaction.id }
+                        )
+                    }
                 }
             }
 
@@ -104,42 +170,123 @@ fun CustomerDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
                     onClick = { onAddTransaction(TransactionType.JAMA) },
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
+                        .height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B37E)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("YOU GOT (JAMA)", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.CallReceived, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("YOU GOT", fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = { onAddTransaction(TransactionType.BAKI) },
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B)),
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("YOU GAVE (BAKI)", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.CallMade, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("YOU GAVE", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+
+        // Edit Customer Dialog
+        if (showEditDialog && customer != null) {
+            EditCustomerDialog(
+                currentName = customer!!.name,
+                currentPhone = customer!!.phone,
+                onDismiss = { showEditDialog = false },
+                onConfirm = { name, phone ->
+                    viewModel.updateCustomer(customerId, name, phone)
+                    customer = customer!!.copy(name = name, phone = phone)
+                    showEditDialog = false
+                }
+            )
+        }
+
+        // Delete Transaction Confirmation
+        transactionToDelete?.let { txnId ->
+            ConfirmationDialog(
+                title = "Delete Transaction",
+                message = "This will delete this transaction and reverse the balance. This cannot be undone.",
+                confirmText = "Delete",
+                onConfirm = {
+                    viewModel.deleteTransaction(txnId)
+                    transactionToDelete = null
+                },
+                onDismiss = { transactionToDelete = null }
+            )
         }
     }
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, currencyFormat: NumberFormat) {
+fun EditCustomerDialog(
+    currentName: String,
+    currentPhone: String,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, phone: String) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+    var phone by remember { mutableStateOf(currentPhone) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Customer") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Customer Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone Number") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (name.isNotBlank() && phone.isNotBlank()) onConfirm(name, phone) },
+                enabled = name.isNotBlank() && phone.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun TransactionItem(
+    transaction: Transaction,
+    currencyFormat: NumberFormat,
+    onDeleteClick: () -> Unit = {}
+) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
-    val tint = if (transaction.type == TransactionType.JAMA) Color(0xFF00B37E) else Color(0xFFFF6B6B)
+    val isJama = transaction.type == TransactionType.JAMA
+    val tint = if (isJama) Color(0xFF00B37E) else Color(0xFFEF4444)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -147,9 +294,22 @@ fun TransactionItem(transaction: Transaction, currencyFormat: NumberFormat) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = tint.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    imageVector = if (isJama) Icons.Default.CallReceived else Icons.Default.CallMade,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (transaction.type == TransactionType.JAMA) "Payment Received (Jama)" else "Credit Given (Baki)",
+                    text = if (isJama) "Payment Received" else "Credit Given",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -158,13 +318,28 @@ fun TransactionItem(transaction: Transaction, currencyFormat: NumberFormat) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (!transaction.notes.isNullOrBlank()) {
+                    Text(
+                        text = transaction.notes,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Text(
-                text = currencyFormat.format(transaction.amount),
+                text = "${if (isJama) "-" else "+"}${currencyFormat.format(transaction.amount)}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = tint
             )
+            IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

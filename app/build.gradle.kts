@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":feature-dashboard"))
     implementation(project(":feature-ocr"))
     implementation(project(":feature-orders"))
+    implementation(project(":feature-inventory"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlin.stdlib)

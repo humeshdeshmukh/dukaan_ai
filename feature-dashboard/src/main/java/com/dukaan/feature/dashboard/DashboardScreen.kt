@@ -1,20 +1,26 @@
 package com.dukaan.feature.dashboard
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -25,8 +31,15 @@ fun DashboardScreen(
     onVoiceBillingClick: () -> Unit,
     onSmartKhataClick: () -> Unit,
     onOrdersClick: () -> Unit,
-    onInventoryClick: () -> Unit
+    onInventoryClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
+    onBillHistoryClick: () -> Unit = {}
 ) {
+    val scrollState = rememberScrollState()
+    var animated by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { animated = true }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -35,35 +48,40 @@ fun DashboardScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                modifier = Modifier.padding(10.dp),
+                                modifier = Modifier.padding(8.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            "Dukaan AI",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "Dukaan AI",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 actions = {
                     IconButton(
-                        onClick = { /* Profile */ },
+                        onClick = onProfileClick,
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), CircleShape)
+                            .padding(end = 4.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                CircleShape
+                            )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile",
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -78,90 +96,197 @@ fun DashboardScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(horizontal = 20.dp)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp)
         ) {
-            // Ultra-Premium Multi-Stop Gradient Greeting Card
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                shadowElevation = 16.dp
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Premium Greeting Banner
+            AnimatedVisibility(
+                visible = animated,
+                enter = fadeIn(tween(600)) + slideInVertically(
+                    initialOffsetY = { -it / 3 },
+                    animationSpec = tween(600)
+                )
             ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            androidx.compose.ui.graphics.Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF065F46), // PrimaryEmerald
-                                    Color(0xFF047857), // Medium Emerald
-                                    Color(0xFF064E3B)  // Darker Emerald
-                                )
-                            )
+                GreetingBanner()
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Quick Actions Section
+            AnimatedVisibility(
+                visible = animated,
+                enter = fadeIn(tween(600, delayMillis = 150))
+            ) {
+                Column {
+                    Text(
+                        text = "Quick Actions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+                    )
+
+                    // Row 1: Scan Bill + Voice Billing
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            label = "Scan Bill",
+                            subtitle = "OCR Scanner",
+                            icon = Icons.Default.QrCodeScanner,
+                            accentColor = Color(0xFF065F46),
+                            onClick = onScanBillClick,
+                            modifier = Modifier.weight(1f)
                         )
-                        .padding(28.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "NAMASTE,",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color(0xFFFDE68A), // GoldSoft
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp
+                        FeatureCard(
+                            label = "Voice Bill",
+                            subtitle = "Speak Items",
+                            icon = Icons.Default.Mic,
+                            accentColor = Color(0xFFD97706),
+                            onClick = onVoiceBillingClick,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Propelling Your\nBusiness Forward",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            lineHeight = 36.sp
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Row 2: Smart Khata + Orders
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            label = "Smart Khata",
+                            subtitle = "Ledger Book",
+                            icon = Icons.Default.MenuBook,
+                            accentColor = Color(0xFF7C3AED),
+                            onClick = onSmartKhataClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
+                            label = "Orders",
+                            subtitle = "Wholesale",
+                            icon = Icons.Default.ShoppingCart,
+                            accentColor = Color(0xFF2563EB),
+                            onClick = onOrdersClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Row 3: Inventory + Bill History
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FeatureCard(
+                            label = "Inventory",
+                            subtitle = "Stock Mgmt",
+                            icon = Icons.Default.Inventory2,
+                            accentColor = Color(0xFFDB2777),
+                            onClick = onInventoryClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
+                            label = "Bill History",
+                            subtitle = "Past Bills",
+                            icon = Icons.Default.Receipt,
+                            accentColor = Color(0xFF0891B2),
+                            onClick = onBillHistoryClick,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
 
-            Text(
-                text = "Dashboard",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 24.dp)
+            // Today's Summary Section
+            AnimatedVisibility(
+                visible = animated,
+                enter = fadeIn(tween(600, delayMillis = 300))
             ) {
-                val items = listOf(
-                    Triple("Scan Bill", Icons.Default.QrCodeScanner, onScanBillClick),
-                    Triple("Voice Billing", Icons.Default.Mic, onVoiceBillingClick),
-                    Triple("Smart Khata", Icons.Default.MenuBook, onSmartKhataClick),
-                    Triple("Orders", Icons.Default.ShoppingCart, onOrdersClick)
+                TodaySummarySection()
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // AI Tip Card
+            AnimatedVisibility(
+                visible = animated,
+                enter = fadeIn(tween(600, delayMillis = 450))
+            ) {
+                AiTipCard()
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun GreetingBanner() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        shadowElevation = 8.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF065F46),
+                            Color(0xFF047857),
+                            Color(0xFF064E3B)
+                        )
+                    )
                 )
-                
-                items.forEachIndexed { index, (label, icon, onClick) ->
-                    item {
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = true,
-                            enter = androidx.compose.animation.fadeIn(
-                                animationSpec = tween(600, delayMillis = index * 120)
-                            ) + androidx.compose.animation.slideInVertically(
-                                initialOffsetY = { it / 2 },
-                                animationSpec = tween(600, delayMillis = index * 120)
-                            )
-                        ) {
-                            FeatureCard(
-                                label = label,
-                                icon = icon,
-                                accentColor = if (index % 2 == 0) MaterialTheme.colorScheme.primary else Color(0xFFD97706),
-                                onClick = onClick
-                            )
-                        }
-                    }
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "NAMASTE",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFFFDE68A),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Propelling Your\nBusiness Forward",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        lineHeight = 30.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Your AI-powered shop assistant",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+                Surface(
+                    modifier = Modifier.size(64.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.12f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.padding(16.dp),
+                        tint = Color(0xFFFDE68A)
+                    )
                 }
             }
         }
@@ -171,48 +296,176 @@ fun DashboardScreen(
 @Composable
 fun FeatureCard(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    subtitle: String,
+    icon: ImageVector,
     accentColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier
-            .height(180.dp)
-            .fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = Color.White,
+        modifier = modifier.height(140.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.08f))
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            accentColor.copy(alpha = 0.12f)
+        )
     ) {
         Column(
             modifier = Modifier
-                .padding(20.dp)
+                .padding(16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Surface(
-                modifier = Modifier.size(68.dp),
-                shape = CircleShape,
-                color = accentColor.copy(alpha = 0.08f)
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = accentColor.copy(alpha = 0.1f)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier
-                        .padding(18.dp)
-                        .size(32.dp),
+                    modifier = Modifier.padding(12.dp),
                     tint = accentColor
                 )
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Column {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodaySummarySection() {
+    Column {
+        Text(
+            text = "Today's Summary",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SummaryChip(
+                label = "Sales",
+                value = "0",
+                icon = Icons.Outlined.TrendingUp,
+                color = Color(0xFF00B37E),
+                modifier = Modifier.weight(1f)
+            )
+            SummaryChip(
+                label = "Credit",
+                value = "0",
+                icon = Icons.Outlined.AccountBalanceWallet,
+                color = Color(0xFFEF4444),
+                modifier = Modifier.weight(1f)
+            )
+            SummaryChip(
+                label = "Items",
+                value = "0",
+                icon = Icons.Outlined.Inventory2,
+                color = Color(0xFF3B82F6),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryChip(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = color.copy(alpha = 0.08f)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B)
+                style = MaterialTheme.typography.labelSmall,
+                color = color.copy(alpha = 0.8f)
             )
+        }
+    }
+}
+
+@Composable
+private fun AiTipCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    modifier = Modifier.padding(8.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "AI Tip",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Text(
+                    text = "Try saying \"Sugar 2 kilo 80, Soap 1 piece 30\" in Voice Billing for instant bill creation!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

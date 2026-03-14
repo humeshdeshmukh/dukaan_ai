@@ -38,9 +38,11 @@ android {
 
 dependencies {
     implementation(project(":core:core-ui"))
+    implementation(project(":core:core-db"))
     
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlin.stdlib)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

@@ -1,19 +1,27 @@
 package com.dukaan.feature.khata.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.components.ConfirmationDialog
+import com.dukaan.core.ui.components.EmptyStateView
 import com.dukaan.feature.khata.ui.components.AddCustomerDialog
 import com.dukaan.feature.khata.ui.components.CustomerItem
+import java.text.NumberFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,6 +33,8 @@ fun CustomerListScreen(
     val customers by viewModel.filteredCustomers.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var customerToDelete by remember { mutableStateOf<Long?>(null) }
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
     Scaffold(
         topBar = {
@@ -38,12 +48,12 @@ fun CustomerListScreen(
             )
         },
         floatingActionButton = {
-            LargeFloatingActionButton(
+            FloatingActionButton(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Customer", modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.PersonAdd, contentDescription = "Add Customer")
             }
         }
     ) { padding ->
@@ -52,27 +62,94 @@ fun CustomerListScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
+            // Summary Card
+            if (uiState.customerCount > 0) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.TrendingDown, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = currencyFormat.format(Math.abs(uiState.totalReceivable)),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444)
+                            )
+                            Text("To Collect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.TrendingUp, contentDescription = null, tint = Color(0xFF00B37E), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = currencyFormat.format(Math.abs(uiState.totalPayable)),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF00B37E)
+                            )
+                            Text("To Pay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${uiState.customerCount}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text("Customers", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            // Search
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::onSearchQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 placeholder = { Text("Search by name or phone") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                shape = MaterialTheme.shapes.medium
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
             )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(customers) { customer ->
-                    CustomerItem(
-                        customer = customer,
-                        onClick = { onCustomerClick(customer.id) }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (customers.isEmpty() && uiState.searchQuery.isBlank()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    EmptyStateView(
+                        icon = Icons.Default.MenuBook,
+                        title = "No Customers Yet",
+                        subtitle = "Add your first customer to start tracking payments"
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(customers, key = { it.id }) { customer ->
+                        CustomerItem(
+                            customer = customer,
+                            onClick = { onCustomerClick(customer.id) },
+                            onDeleteClick = { customerToDelete = customer.id }
+                        )
+                    }
                 }
             }
         }
@@ -84,6 +161,19 @@ fun CustomerListScreen(
                     viewModel.addCustomer(name, phone)
                     showAddDialog = false
                 }
+            )
+        }
+
+        customerToDelete?.let { customerId ->
+            ConfirmationDialog(
+                title = "Delete Customer",
+                message = "This will permanently delete this customer and all their transactions. This cannot be undone.",
+                confirmText = "Delete",
+                onConfirm = {
+                    viewModel.deleteCustomer(customerId)
+                    customerToDelete = null
+                },
+                onDismiss = { customerToDelete = null }
             )
         }
     }

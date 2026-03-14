@@ -29,8 +29,25 @@ class KhataRepositoryImpl @Inject constructor(
         return khataDao.insertCustomer(CustomerEntity(name = name, phone = phone))
     }
 
+    override suspend fun updateCustomer(customerId: Long, name: String, phone: String) {
+        val existing = khataDao.getCustomerById(customerId) ?: return
+        khataDao.updateCustomer(existing.copy(name = name, phone = phone))
+    }
+
+    override suspend fun deleteCustomer(customerId: Long) {
+        val customer = khataDao.getCustomerById(customerId) ?: return
+        khataDao.deleteTransactionsByCustomer(customerId)
+        khataDao.deleteCustomer(customer)
+    }
+
     override fun getTransactionsByCustomer(customerId: Long): Flow<List<Transaction>> {
         return khataDao.getTransactionsByCustomer(customerId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getTransactionsByDateRange(customerId: Long, startDate: Long, endDate: Long): Flow<List<Transaction>> {
+        return khataDao.getTransactionsByCustomerAndDateRange(customerId, startDate, endDate).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -38,6 +55,14 @@ class KhataRepositoryImpl @Inject constructor(
     override suspend fun addTransaction(transaction: Transaction) {
         khataDao.addTransactionAndUpdateBalance(transaction.toEntity())
     }
+
+    override suspend fun deleteTransaction(transactionId: Long) {
+        khataDao.deleteTransactionAndReverseBalance(transactionId)
+    }
+
+    override fun getTotalReceivable(): Flow<Double> = khataDao.getTotalReceivable()
+    override fun getTotalPayable(): Flow<Double> = khataDao.getTotalPayable()
+    override fun getCustomerCount(): Flow<Int> = khataDao.getCustomerCount()
 
     private fun CustomerEntity.toDomain() = Customer(
         id = id,

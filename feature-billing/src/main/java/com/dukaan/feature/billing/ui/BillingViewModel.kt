@@ -8,10 +8,7 @@ import com.dukaan.core.network.model.BillItem
 import com.dukaan.feature.billing.domain.repository.BillingRepository
 import com.dukaan.core.voice.SpeechManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,7 +17,9 @@ data class BillingUiState(
     val totalAmount: Double = 0.0,
     val isRecording: Boolean = false,
     val recognizedText: String = "",
-    val isParsing: Boolean = false
+    val isParsing: Boolean = false,
+    val error: String? = null,
+    val isSaved: Boolean = false
 )
 
 @HiltViewModel
@@ -32,6 +31,9 @@ class BillingViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(BillingUiState())
     val uiState: StateFlow<BillingUiState> = _uiState.asStateFlow()
+
+    val allBills: StateFlow<List<Bill>> = repository.getAllBills()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch {
@@ -52,24 +54,29 @@ class BillingViewModel @Inject constructor(
         _uiState.update { it.copy(isRecording = !currentlyRecording) }
     }
 
-    fun onSpeechResult(text: String) {
-        _uiState.update { it.copy(recognizedText = text) }
-    }
-
     private fun processSpeech(text: String) {
         if (text.isBlank()) return
-        
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isParsing = true) }
-            val parsedItems = geminiService.parseBillingSpeech(text)
-            _uiState.update { state ->
-                val newItems = state.items + parsedItems
-                state.copy(
-                    items = newItems,
-                    totalAmount = newItems.sumOf { it.total },
-                    isParsing = false,
-                    recognizedText = ""
-                )
+            _uiState.update { it.copy(isParsing = true, error = null) }
+            try {
+                val parsedItems = geminiService.parseBillingSpeech(text)
+                _uiState.update { state ->
+                    val newItems = state.items + parsedItems
+                    state.copy(
+                        items = newItems,
+                        totalAmount = newItems.sumOf { it.total },
+                        isParsing = false,
+                        recognizedText = ""
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isParsing = false,
+                        error = "Failed to parse speech. Please try again."
+                    )
+                }
             }
         }
     }
@@ -90,19 +97,35 @@ class BillingViewModel @Inject constructor(
                 items = _uiState.value.items,
                 totalAmount = _uiState.value.totalAmount
             )
-            repository.saveBill(bill)
-            // Clear current state after saving
-            _uiState.value = BillingUiState()
+            repository.saveBill(bill, "VOICE")
+            _uiState.update { it.copy(isSaved = true) }
         }
+    }
+
+    fun clearBill() {
+        _uiState.value = BillingUiState()
+    }
+
+    fun deleteBill(billId: Long) {
+        viewModelScope.launch {
+            repository.deleteBill(billId)
+        }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     fun formatWhatsAppMessage(): String {
         val sb = StringBuilder()
-        sb.append("*Dukaan AI - New Bill*\n\n")
+        sb.append("*Dukaan AI - Bill*\n")
+        sb.append("━━━━━━━━━━━━━━━━━━\n")
         _uiState.value.items.forEach { item ->
             sb.append("${item.name}: ${item.quantity} ${item.unit} @ ₹${item.price} = ₹${item.total}\n")
         }
-        sb.append("\n*Total: ₹${_uiState.value.totalAmount}*")
+        sb.append("━━━━━━━━━━━━━━━━━━\n")
+        sb.append("*Total: ₹${_uiState.value.totalAmount}*\n")
+        sb.append("\n_Sent via Dukaan AI_")
         return sb.toString()
     }
 }
