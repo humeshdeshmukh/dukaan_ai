@@ -1,0 +1,44 @@
+# Build and Generated files
+.gradle/
+build/
+/app/build/
+/core/core-db/build/
+/core/core-network/build/
+/core/core-ui/build/
+/core/core-voice/build/
+/feature-billing/build/
+/feature-dashboard/build/
+/feature-khata/build/
+/feature-ocr/build/
+/feature-orders/build/
+
+# Local configuration files
+local.properties
+
+# Logs and temporary files
+*.log
+java_pid*
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Output packages
+*.apk
+*.aar
+*.aab
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services
+google-services.json
+
+# OS specific files
+.DS_Store
+Thumbs.db
