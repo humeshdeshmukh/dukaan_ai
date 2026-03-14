@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,9 +24,15 @@ fun SplashScreen(
     onNavigateToDashboard: () -> Unit
 ) {
     var startAnimation by remember { mutableStateOf(false) }
+    
     val scale by animateFloatAsState(
-        targetValue = if (startAnimation) 1.2f else 0.8f,
-        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing)
+        targetValue = if (startAnimation) 1.25f else 0.75f,
+        animationSpec = tween(durationMillis = 1800, easing = FastOutSlowInEasing)
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 1500)
     )
 
     val permissions = arrayOf(
@@ -41,60 +48,82 @@ fun SplashScreen(
 
     LaunchedEffect(Unit) {
         startAnimation = true
-        delay(2000) // Branding display time
+        delay(2500) // Branding display time
         permissionLauncher.launch(permissions)
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primary),
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF065F46),
+                        Color(0xFF064E3B)
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
+        // Subtle background glow
+        Surface(
+            modifier = Modifier
+                .size(300.dp)
+                .scale(scale * 1.2f)
+                .alpha(alpha * 0.15f),
+            shape = CircleShape,
+            color = Color.White
+        ) {}
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.alpha(alpha)
         ) {
             Surface(
                 modifier = Modifier
-                    .size(120.dp)
+                    .size(130.dp)
                     .scale(scale),
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.15f)
+                color = Color.White.copy(alpha = 0.12f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
             ) {
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(30.dp)
-                        .size(60.dp),
-                    tint = MaterialTheme.colorScheme.secondary // Gold accent
+                        .padding(32.dp)
+                        .size(64.dp),
+                    tint = Color(0xFFFDE68A) // GoldSoft
                 )
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
             Text(
                 text = "Dukaan AI",
                 style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
-                letterSpacing = 2.sp
+                letterSpacing = 4.sp
             )
+            
+            Spacer(modifier = Modifier.height(8.dp))
             
             Text(
                 text = "Your Smart Shop Assistant",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White.copy(alpha = 0.7f),
+                fontWeight = FontWeight.Medium
             )
         }
         
         CircularProgressIndicator(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 64.dp),
-            color = MaterialTheme.colorScheme.secondary,
-            strokeWidth = 3.dp
+                .padding(bottom = 72.dp),
+            color = Color(0xFFFDE68A), // GoldSoft
+            strokeWidth = 4.dp
         )
     }
 }

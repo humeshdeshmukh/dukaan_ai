@@ -25,6 +25,7 @@ fun DukaanTheme(
     MaterialTheme(
         colorScheme = LightColorScheme,
         typography = Typography,
+        shapes = Shapes,
         content = content
     )
 }

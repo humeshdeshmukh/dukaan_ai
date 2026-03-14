@@ -35,7 +35,7 @@ fun DashboardScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(44.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
@@ -44,7 +44,7 @@ fun DashboardScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             "Dukaan AI",
                             style = MaterialTheme.typography.titleLarge,
@@ -54,11 +54,16 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Profile */ }) {
+                    IconButton(
+                        onClick = { /* Profile */ },
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), CircleShape)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Profile",
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
                     }
                 },
@@ -75,41 +80,42 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp)
         ) {
-            // Ultra-Premium Emerald Greeting Card
+            // Ultra-Premium Multi-Stop Gradient Greeting Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primary,
-                shadowElevation = 12.dp
+                shadowElevation = 16.dp
             ) {
                 Box(
                     modifier = Modifier
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
                                 colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    Color(0xFF064E3B) // Darker emerald for depth
+                                    Color(0xFF065F46), // PrimaryEmerald
+                                    Color(0xFF047857), // Medium Emerald
+                                    Color(0xFF064E3B)  // Darker Emerald
                                 )
                             )
                         )
-                        .padding(24.dp)
+                        .padding(28.dp)
                 ) {
                     Column {
                         Text(
-                            text = "Namaste,",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Medium
+                            text = "NAMASTE,",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color(0xFFFDE68A), // GoldSoft
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Propelling Your\nBusiness Forward",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
-                            lineHeight = 32.sp
+                            lineHeight = 36.sp
                         )
                     }
                 }
@@ -117,9 +123,9 @@ fun DashboardScreen(
 
             Text(
                 text = "Dashboard",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(vertical = 12.dp),
+                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                 color = MaterialTheme.colorScheme.onSurface
             )
 
@@ -142,16 +148,16 @@ fun DashboardScreen(
                         androidx.compose.animation.AnimatedVisibility(
                             visible = true,
                             enter = androidx.compose.animation.fadeIn(
-                                animationSpec = tween(500, delayMillis = index * 100)
-                            ) + androidx.compose.animation.scaleIn(
-                                initialScale = 0.9f,
-                                animationSpec = tween(500, delayMillis = index * 100)
+                                animationSpec = tween(600, delayMillis = index * 120)
+                            ) + androidx.compose.animation.slideInVertically(
+                                initialOffsetY = { it / 2 },
+                                animationSpec = tween(600, delayMillis = index * 120)
                             )
                         ) {
                             FeatureCard(
                                 label = label,
                                 icon = icon,
-                                accentColor = if (index % 2 == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                accentColor = if (index % 2 == 0) MaterialTheme.colorScheme.primary else Color(0xFFD97706),
                                 onClick = onClick
                             )
                         }
@@ -176,8 +182,8 @@ fun FeatureCard(
             .fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = Color.White,
-        shadowElevation = 1.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.1f))
+        shadowElevation = 2.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.08f))
     ) {
         Column(
             modifier = Modifier
@@ -187,7 +193,7 @@ fun FeatureCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(68.dp),
                 shape = CircleShape,
                 color = accentColor.copy(alpha = 0.08f)
             ) {
@@ -195,12 +201,12 @@ fun FeatureCard(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(18.dp)
                         .size(32.dp),
                     tint = accentColor
                 )
             }
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
