@@ -1,7 +1,12 @@
 package com.dukaan.feature.ocr.ui
 
+import android.graphics.BitmapFactory
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,6 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -21,8 +30,10 @@ import com.dukaan.core.ui.components.LargeActionButton
 @Composable
 fun OcrResultScreen(
     state: OcrUiState,
+    existingSellerNames: List<String> = emptyList(),
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onNavigateAfterSave: () -> Unit = {},
     onDeleteItem: (BillItem) -> Unit,
     onEditItem: (Int, BillItem) -> Unit,
     onAddItem: (BillItem) -> Unit,
@@ -32,6 +43,16 @@ fun OcrResultScreen(
     var editingIndex by remember { mutableIntStateOf(-1) }
     var editingItem by remember { mutableStateOf<BillItem?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Show save success feedback then navigate (Toast doesn't block)
+    LaunchedEffect(state.isSaved) {
+        if (state.isSaved) {
+            val sellerName = state.scannedBill?.sellerName?.takeIf { it.isNotBlank() } ?: "Unknown"
+            Toast.makeText(context, "Bill saved for $sellerName!", Toast.LENGTH_SHORT).show()
+            onNavigateAfterSave()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -45,13 +66,15 @@ fun OcrResultScreen(
             )
         },
         bottomBar = {
-            Box(modifier = Modifier.padding(16.dp)) {
-                LargeActionButton(
-                    icon = Icons.Default.Check,
-                    label = "Confirm & Save Bill",
-                    onClick = onSaveClick,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            if (!state.isSaved) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    LargeActionButton(
+                        icon = Icons.Default.Check,
+                        label = "Confirm & Save Bill",
+                        onClick = onSaveClick,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     ) { padding ->
@@ -61,51 +84,88 @@ fun OcrResultScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.scannedBill != null) {
-                // Seller name field
-                var sellerName by remember(state.scannedBill) {
-                    mutableStateOf(state.scannedBill.sellerName)
-                }
-                OutlinedTextField(
-                    value = sellerName,
-                    onValueChange = {
-                        sellerName = it
-                        onSellerNameChanged(it)
-                    },
-                    label = { Text("Wholesaler / Seller Name") },
-                    leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                // Bill number if present
-                if (state.scannedBill.billNumber.isNotBlank()) {
-                    Text(
-                        text = "Bill No: ${state.scannedBill.billNumber}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                }
-
-                // Items header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Items (${state.scannedBill.items.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
                 LazyColumn(modifier = Modifier.weight(1f)) {
+                    // Bill photo thumbnail for verification
+                    item {
+                        BillImageThumbnail(imagePath = state.capturedImageUri)
+                    }
+
+                    // Seller name field
+                    item {
+                        var sellerName by remember(state.scannedBill) {
+                            mutableStateOf(state.scannedBill.sellerName)
+                        }
+                        OutlinedTextField(
+                            value = sellerName,
+                            onValueChange = {
+                                sellerName = it
+                                onSellerNameChanged(it)
+                            },
+                            label = { Text("Wholesaler / Seller Name") },
+                            leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        // Existing wholesaler suggestions
+                        if (existingSellerNames.isNotEmpty()) {
+                            Text(
+                                text = "Existing wholesalers:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                            )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(existingSellerNames) { name ->
+                                    FilterChip(
+                                        selected = sellerName == name,
+                                        onClick = {
+                                            sellerName = name
+                                            onSellerNameChanged(name)
+                                        },
+                                        label = { Text(name) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Bill number if present
+                    if (state.scannedBill.billNumber.isNotBlank()) {
+                        item {
+                            Text(
+                                text = "Bill No: ${state.scannedBill.billNumber}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Items header
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Items (${state.scannedBill.items.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Item cards
                     itemsIndexed(state.scannedBill.items) { index, item ->
                         Card(
                             modifier = Modifier
@@ -249,6 +309,47 @@ fun OcrResultScreen(
     }
 }
 
+@Composable
+private fun BillImageThumbnail(imagePath: String?) {
+    if (imagePath == null) return
+
+    val bitmap = remember(imagePath) {
+        try {
+            BitmapFactory.decodeFile(imagePath)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    if (bitmap != null) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Captured bill photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Text(
+                    text = "Bill photo for verification",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditItemDialog(
     item: BillItem,

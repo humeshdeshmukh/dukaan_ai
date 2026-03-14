@@ -1,6 +1,8 @@
 package com.dukaan.feature.ocr.ui
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,18 +10,17 @@ import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
 import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.feature.billing.domain.repository.BillingRepository
-import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 data class OcrUiState(
@@ -39,6 +40,72 @@ class OcrViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OcrUiState())
     val uiState: StateFlow<OcrUiState> = _uiState.asStateFlow()
 
+    val existingSellerNames: StateFlow<List<String>> = billingRepository.getAllSellerNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Process a captured camera image via Gemini vision */
+    fun processCapturedImage(imagePath: String) {
+        if (_uiState.value.isScanning) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imagePath) }
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    BitmapFactory.decodeFile(imagePath)
+                }
+                if (bitmap != null) {
+                    val bill = geminiService.parseBillImage(bitmap)
+                    _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
+                } else {
+                    _uiState.update { it.copy(error = "Failed to load captured image.", isScanning = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to process bill image.", isScanning = false) }
+            }
+        }
+    }
+
+    /** Process a gallery image via Gemini vision */
+    fun processGalleryImage(context: Context, imageUri: Uri) {
+        if (_uiState.value.isScanning) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanning = true, error = null) }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val inputStream = context.contentResolver.openInputStream(imageUri)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+
+                    if (bitmap != null) {
+                        // Save a copy for bill photo reference
+                        val photoDir = File(context.filesDir, "bills")
+                        photoDir.mkdirs()
+                        val photoFile = File(photoDir, "${System.currentTimeMillis()}.jpg")
+                        photoFile.outputStream().use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                        Pair(bitmap, photoFile.absolutePath)
+                    } else {
+                        null
+                    }
+                }
+
+                if (result != null) {
+                    val (bitmap, savedPath) = result
+                    _uiState.update { it.copy(capturedImageUri = savedPath) }
+                    val bill = geminiService.parseBillImage(bitmap)
+                    _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
+                } else {
+                    _uiState.update { it.copy(error = "Failed to load image.", isScanning = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to process image.", isScanning = false) }
+            }
+        }
+    }
+
+    /** Fallback: process raw OCR text (used when image capture fails) */
     fun onTextRecognized(rawText: String) {
         if (_uiState.value.isScanning) return
 
@@ -51,37 +118,6 @@ class OcrViewModel @Inject constructor(
                 _uiState.update { it.copy(error = "Parsing failed. Please try scanning again.", isScanning = false) }
             }
         }
-    }
-
-    fun processGalleryImage(context: Context, imageUri: Uri) {
-        if (_uiState.value.isScanning) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imageUri.toString()) }
-            try {
-                val recognizedText = withContext(Dispatchers.IO) {
-                    val image = InputImage.fromFilePath(context, imageUri)
-                    val recognizer = TextRecognition.getClient(
-                        DevanagariTextRecognizerOptions.Builder().build()
-                    )
-                    val result = Tasks.await(recognizer.process(image))
-                    result.text
-                }
-
-                if (recognizedText.isNotBlank()) {
-                    val bill = geminiService.parseOcrText(recognizedText)
-                    _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
-                } else {
-                    _uiState.update { it.copy(error = "No text found in image. Try a clearer photo.", isScanning = false) }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to process image.", isScanning = false) }
-            }
-        }
-    }
-
-    fun setCapturedImageUri(path: String) {
-        _uiState.update { it.copy(capturedImageUri = path) }
     }
 
     fun deleteItem(item: BillItem) {

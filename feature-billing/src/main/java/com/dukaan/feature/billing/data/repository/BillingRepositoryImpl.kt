@@ -82,6 +82,7 @@ class BillingRepositoryImpl @Inject constructor(
             totalAmount = bill.totalAmount,
             sellerName = bill.sellerName,
             billNumber = bill.billNumber,
+            imagePath = bill.imagePath,
             timestamp = bill.timestamp
         )
     }

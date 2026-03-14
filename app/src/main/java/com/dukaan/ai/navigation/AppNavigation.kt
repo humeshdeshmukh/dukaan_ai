@@ -150,14 +150,18 @@ fun AppNavigation(navController: NavHostController) {
             composable(Screen.OcrResult.route) {
                 val parentEntry = navController.getBackStackEntry(Screen.OcrFlow.route)
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
+                val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
                 OcrResultScreen(
                     state = ocrViewModel.uiState.collectAsState().value,
+                    existingSellerNames = existingSellerNames,
                     onBackClick = {
                         ocrViewModel.resetScan()
                         navController.popBackStack()
                     },
                     onSaveClick = {
                         ocrViewModel.saveBill()
+                    },
+                    onNavigateAfterSave = {
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.Dashboard.route) { inclusive = true }
                         }

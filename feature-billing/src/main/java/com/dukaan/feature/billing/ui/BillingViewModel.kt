@@ -116,6 +116,8 @@ class BillingViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    suspend fun getBillById(id: Long): Bill? = repository.getBillById(id)
+
     fun formatWhatsAppMessage(): String {
         val sb = StringBuilder()
         sb.append("*Dukaan AI - Bill*\n")

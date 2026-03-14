@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.dukaan.feature.ocr.analyzer.OcrAnalyzer
+import java.io.File
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,9 +68,12 @@ fun BillScannerScreen(
     }
 
     var isTextStable by remember { mutableStateOf(false) }
+    var hasAnyText by remember { mutableStateOf(false) }
     var latestStableText by remember { mutableStateOf("") }
     var isFlashOn by remember { mutableStateOf(false) }
     var cameraRef by remember { mutableStateOf<Camera?>(null) }
+    val imageCapture = remember { ImageCapture.Builder().build() }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
     // Navigate to result screen when bill is parsed
     LaunchedEffect(uiState.scannedBill) {
@@ -107,6 +113,35 @@ fun BillScannerScreen(
         }
     )
 
+    // Capture photo + send to Gemini vision
+    fun captureAndProcess() {
+        if (uiState.isScanning) return
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+        // Save bill photo
+        val photoDir = File(context.filesDir, "bills")
+        photoDir.mkdirs()
+        val photoFile = File(photoDir, "${System.currentTimeMillis()}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            cameraExecutor,
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    // Send image directly to Gemini vision
+                    viewModel.processCapturedImage(photoFile.absolutePath)
+                }
+                override fun onError(exception: ImageCaptureException) {
+                    // Fallback to text-based parsing if image save fails
+                    if (latestStableText.isNotBlank()) {
+                        viewModel.onTextRecognized(latestStableText)
+                    }
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -129,10 +164,15 @@ fun BillScannerScreen(
                 // Camera preview
                 CameraPreview(
                     modifier = Modifier.fillMaxSize(),
-                    isFlashOn = isFlashOn,
+                    imageCapture = imageCapture,
                     onTextStabilized = { stable, text ->
                         isTextStable = stable
-                        if (text.isNotBlank()) latestStableText = text
+                        if (text.isNotBlank()) {
+                            latestStableText = text
+                            hasAnyText = true
+                        } else {
+                            hasAnyText = false
+                        }
                     },
                     onCameraReady = { camera -> cameraRef = camera }
                 )
@@ -145,11 +185,19 @@ fun BillScannerScreen(
 
                 // Top guidance text
                 Text(
-                    text = if (isTextStable) "Bill detected! Tap capture"
-                           else "Align bill within the frame",
+                    text = when {
+                        uiState.isScanning -> "Processing..."
+                        isTextStable -> "Bill detected! Tap capture"
+                        hasAnyText -> "Hold steady..."
+                        else -> "Point camera at bill"
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isTextStable) Color(0xFF4CAF50) else Color.White,
+                    color = when {
+                        isTextStable -> Color(0xFF4CAF50)
+                        hasAnyText -> Color(0xFFFDE68A)
+                        else -> Color.White
+                    },
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -204,17 +252,17 @@ fun BillScannerScreen(
                         )
                     }
 
-                    // Capture button
+                    // Capture button — always enabled, Gemini vision handles OCR
+                    val canCapture = !uiState.isScanning
                     Surface(
-                        onClick = {
-                            if (!uiState.isScanning && latestStableText.isNotBlank()) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.onTextRecognized(latestStableText)
-                            }
-                        },
+                        onClick = { captureAndProcess() },
                         modifier = Modifier.size(72.dp),
                         shape = CircleShape,
-                        color = if (isTextStable) Color(0xFF4CAF50) else Color.White.copy(alpha = 0.9f),
+                        color = when {
+                            !canCapture -> Color.White.copy(alpha = 0.4f)
+                            isTextStable -> Color(0xFF4CAF50)
+                            else -> Color.White.copy(alpha = 0.9f)
+                        },
                         border = BorderStroke(4.dp, Color.White)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -332,23 +380,43 @@ fun ScanFrameOverlay(
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
-    isFlashOn: Boolean,
+    imageCapture: ImageCapture,
     onTextStabilized: (isStable: Boolean, text: String) -> Unit,
     onCameraReady: (Camera) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    val analyzer = remember {
+        OcrAnalyzer { isStable, text ->
+            onTextStabilized(isStable, text)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        var cameraProvider: ProcessCameraProvider? = null
+
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            // Don't bind here — wait for the AndroidView to provide the PreviewView
+        }, ContextCompat.getMainExecutor(context))
+
+        onDispose {
+            cameraProvider?.unbindAll()
+            cameraExecutor.shutdown()
+        }
+    }
 
     AndroidView(
         factory = { ctx ->
-            PreviewView(ctx).apply {
+            val previewView = PreviewView(ctx).apply {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
             }
-        },
-        modifier = modifier,
-        update = { previewView ->
+
+            // Bind camera once when view is created
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder().build().also {
@@ -358,10 +426,7 @@ fun CameraPreview(
                 val imageAnalysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-
-                imageAnalysis.setAnalyzer(cameraExecutor, OcrAnalyzer { isStable, text ->
-                    onTextStabilized(isStable, text)
-                })
+                imageAnalysis.setAnalyzer(cameraExecutor, analyzer)
 
                 try {
                     cameraProvider.unbindAll()
@@ -369,13 +434,17 @@ fun CameraPreview(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
                         preview,
-                        imageAnalysis
+                        imageAnalysis,
+                        imageCapture
                     )
                     onCameraReady(camera)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-            }, ContextCompat.getMainExecutor(context))
-        }
+            }, ContextCompat.getMainExecutor(ctx))
+
+            previewView
+        },
+        modifier = modifier
     )
 }

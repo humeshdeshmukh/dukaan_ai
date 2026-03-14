@@ -8,6 +8,7 @@ data class Bill(
     val totalAmount: Double,
     val sellerName: String = "",
     val billNumber: String = "",
+    val imagePath: String? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
 
