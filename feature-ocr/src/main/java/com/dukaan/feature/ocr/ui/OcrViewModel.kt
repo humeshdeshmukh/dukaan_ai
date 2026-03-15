@@ -145,7 +145,7 @@ class OcrViewModel @Inject constructor(
                     append("Seller: ${bill.sellerName}, Bill#: ${bill.billNumber}\n")
                     append("Items:\n")
                     bill.items.forEachIndexed { i, item ->
-                        append("${i + 1}. ${item.name} - ${item.quantity} ${item.unit} x ₹${item.price} = ₹${item.total}\n")
+                        append("${i + 1}. ${item.name} - ${item.quantity} ${item.unit} — ₹${item.total}\n")
                     }
                     append("Total: ₹${bill.totalAmount}")
                 }

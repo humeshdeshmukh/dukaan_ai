@@ -196,7 +196,7 @@ fun BillDetailScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        "${item.quantity} ${item.unit} x ${currencyFormat.format(item.price)}",
+                                        "${item.quantity} ${item.unit}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

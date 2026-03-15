@@ -27,28 +27,28 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     override suspend fun parseBillingSpeech(speechText: String): List<BillItem> = withContext(Dispatchers.IO) {
         val prompt = """
-            You are an AI for a shop management app called Dukaan AI.
-            Extract items from this Indian shopkeeper's speech: "$speechText"
+            You are an AI for Dukaan AI, an Indian shop billing app.
+            Extract items from this shopkeeper's speech: "$speechText"
 
-            Return ONLY a JSON array of objects with these fields:
-            - name (string): item name
-            - quantity (number): the quantity spoken
-            - unit (string): the unit for quantity (g, kg, ml, L, pc, pcs, dozen, packet, box etc.)
-            - price (number): PER-UNIT price (rate per priceUnit)
-            - priceUnit (string): the unit the price is quoted for (e.g. "kg" if price is per kg)
+            Return ONLY a JSON array with: name, quantity, unit, price
+            - "price" = TOTAL price for that item (the final amount the customer pays for that line)
+            - The shopkeeper may say per-unit rate or total — always compute the TOTAL.
 
-            IMPORTANT RULES:
-            - "price" must be PER-UNIT rate, NOT the total.
-            - If shopkeeper says "500 gram sugar 60 rupees per kg" → quantity=500, unit="g", price=60, priceUnit="kg"
-            - If shopkeeper says "2 kilo rice 40 rupees" → quantity=2, unit="kg", price=40, priceUnit="kg" (same unit)
-            - If shopkeeper says "Soap 3 piece 30 rupees each" → quantity=3, unit="pc", price=30, priceUnit="pc"
-            - If shopkeeper says "doodh 500ml 30 rupee per litre" → quantity=500, unit="ml", price=30, priceUnit="L"
-            - If price seems like a TOTAL (e.g. "sugar 2kg 80 rupees total") → price=40, priceUnit="kg" (divide total by qty)
-            - If unclear, assume price is per unit of the same unit as quantity, set priceUnit same as unit
-            - Hindi/Hinglish words: kilo=kg, gram=g, piece/ek=pc, litre=L, dozen=dozen, packet=pkt
+            EXAMPLES:
+            - "500 gram sugar 60 rupees per kg" → quantity=500, unit="g", price=30 (500g at 60/kg = 30)
+            - "500 gram sugar 30 rupees" → quantity=500, unit="g", price=30 (30 is already the total)
+            - "2 kg rice 80 rupees per kg" → quantity=2, unit="kg", price=160 (2×80)
+            - "2 kg rice 160 rupees" → quantity=2, unit="kg", price=160 (already total)
+            - "Soap 3 piece 30 rupees each" → quantity=3, unit="pc", price=90 (3×30)
+            - "Soap 3 piece 90 rupees" → quantity=3, unit="pc", price=90 (already total)
+            - "Milk 500ml 30 rupees per litre" → quantity=500, unit="ml", price=15 (500/1000×30)
+            - "1 dozen banana 60 rupees" → quantity=12, unit="pc", price=60 (already total)
+            - "Oil 1 litre 180 rupees" → quantity=1, unit="L", price=180
 
-            Example input: "500 gram sugar 60 rupees per kg, 2 sabun 30 rupees each, doodh 1 litre 68 rupees"
-            Example output: [{"name":"Sugar","quantity":500,"unit":"g","price":60,"priceUnit":"kg"},{"name":"Sabun","quantity":2,"unit":"pc","price":30,"priceUnit":"pc"},{"name":"Doodh","quantity":1,"unit":"L","price":68,"priceUnit":"L"}]
+            CRITICAL: "price" must always be the TOTAL amount for that item, NOT per-unit.
+            Hindi: kilo=kg, gram=g, piece=pc, litre=L, packet=pkt, dozen=12 pc
+
+            Example: [{"name":"Sugar","quantity":500,"unit":"g","price":30},{"name":"Soap","quantity":3,"unit":"pc","price":90}]
         """.trimIndent()
 
         try {
@@ -75,7 +75,7 @@ class GeminiBillingServiceImpl @Inject constructor(
                 - "name": string (product name)
                 - "quantity": number
                 - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
-                - "price": number (PER-UNIT price)
+                - "price": number (TOTAL price for this line item, i.e. quantity × per-unit rate)
             - "totalAmount": number (grand total)
         """.trimIndent()
 
@@ -112,10 +112,10 @@ class GeminiBillingServiceImpl @Inject constructor(
             • "name": exact product name as written (e.g. "Tata Salt 1kg", "Fortune Oil 1L", "Parle-G 50g")
             • "quantity": the quantity number
             • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
-            • "price": the PER-UNIT rate/price (NOT the line total)
-              - If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 40 (the rate column)
-              - If bill shows "Dal 5kg 450" with no rate column → price = 450/5 = 90
-              - If bill shows only total amount per line → divide by quantity to get per-unit price
+            • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
+              - If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 200 (the amount/total column)
+              - If bill shows "Dal 5kg 450" → price = 450 (the total for this line)
+              - If bill shows only per-unit rate → multiply by quantity to get total
 
             STEP 4 — EXTRACT TOTAL:
             • "totalAmount": the GRAND TOTAL / NET AMOUNT from the bottom of the bill
@@ -127,7 +127,7 @@ class GeminiBillingServiceImpl @Inject constructor(
               "sellerName": "Shop Name Here",
               "billNumber": "Bill/Invoice number or empty string",
               "items": [
-                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 45.0},
+                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0},
                 {"name": "Another Item", "quantity": 1.0, "unit": "pc", "price": 120.0}
               ],
               "totalAmount": 210.0
@@ -136,7 +136,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             CRITICAL RULES:
             - Read EVERY item. Do NOT skip any line item.
             - Hindi/Devanagari text: transliterate to English (e.g. "चीनी" → "Cheeni/Sugar")
-            - "price" MUST be per-unit rate, never the line total
+            - "price" MUST be the total amount for this line item, not per-unit rate
             - Abbreviations: "dz"=dozen, "pkt"=packet, "L"=litre, "pcs"=pieces
             - If handwritten, try your best to read accurately
             - Do NOT invent items that aren't in the image

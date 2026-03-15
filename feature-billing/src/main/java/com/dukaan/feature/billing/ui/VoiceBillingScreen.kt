@@ -846,13 +846,8 @@ private fun BillItemCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                val priceLabel = if (item.priceUnit.isNotBlank() && !item.priceUnit.equals(item.unit, ignoreCase = true)) {
-                    "${item.quantity} ${item.unit} @ ${currencyFormat.format(item.price)}/${item.priceUnit}"
-                } else {
-                    "${item.quantity} ${item.unit} x ${currencyFormat.format(item.price)}"
-                }
                 Text(
-                    priceLabel,
+                    "${item.quantity} ${item.unit}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -891,7 +886,6 @@ private fun EditItemDialog(
     var qty by remember { mutableStateOf(item?.quantity?.toString() ?: "") }
     var unit by remember { mutableStateOf(item?.unit ?: "pc") }
     var price by remember { mutableStateOf(item?.price?.toString() ?: "") }
-    var priceUnit by remember { mutableStateOf(item?.priceUnit ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -918,29 +912,18 @@ private fun EditItemDialog(
                         value = unit,
                         onValueChange = { unit = it },
                         label = { Text(strings.unitLabel) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(0.7f),
                         singleLine = true
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = price,
-                        onValueChange = { price = it },
-                        label = { Text(strings.pricePerUnit) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        leadingIcon = { Text("₹", style = MaterialTheme.typography.bodyLarge) }
-                    )
-                    OutlinedTextField(
-                        value = priceUnit,
-                        onValueChange = { priceUnit = it },
-                        label = { Text("Per") },
-                        modifier = Modifier.weight(0.6f),
-                        singleLine = true,
-                        placeholder = { Text(unit.ifBlank { "kg" }, style = MaterialTheme.typography.bodySmall) }
-                    )
-                }
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("₹ ${strings.totalAmount}") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
             }
         },
         confirmButton = {
@@ -949,13 +932,7 @@ private fun EditItemDialog(
                     val q = qty.toDoubleOrNull() ?: 0.0
                     val p = price.toDoubleOrNull() ?: 0.0
                     if (name.isNotBlank() && q > 0) {
-                        onSave(BillItem(
-                            name = name.trim(),
-                            quantity = q,
-                            unit = unit.trim().ifEmpty { "pc" },
-                            price = p,
-                            priceUnit = priceUnit.trim().ifBlank { unit.trim().ifEmpty { "pc" } }
-                        ))
+                        onSave(BillItem(name = name.trim(), quantity = q, unit = unit.trim().ifEmpty { "pc" }, price = p))
                     }
                 },
                 enabled = name.isNotBlank() && (qty.toDoubleOrNull() ?: 0.0) > 0

@@ -75,7 +75,6 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             speechManager.finalResult.collect { text ->
                 if (text.isNotBlank()) {
-                    speechManager.clearFinalResult()
                     processSpeech(text)
                 }
             }
@@ -83,18 +82,19 @@ class BillingViewModel @Inject constructor(
         // Collect speech errors
         viewModelScope.launch {
             speechManager.error.collect { errorCode ->
-                if (errorCode != null) {
-                    val msg = when (errorCode) {
-                        android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected. Try again."
-                        android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected. Try again."
-                        android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required."
-                        android.speech.SpeechRecognizer.ERROR_NETWORK,
-                        android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network error. Check internet connection."
-                        android.speech.SpeechRecognizer.ERROR_AUDIO -> "Audio recording error."
-                        else -> null
-                    }
-                    msg?.let { _uiState.update { state -> state.copy(error = msg) } }
+                val msg = when (errorCode) {
+                    android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "No speech heard. Tap mic and speak."
+                    android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech heard. Tap mic and speak."
+                    android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission needed."
+                    android.speech.SpeechRecognizer.ERROR_NETWORK,
+                    android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Internet not available."
+                    android.speech.SpeechRecognizer.ERROR_AUDIO -> "Mic error. Try again."
+                    android.speech.SpeechRecognizer.ERROR_CLIENT -> "Speech not available on this device."
+                    android.speech.SpeechRecognizer.ERROR_SERVER -> "Server error. Try again."
+                    android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy. Wait and try again."
+                    else -> "Voice error ($errorCode). Try again."
                 }
+                _uiState.update { it.copy(error = msg) }
             }
         }
         loadCustomers()
@@ -294,12 +294,7 @@ class BillingViewModel @Inject constructor(
         }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
         state.items.forEach { item ->
-            val priceLabel = if (item.priceUnit.isNotBlank() && !item.priceUnit.equals(item.unit, ignoreCase = true)) {
-                "${item.quantity} ${item.unit} @ ₹${String.format("%.2f", item.price)}/${item.priceUnit}"
-            } else {
-                "${item.quantity} ${item.unit} x ₹${String.format("%.2f", item.price)}"
-            }
-            sb.append("${item.name}: $priceLabel = ₹${String.format("%.2f", item.total)}\n")
+            sb.append("${item.name}: ${item.quantity} ${item.unit} — ₹${String.format("%.2f", item.total)}\n")
         }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
         sb.append("Subtotal: ₹${String.format("%.2f", state.subtotal)}\n")

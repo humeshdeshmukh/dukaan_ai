@@ -219,7 +219,7 @@ fun OcrResultScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "${item.quantity} ${item.unit} x ₹${item.price}",
+                                        text = "${item.quantity} ${item.unit}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

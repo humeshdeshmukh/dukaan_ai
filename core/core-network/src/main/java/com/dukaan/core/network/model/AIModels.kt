@@ -26,38 +26,9 @@ data class BillItem(
     val name: String,
     val quantity: Double,
     val unit: String,
-    val price: Double,
-    val priceUnit: String = ""
+    val price: Double   // Total price for this line item (NOT per-unit)
 ) {
-    val total: Double get() {
-        if (priceUnit.isBlank() || priceUnit.equals(unit, ignoreCase = true)) {
-            return quantity * price
-        }
-        val factor = unitConversionFactor(unit, priceUnit)
-        return quantity * factor * price
-    }
-
-    companion object {
-        private fun unitConversionFactor(fromUnit: String, toUnit: String): Double {
-            val from = fromUnit.lowercase().trim()
-            val to = toUnit.lowercase().trim()
-            if (from == to) return 1.0
-
-            // Weight: g -> kg
-            if (from in listOf("g", "gm", "gram", "grams") && to in listOf("kg", "kilo", "kilogram")) return 0.001
-            if (from in listOf("kg", "kilo", "kilogram") && to in listOf("g", "gm", "gram", "grams")) return 1000.0
-
-            // Volume: ml -> L
-            if (from in listOf("ml", "millilitre", "milliliter") && to in listOf("l", "ltr", "litre", "liter")) return 0.001
-            if (from in listOf("l", "ltr", "litre", "liter") && to in listOf("ml", "millilitre", "milliliter")) return 1000.0
-
-            // Dozen <-> pieces
-            if (from in listOf("pc", "pcs", "piece", "pieces") && to in listOf("dz", "dozen")) return 1.0 / 12.0
-            if (from in listOf("dz", "dozen") && to in listOf("pc", "pcs", "piece", "pieces")) return 12.0
-
-            return 1.0
-        }
-    }
+    val total: Double get() = price
 }
 
 data class Order(

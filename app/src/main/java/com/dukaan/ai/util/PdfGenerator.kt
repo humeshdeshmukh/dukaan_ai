@@ -112,8 +112,8 @@ object PdfGenerator {
         var y = startY
 
         // Column positions
-        val colX = floatArrayOf(MARGIN, MARGIN + 220f, MARGIN + 290f, MARGIN + 370f, MARGIN + 440f)
-        val headers = listOf("Item", "Qty", "Unit", "Price", "Total")
+        val colX = floatArrayOf(MARGIN, MARGIN + 240f, MARGIN + 320f, MARGIN + 400f)
+        val headers = listOf("Item", "Qty", "Unit", "Amount")
 
         // Header row
         canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + 22f, accentBgPaint())
@@ -133,8 +133,7 @@ object PdfGenerator {
             canvas.drawText(item.name.take(35), colX[0] + 6f, y + 14f, body)
             canvas.drawText("${item.quantity}", colX[1] + 6f, y + 14f, body)
             canvas.drawText(item.unit, colX[2] + 6f, y + 14f, body)
-            canvas.drawText(currencyFormat.format(item.price), colX[3] + 6f, y + 14f, body)
-            canvas.drawText(currencyFormat.format(item.total), colX[4] + 6f, y + 14f, bold)
+            canvas.drawText(currencyFormat.format(item.total), colX[3] + 6f, y + 14f, bold)
             y += 20f
         }
         y += 4f
