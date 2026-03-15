@@ -37,6 +37,7 @@ data class Order(
     val items: List<OrderItem>,
     val timestamp: Long = System.currentTimeMillis(),
     val supplierName: String? = null,
+    val supplierPhone: String? = null,
     val status: String = "PENDING",
     val notes: String? = null
 )

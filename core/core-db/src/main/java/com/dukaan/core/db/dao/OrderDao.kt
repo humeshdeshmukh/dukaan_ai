@@ -14,6 +14,11 @@ data class OrderWithItems(
     val items: List<OrderItemEntity>
 )
 
+data class SupplierInfo(
+    val supplierName: String?,
+    val supplierPhone: String?
+)
+
 @Dao
 interface OrderDao {
 
@@ -59,8 +64,8 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE supplierName LIKE '%' || :query || '%' ORDER BY timestamp DESC")
     fun searchOrders(query: String): Flow<List<OrderWithItems>>
 
-    @Query("UPDATE orders SET supplierName = :name, notes = :notes WHERE id = :orderId")
-    suspend fun updateOrderDetails(orderId: Long, name: String?, notes: String?)
+    @Query("UPDATE orders SET supplierName = :name, supplierPhone = :phone, notes = :notes WHERE id = :orderId")
+    suspend fun updateOrderDetails(orderId: Long, name: String?, phone: String?, notes: String?)
 
     @Query("UPDATE orders SET itemCount = :count WHERE id = :orderId")
     suspend fun updateItemCount(orderId: Long, count: Int)
@@ -73,8 +78,11 @@ interface OrderDao {
         deleteOrderItems(order.id)
         val itemsWithOrderId = items.map { it.copy(orderId = order.id) }
         insertOrderItems(itemsWithOrderId)
-        updateOrderDetails(order.id, order.supplierName, order.notes)
+        updateOrderDetails(order.id, order.supplierName, order.supplierPhone, order.notes)
         updateItemCount(order.id, items.size)
         updateOrderStatus(order.id, order.status.name)
     }
+
+    @Query("SELECT DISTINCT supplierName, supplierPhone FROM orders WHERE supplierName IS NOT NULL AND supplierName != '' ORDER BY supplierName ASC")
+    fun getDistinctSuppliers(): Flow<List<SupplierInfo>>
 }

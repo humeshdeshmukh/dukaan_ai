@@ -13,4 +13,5 @@ interface OrderRepository {
     fun searchOrders(query: String): Flow<List<Order>>
     suspend fun updateOrder(order: Order)
     suspend fun duplicateOrder(orderId: Long): Long
+    fun getDistinctSuppliers(): Flow<List<Pair<String, String?>>>
 }

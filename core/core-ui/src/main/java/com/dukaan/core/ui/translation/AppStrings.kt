@@ -285,6 +285,7 @@ class AppStrings {
     var clearAll: String = "Clear All"
     var aiIsParsingOrder: String = "AI is parsing your order..."
     var tapToSpeakOrder: String = "Tap to speak your order"
+    var speakNextItems: String = "Speak next items..."
     var orderSaved: String = "Order saved successfully!"
     var orderItems: String = "Order Items"
     var noItemsYet: String = "No Items Yet"
@@ -315,6 +316,12 @@ class AppStrings {
     var qtyRequired: String = "Qty*"
     var unitRequired: String = "Unit*"
     var orderUpdated: String = "Order updated!"
+    var supplierPhoneLabel: String = "Phone Number"
+    var selectSupplier: String = "Select Supplier (Optional)"
+    var addNewSupplier: String = "Add New Supplier"
+    var searchSupplier: String = "Search suppliers..."
+    var noSuppliersFound: String = "No suppliers found"
+    var callSupplier: String = "Call Supplier"
 
     // === INVENTORY ===
     var inventory: String = "Inventory"

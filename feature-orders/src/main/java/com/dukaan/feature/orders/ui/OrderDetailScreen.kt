@@ -1,5 +1,7 @@
 package com.dukaan.feature.orders.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.network.model.Order
@@ -31,6 +34,7 @@ fun OrderDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val strings = LocalAppStrings.current
+    val context = LocalContext.current
     val order = uiState.selectedOrder
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -79,65 +83,68 @@ fun OrderDetailScreen(
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(12.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Status action button
+                        // Status action button — takes most space
                         when (o.status) {
                             "PENDING" -> Button(
                                 onClick = { viewModel.updateOrderStatus(orderId, "SENT") },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp),
+                                    .height(44.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF2563EB)
-                                )
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
                             ) {
-                                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(strings.markAsSent)
+                                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(strings.markAsSent, maxLines = 1, style = MaterialTheme.typography.labelMedium)
                             }
                             "SENT" -> Button(
                                 onClick = { viewModel.updateOrderStatus(orderId, "COMPLETED") },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp),
+                                    .height(44.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF065F46)
-                                )
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(strings.markAsCompleted)
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(strings.markAsCompleted, maxLines = 1, style = MaterialTheme.typography.labelMedium)
                             }
-                            else -> {
-                                // Completed - no status button, show more space for other actions
-                            }
+                            else -> { }
                         }
 
-                        // Duplicate button
-                        OutlinedButton(
+                        // Duplicate — icon only
+                        FilledTonalIconButton(
                             onClick = { viewModel.duplicateOrder(orderId) },
-                            modifier = Modifier.height(48.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(strings.duplicateOrder)
+                            Icon(
+                                Icons.Default.ContentCopy,
+                                contentDescription = strings.duplicateOrder,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
 
-                        // Delete button
+                        // Delete — icon only
                         IconButton(
                             onClick = { showDeleteDialog = true },
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(44.dp)
                         ) {
                             Icon(
                                 Icons.Outlined.Delete,
                                 contentDescription = strings.deleteOrderLabel,
-                                tint = MaterialTheme.colorScheme.error
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -209,7 +216,7 @@ fun OrderDetailScreen(
                     }
                 }
 
-                // Supplier Info
+                // Supplier Info with phone and call button
                 order.supplierName?.let { supplier ->
                     if (supplier.isNotBlank()) {
                         item {
@@ -236,7 +243,7 @@ fun OrderDetailScreen(
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = strings.supplierNameLabel,
                                             style = MaterialTheme.typography.labelSmall,
@@ -247,6 +254,35 @@ fun OrderDetailScreen(
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.SemiBold
                                         )
+                                        order.supplierPhone?.let { phone ->
+                                            if (phone.isNotBlank()) {
+                                                Text(
+                                                    text = phone,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                    // Call button
+                                    order.supplierPhone?.let { phone ->
+                                        if (phone.isNotBlank()) {
+                                            FilledTonalIconButton(
+                                                onClick = {
+                                                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                                                        data = Uri.parse("tel:$phone")
+                                                    }
+                                                    context.startActivity(intent)
+                                                },
+                                                modifier = Modifier.size(40.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Call,
+                                                    contentDescription = strings.callSupplier,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

@@ -26,6 +26,7 @@ class OrderRepositoryImpl @Inject constructor(
             },
             timestamp = owi.order.timestamp,
             supplierName = owi.order.supplierName,
+            supplierPhone = owi.order.supplierPhone,
             status = owi.order.status.name,
             notes = owi.order.notes
         )
@@ -36,6 +37,7 @@ class OrderRepositoryImpl @Inject constructor(
             itemCount = order.items.size,
             timestamp = order.timestamp,
             supplierName = order.supplierName,
+            supplierPhone = order.supplierPhone,
             status = try { OrderStatus.valueOf(order.status) } catch (_: Exception) { OrderStatus.PENDING },
             notes = order.notes
         )
@@ -85,6 +87,7 @@ class OrderRepositoryImpl @Inject constructor(
         val orderEntity = OrderEntity(
             id = orderId,
             supplierName = order.supplierName,
+            supplierPhone = order.supplierPhone,
             status = try { OrderStatus.valueOf(order.status) } catch (_: Exception) { OrderStatus.PENDING },
             itemCount = order.items.size,
             timestamp = order.timestamp,
@@ -94,6 +97,14 @@ class OrderRepositoryImpl @Inject constructor(
             OrderItemEntity(orderId = orderId, name = item.name, quantity = item.quantity, unit = item.unit)
         }
         orderDao.updateOrderWithItems(orderEntity, itemEntities)
+    }
+
+    override fun getDistinctSuppliers(): Flow<List<Pair<String, String?>>> {
+        return orderDao.getDistinctSuppliers().map { suppliers ->
+            suppliers.mapNotNull { info ->
+                info.supplierName?.let { name -> name to info.supplierPhone }
+            }
+        }
     }
 
     override suspend fun duplicateOrder(orderId: Long): Long {

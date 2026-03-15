@@ -1,5 +1,6 @@
 package com.dukaan.feature.orders.ui
 
+import android.speech.SpeechRecognizer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dukaan.core.db.SupportedLanguages
@@ -18,8 +19,11 @@ data class OrderUiState(
     // Create/Edit order fields
     val items: List<OrderItem> = emptyList(),
     val supplierName: String = "",
+    val supplierPhone: String = "",
     val notes: String = "",
     val isRecording: Boolean = false,
+    val isContinuousListening: Boolean = false,
+    val audioLevel: Float = 0f,
     val recognizedText: String = "",
     val isProcessing: Boolean = false,
     val error: String? = null,
@@ -45,7 +49,8 @@ data class OrderUiState(
     val showClearConfirm: Boolean = false,
     val showDeleteConfirm: Long? = null,
     val showAddItemDialog: Boolean = false,
-    val showEditItemDialog: Boolean = false
+    val showEditItemDialog: Boolean = false,
+    val showSupplierPicker: Boolean = false
 )
 
 @HiltViewModel
@@ -84,10 +89,61 @@ class OrderViewModel @Inject constructor(
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val existingSuppliers: StateFlow<List<Pair<String, String?>>> =
+        repository.getDistinctSuppliers()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
+        // Collect partial speech results for live display
         viewModelScope.launch {
             speechManager.speechText.collect { text ->
                 _uiState.update { it.copy(recognizedText = text) }
+            }
+        }
+        // Collect actual listening state from SpeechManager
+        viewModelScope.launch {
+            speechManager.isListening.collect { listening ->
+                _uiState.update { it.copy(isRecording = listening) }
+            }
+        }
+        // Collect continuous mode state
+        viewModelScope.launch {
+            speechManager.isContinuousMode.collect { continuous ->
+                _uiState.update { it.copy(isContinuousListening = continuous) }
+            }
+        }
+        // Collect audio level for UI indicator
+        viewModelScope.launch {
+            speechManager.audioLevel.collect { level ->
+                _uiState.update { it.copy(audioLevel = level) }
+            }
+        }
+        // Collect final result and auto-process it
+        viewModelScope.launch {
+            speechManager.finalResult.collect { text ->
+                if (text.isNotBlank()) {
+                    processOrderSpeech(text)
+                }
+            }
+        }
+        // Collect speech errors
+        viewModelScope.launch {
+            speechManager.error.collect { errorCode ->
+                val msg = when (errorCode) {
+                    SpeechRecognizer.ERROR_NO_MATCH -> "No speech heard. Tap mic and speak."
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech heard. Tap mic and speak."
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission needed."
+                    SpeechRecognizer.ERROR_NETWORK,
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Internet not available."
+                    SpeechRecognizer.ERROR_AUDIO -> "Mic error. Try again."
+                    SpeechRecognizer.ERROR_CLIENT -> "Speech not available on this device."
+                    SpeechRecognizer.ERROR_SERVER -> "Server error. Retrying..."
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy. Wait and try again."
+                    11 -> "Server disconnected. Retrying..."
+                    10 -> "Too many requests. Retrying..."
+                    else -> "Voice error ($errorCode). Try again."
+                }
+                _uiState.update { it.copy(error = msg) }
             }
         }
     }
@@ -97,18 +153,16 @@ class OrderViewModel @Inject constructor(
         _uiState.update { it.copy(selectedTab = tab) }
     }
 
-    // --- Voice recording ---
+    // --- Voice recording (continuous mode like VoiceBilling) ---
     fun toggleRecording() {
-        val currentlyRecording = _uiState.value.isRecording
-        if (currentlyRecording) {
+        if (_uiState.value.isRecording || _uiState.value.isContinuousListening) {
             speechManager.stopListening()
-            processOrderSpeech(_uiState.value.recognizedText)
         } else {
             speechManager.startListening(
+                continuous = true,
                 speechCode = SupportedLanguages.getSpeechCode(languageCode.value)
             )
         }
-        _uiState.update { it.copy(isRecording = !currentlyRecording) }
     }
 
     private fun processOrderSpeech(text: String) {
@@ -158,9 +212,41 @@ class OrderViewModel @Inject constructor(
         return result
     }
 
-    // --- Supplier & Notes ---
+    // --- Supplier ---
     fun setSupplierName(name: String) {
         _uiState.update { it.copy(supplierName = name) }
+    }
+
+    fun setSupplierPhone(phone: String) {
+        _uiState.update { it.copy(supplierPhone = phone) }
+    }
+
+    fun showSupplierPicker() {
+        _uiState.update { it.copy(showSupplierPicker = true) }
+    }
+
+    fun dismissSupplierPicker() {
+        _uiState.update { it.copy(showSupplierPicker = false) }
+    }
+
+    fun selectSupplier(name: String, phone: String?) {
+        _uiState.update {
+            it.copy(
+                supplierName = name,
+                supplierPhone = phone ?: "",
+                showSupplierPicker = false
+            )
+        }
+    }
+
+    fun clearSupplier() {
+        _uiState.update {
+            it.copy(
+                supplierName = "",
+                supplierPhone = "",
+                showSupplierPicker = false
+            )
+        }
     }
 
     fun setNotes(notes: String) {
@@ -215,34 +301,46 @@ class OrderViewModel @Inject constructor(
             val state = _uiState.value
             if (state.items.isEmpty()) return@launch
 
-            state.editingOrderId?.let { existingId ->
-                val order = Order(
-                    id = existingId.toString(),
-                    items = state.items,
-                    timestamp = System.currentTimeMillis(),
-                    supplierName = state.supplierName.ifBlank { null },
-                    status = "PENDING",
-                    notes = state.notes.ifBlank { null }
-                )
-                repository.updateOrder(order)
-                _uiState.value = OrderUiState(
-                    isSaved = true,
-                    snackbarMessage = "Order updated!",
-                    selectedTab = 1
-                )
-            } ?: run {
-                val order = Order(
-                    items = state.items,
-                    timestamp = System.currentTimeMillis(),
-                    supplierName = state.supplierName.ifBlank { null },
-                    notes = state.notes.ifBlank { null }
-                )
-                repository.saveOrder(order)
-                _uiState.value = OrderUiState(
-                    isSaved = true,
-                    snackbarMessage = "Order saved!",
-                    selectedTab = 1
-                )
+            try {
+                state.editingOrderId?.let { existingId ->
+                    val order = Order(
+                        id = existingId.toString(),
+                        items = state.items,
+                        timestamp = System.currentTimeMillis(),
+                        supplierName = state.supplierName.ifBlank { null },
+                        supplierPhone = state.supplierPhone.ifBlank { null },
+                        status = "PENDING",
+                        notes = state.notes.ifBlank { null }
+                    )
+                    repository.updateOrder(order)
+                    _uiState.update {
+                        OrderUiState(
+                            isSaved = true,
+                            snackbarMessage = "Order updated!",
+                            selectedTab = 1
+                        )
+                    }
+                } ?: run {
+                    val order = Order(
+                        items = state.items,
+                        timestamp = System.currentTimeMillis(),
+                        supplierName = state.supplierName.ifBlank { null },
+                        supplierPhone = state.supplierPhone.ifBlank { null },
+                        notes = state.notes.ifBlank { null }
+                    )
+                    repository.saveOrder(order)
+                    _uiState.update {
+                        OrderUiState(
+                            isSaved = true,
+                            snackbarMessage = "Order saved!",
+                            selectedTab = 1
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(snackbarMessage = "Failed to save order. Try again.")
+                }
             }
         }
     }
@@ -258,14 +356,14 @@ class OrderViewModel @Inject constructor(
 
     fun confirmClear() {
         speechManager.stopListening()
-        _uiState.value = OrderUiState()
+        _uiState.update { OrderUiState() }
     }
 
     fun clearOrder() {
         if (_uiState.value.items.isNotEmpty()) {
             showClearConfirmation()
         } else {
-            _uiState.value = OrderUiState()
+            _uiState.update { OrderUiState() }
         }
     }
 
@@ -309,7 +407,6 @@ class OrderViewModel @Inject constructor(
     fun updateOrderStatus(orderId: Long, status: String) {
         viewModelScope.launch {
             repository.updateOrderStatus(orderId, status)
-            // Refresh detail if viewing this order
             if (_uiState.value.selectedOrder?.id == orderId.toString()) {
                 val updated = repository.getOrderById(orderId)
                 _uiState.update { it.copy(selectedOrder = updated) }
@@ -333,6 +430,7 @@ class OrderViewModel @Inject constructor(
                 state.copy(
                     items = order.items,
                     supplierName = order.supplierName ?: "",
+                    supplierPhone = order.supplierPhone ?: "",
                     notes = order.notes ?: "",
                     editingOrderId = orderId,
                     selectedTab = 0
@@ -361,11 +459,11 @@ class OrderViewModel @Inject constructor(
         if (supplier.isNotBlank()) {
             builder.append("Supplier: $supplier\n")
         }
-        builder.append("━━━━━━━━━━━━━━━━━━\n")
+        builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         items.forEachIndexed { index, item ->
             builder.append("${index + 1}. ${item.name} - ${item.quantity} ${item.unit}\n")
         }
-        builder.append("━━━━━━━━━━━━━━━━━━\n")
+        builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         builder.append("Total Items: ${items.size}\n")
         if (notes.isNotBlank()) {
             builder.append("Notes: $notes\n")

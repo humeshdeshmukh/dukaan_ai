@@ -1,5 +1,10 @@
 package com.dukaan.feature.orders.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,12 +23,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.dukaan.core.network.model.Order
 import com.dukaan.core.network.model.OrderItem
 import com.dukaan.core.ui.components.ConfirmationDialog
@@ -42,8 +50,32 @@ fun WholesaleOrderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val allOrders by viewModel.allOrders.collectAsState()
+    val existingSuppliers by viewModel.existingSuppliers.collectAsState()
     val strings = LocalAppStrings.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    // Mic permission
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.toggleRecording()
+    }
+
+    val onMicClick: () -> Unit = {
+        if (uiState.isRecording || uiState.isContinuousListening) {
+            viewModel.toggleRecording()
+        } else {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (hasPermission) {
+                viewModel.toggleRecording()
+            } else {
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
@@ -79,6 +111,16 @@ fun WholesaleOrderScreen(
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        OutlinedButton(
+                            onClick = { viewModel.clearOrder() },
+                            modifier = Modifier.height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                         OutlinedButton(
                             onClick = { viewModel.saveOrder() },
                             modifier = Modifier
@@ -137,7 +179,8 @@ fun WholesaleOrderScreen(
                 0 -> CreateOrderTab(
                     uiState = uiState,
                     viewModel = viewModel,
-                    strings = strings
+                    strings = strings,
+                    onMicClick = onMicClick
                 )
                 1 -> OrderHistoryTab(
                     uiState = uiState,
@@ -200,6 +243,18 @@ fun WholesaleOrderScreen(
             onDismiss = { viewModel.dismissEditItemDialog() }
         )
     }
+
+    // Supplier Picker Dialog
+    if (uiState.showSupplierPicker) {
+        SupplierPickerDialog(
+            suppliers = existingSuppliers,
+            onSelect = { name, phone -> viewModel.selectSupplier(name, phone) },
+            onNewSupplier = { name, phone -> viewModel.selectSupplier(name, phone) },
+            onClear = { viewModel.clearSupplier() },
+            onDismiss = { viewModel.dismissSupplierPicker() },
+            strings = strings
+        )
+    }
 }
 
 // ============== CREATE ORDER TAB ==============
@@ -208,32 +263,33 @@ fun WholesaleOrderScreen(
 private fun CreateOrderTab(
     uiState: OrderUiState,
     viewModel: OrderViewModel,
-    strings: com.dukaan.core.ui.translation.AppStrings
+    strings: com.dukaan.core.ui.translation.AppStrings,
+    onMicClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
-        // Supplier Name Field
+        // Supplier Picker Row
         item {
-            OutlinedTextField(
-                value = uiState.supplierName,
-                onValueChange = { viewModel.setSupplierName(it) },
-                label = { Text(strings.supplierNameLabel) },
-                leadingIcon = { Icon(Icons.Outlined.Store, contentDescription = null) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+            SupplierPickerRow(
+                selectedName = uiState.supplierName,
+                selectedPhone = uiState.supplierPhone,
+                onClick = { viewModel.showSupplierPicker() },
+                strings = strings
             )
         }
 
-        // Voice Input Section
+        // Compact Voice Input — right below supplier
         item {
-            VoiceInputSection(
-                uiState = uiState,
-                viewModel = viewModel,
+            CompactVoiceInput(
+                isRecording = uiState.isRecording,
+                isContinuousListening = uiState.isContinuousListening,
+                isProcessing = uiState.isProcessing,
+                recognizedText = uiState.recognizedText,
+                audioLevel = uiState.audioLevel,
+                hasItems = uiState.items.isNotEmpty(),
+                onToggleRecording = onMicClick,
                 strings = strings
             )
         }
@@ -244,7 +300,7 @@ private fun CreateOrderTab(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
@@ -264,7 +320,7 @@ private fun CreateOrderTab(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(8.dp),
                     color = Color(0xFF065F46).copy(alpha = 0.1f)
                 ) {
@@ -290,7 +346,7 @@ private fun CreateOrderTab(
             }
         }
 
-        // Items Header with Add button
+        // Items Header with Add button — only show when items exist or always for adding
         item {
             Row(
                 modifier = Modifier
@@ -304,29 +360,14 @@ private fun CreateOrderTab(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilledTonalButton(
-                        onClick = { viewModel.showAddItemDialog() },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(strings.addItemManually, style = MaterialTheme.typography.labelMedium)
-                    }
-                    if (uiState.items.isNotEmpty()) {
-                        IconButton(
-                            onClick = { viewModel.clearOrder() },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.DeleteSweep,
-                                contentDescription = strings.clearAll,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                FilledTonalButton(
+                    onClick = { viewModel.showAddItemDialog() },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(strings.addItemManually, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -337,7 +378,7 @@ private fun CreateOrderTab(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
+                        .height(120.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     EmptyStateView(
@@ -351,113 +392,265 @@ private fun CreateOrderTab(
             itemsIndexed(uiState.items) { index, item ->
                 OrderItemCard(
                     item = item,
+                    index = index,
                     onEditClick = { viewModel.setEditingItem(index) },
                     onDeleteClick = { viewModel.removeItem(item) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
                 )
             }
         }
 
-        // Notes field
-        item {
-            OutlinedTextField(
-                value = uiState.notes,
-                onValueChange = { viewModel.setNotes(it) },
-                label = { Text(strings.orderNotes) },
-                placeholder = { Text(strings.addNotesOptional) },
-                leadingIcon = { Icon(Icons.Outlined.Notes, contentDescription = null) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                minLines = 2,
-                maxLines = 4
+        // Notes field — only show when items are added to keep screen clean
+        if (uiState.items.isNotEmpty()) {
+            item {
+                OutlinedTextField(
+                    value = uiState.notes,
+                    onValueChange = { viewModel.setNotes(it) },
+                    label = { Text(strings.orderNotes) },
+                    placeholder = { Text(strings.addNotesOptional) },
+                    leadingIcon = { Icon(Icons.Outlined.Notes, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2,
+                    maxLines = 4
+                )
+            }
+        }
+    }
+}
+
+// ============== SUPPLIER PICKER ROW ==============
+
+@Composable
+private fun SupplierPickerRow(
+    selectedName: String,
+    selectedPhone: String,
+    onClick: () -> Unit,
+    strings: com.dukaan.core.ui.translation.AppStrings
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Outlined.Store,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = selectedName.ifEmpty { strings.selectSupplier },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (selectedName.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (selectedName.isNotEmpty()) FontWeight.Medium else FontWeight.Normal
+                )
+                if (selectedPhone.isNotBlank()) {
+                    Text(
+                        text = selectedPhone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
-// ============== VOICE INPUT SECTION ==============
+// ============== COMPACT VOICE INPUT ==============
 
 @Composable
-private fun VoiceInputSection(
-    uiState: OrderUiState,
-    viewModel: OrderViewModel,
+private fun CompactVoiceInput(
+    isRecording: Boolean,
+    isContinuousListening: Boolean,
+    isProcessing: Boolean,
+    recognizedText: String,
+    audioLevel: Float,
+    hasItems: Boolean,
+    onToggleRecording: () -> Unit,
     strings: com.dukaan.core.ui.translation.AppStrings
 ) {
-    Box(
+    val isActive = isRecording || isContinuousListening
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isActive) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (uiState.isProcessing) {
-                CircularProgressIndicator()
-                Text(
-                    strings.aiIsParsingOrder,
-                    modifier = Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                Box(contentAlignment = Alignment.Center) {
-                    if (uiState.isRecording) {
-                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                        val scale by infiniteTransition.animateFloat(
-                            initialValue = 1f,
-                            targetValue = 1.3f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(800, easing = LinearEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "scale"
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RecordingButton(isRecording = isActive, onClick = onToggleRecording)
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = when {
+                            isActive -> strings.listening
+                            hasItems -> strings.speakNextItems
+                            else -> strings.tapToSpeakOrder
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isActive) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
+                    )
+                    if (isProcessing) {
+                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(90.dp)
-                                .scale(scale)
-                                .background(
-                                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                                    CircleShape
-                                )
-                        )
-                    }
-
-                    FloatingActionButton(
-                        onClick = { viewModel.toggleRecording() },
-                        containerColor = if (uiState.isRecording) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.secondary,
-                        shape = CircleShape,
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Icon(
-                            if (uiState.isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                            contentDescription = strings.listening,
-                            modifier = Modifier.size(28.dp),
-                            tint = Color.White
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            strings.aiIsParsingOrder,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = if (uiState.isRecording) strings.listening else strings.tapToSpeakOrder,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (uiState.isRecording) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.secondary
-                )
-
-                if (uiState.recognizedText.isNotBlank()) {
+                if (isActive) {
+                    Spacer(Modifier.height(6.dp))
+                    AudioLevelIndicator(audioLevel = audioLevel)
+                }
+                if (recognizedText.isNotEmpty()) {
                     Text(
-                        text = "\"${uiState.recognizedText}\"",
+                        text = "\"$recognizedText\"",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp)
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+// ============== AUDIO LEVEL INDICATOR ==============
+
+@Composable
+private fun AudioLevelIndicator(audioLevel: Float) {
+    val animatedLevel by animateFloatAsState(
+        targetValue = audioLevel,
+        animationSpec = tween(100),
+        label = "audioLevel"
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier.height(16.dp)
+    ) {
+        val barCount = 5
+        for (i in 0 until barCount) {
+            val threshold = i.toFloat() / barCount
+            val barHeight = if (animatedLevel > threshold) {
+                (8 + (animatedLevel - threshold) * 16).coerceAtMost(16f)
+            } else {
+                4f
+            }
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(barHeight.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        if (animatedLevel > threshold) MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                    )
+            )
+        }
+    }
+}
+
+// ============== RECORDING BUTTON ==============
+
+@Composable
+private fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+    val ringScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ringScale"
+    )
+    val ringAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ringAlpha"
+    )
+    val color by animateColorAsState(
+        targetValue = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        label = "color"
+    )
+
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(64.dp)) {
+        if (isRecording) {
+            Surface(
+                shape = CircleShape,
+                color = color.copy(alpha = ringAlpha),
+                modifier = Modifier
+                    .size(56.dp)
+                    .scale(ringScale)
+            ) {}
+        }
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = color,
+            modifier = Modifier
+                .size(56.dp)
+                .scale(if (isRecording) scale else 1f),
+            shadowElevation = 4.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }
@@ -468,6 +661,7 @@ private fun VoiceInputSection(
 @Composable
 private fun OrderItemCard(
     item: OrderItem,
+    index: Int,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -486,23 +680,25 @@ private fun OrderItemCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.size(36.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer
             ) {
-                Icon(
-                    Icons.Default.Inventory2,
-                    contentDescription = null,
-                    modifier = Modifier.padding(8.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        "${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     item.name,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     "${item.quantity} ${item.unit}",
@@ -528,7 +724,7 @@ private fun OrderItemCard(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -701,7 +897,6 @@ private fun OrderHistoryCard(
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
-            // Item preview + date
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -748,6 +943,183 @@ private fun StatusBadge(status: String, strings: com.dukaan.core.ui.translation.
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }
+}
+
+// ============== SUPPLIER PICKER DIALOG ==============
+
+@Composable
+private fun SupplierPickerDialog(
+    suppliers: List<Pair<String, String?>>,
+    onSelect: (String, String?) -> Unit,
+    onNewSupplier: (String, String?) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+    strings: com.dukaan.core.ui.translation.AppStrings
+) {
+    var search by remember { mutableStateOf("") }
+    var showNewForm by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newPhone by remember { mutableStateOf("") }
+
+    val filtered = remember(search, suppliers) {
+        if (search.isBlank()) suppliers
+        else suppliers.filter { (name, phone) ->
+            name.contains(search, ignoreCase = true) || (phone?.contains(search) == true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.selectSupplier, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                if (showNewForm) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text(strings.supplierNameLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Store, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPhone,
+                        onValueChange = { newPhone = it },
+                        label = { Text(strings.supplierPhoneLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showNewForm = false },
+                            modifier = Modifier.weight(1f)
+                        ) { Text(strings.back) }
+                        Button(
+                            onClick = {
+                                if (newName.isNotBlank()) {
+                                    onNewSupplier(newName.trim(), newPhone.trim().ifBlank { null })
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = newName.isNotBlank()
+                        ) { Text(strings.save) }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        placeholder = { Text(strings.searchSupplier) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Add New Supplier Button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNewForm = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(strings.addNewSupplier, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+
+                    if (filtered.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(strings.noSuppliersFound, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 240.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filtered) { (name, phone) ->
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onSelect(name, phone) },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier.size(36.dp),
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    name.take(1).uppercase(),
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(name, fontWeight = FontWeight.Medium)
+                                            if (!phone.isNullOrBlank()) {
+                                                Text(
+                                                    phone,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (!showNewForm) {
+                TextButton(onClick = onClear) { Text(strings.clearAll) }
+            }
+        },
+        dismissButton = {
+            if (!showNewForm) {
+                TextButton(onClick = onDismiss) { Text(strings.cancel) }
+            }
+        }
+    )
 }
 
 // ============== ADD/EDIT ITEM DIALOG ==============

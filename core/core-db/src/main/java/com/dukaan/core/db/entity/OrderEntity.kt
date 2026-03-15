@@ -12,6 +12,7 @@ enum class OrderStatus {
 data class OrderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val supplierName: String? = null,
+    val supplierPhone: String? = null,
     val status: OrderStatus = OrderStatus.PENDING,
     val itemCount: Int = 0,
     val timestamp: Long = System.currentTimeMillis(),
