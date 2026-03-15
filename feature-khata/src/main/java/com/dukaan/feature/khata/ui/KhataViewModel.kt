@@ -69,6 +69,19 @@ class KhataViewModel @Inject constructor(
     private val _isVoiceParsing = MutableStateFlow(false)
     val isVoiceParsing: StateFlow<Boolean> = _isVoiceParsing.asStateFlow()
 
+    // Overall khata AI chat states
+    private val _overallChatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val overallChatMessages: StateFlow<List<ChatMessage>> = _overallChatMessages.asStateFlow()
+
+    private val _isOverallAiTyping = MutableStateFlow(false)
+    val isOverallAiTyping: StateFlow<Boolean> = _isOverallAiTyping.asStateFlow()
+
+    private val _overallInsight = MutableStateFlow<String?>(null)
+    val overallInsight: StateFlow<String?> = _overallInsight.asStateFlow()
+
+    private val _isOverallInsightLoading = MutableStateFlow(false)
+    val isOverallInsightLoading: StateFlow<Boolean> = _isOverallInsightLoading.asStateFlow()
+
     val filteredCustomers: StateFlow<List<Customer>> = combine(
         repository.getAllCustomers(),
         _searchQuery,
@@ -114,9 +127,9 @@ class KhataViewModel @Inject constructor(
         _sortOption.value = option
     }
 
-    fun addCustomer(name: String, phone: String) {
+    fun addCustomer(name: String, phone: String, khataType: String = "SMALL") {
         viewModelScope.launch {
-            repository.addCustomer(name, phone)
+            repository.addCustomer(name, phone, khataType)
         }
     }
 
@@ -236,5 +249,55 @@ class KhataViewModel @Inject constructor(
 
     fun clearVoiceParseResult() {
         _voiceParseResult.value = null
+    }
+
+    // --- Overall Khata AI ---
+
+    private fun buildOverallKhataContext(customers: List<Customer>): String {
+        return buildString {
+            appendLine("Total Receivable: ₹${_uiState.value.totalReceivable}")
+            appendLine("Total Payable: ₹${Math.abs(_uiState.value.totalPayable)}")
+            appendLine("Net Position: ₹${_uiState.value.totalReceivable + _uiState.value.totalPayable}")
+            appendLine("Total Customers: ${_uiState.value.customerCount}")
+            appendLine()
+            appendLine("Customer Details:")
+            customers.take(20).forEach { c ->
+                val status = if (c.balance > 0) "owes you ₹${c.balance}" else if (c.balance < 0) "you owe ₹${Math.abs(c.balance)}" else "settled"
+                val lastActive = if (c.lastActivityAt > 0) {
+                    val days = (System.currentTimeMillis() - c.lastActivityAt) / (24 * 60 * 60 * 1000L)
+                    "${days} days ago"
+                } else "unknown"
+                appendLine("  ${c.name} (${c.phone}): $status, last active: $lastActive")
+            }
+        }
+    }
+
+    fun loadOverallInsight(languageCode: String = "en") {
+        viewModelScope.launch {
+            _isOverallInsightLoading.value = true
+            _overallInsight.value = null
+            val customers = filteredCustomers.value
+            val context = buildOverallKhataContext(customers)
+            val insight = khataAiService.getOverallKhataInsight(context, languageCode)
+            _overallInsight.value = insight
+            _isOverallInsightLoading.value = false
+        }
+    }
+
+    fun sendOverallChatMessage(userMessage: String, languageCode: String = "en") {
+        viewModelScope.launch {
+            _overallChatMessages.update { it + ChatMessage(isUser = true, text = userMessage) }
+            _isOverallAiTyping.value = true
+            val customers = filteredCustomers.value
+            val context = buildOverallKhataContext(customers)
+            val response = khataAiService.chatAboutOverallKhata(context, userMessage, languageCode)
+            _isOverallAiTyping.value = false
+            _overallChatMessages.update { it + ChatMessage(isUser = false, text = response) }
+        }
+    }
+
+    fun clearOverallChat() {
+        _overallChatMessages.value = emptyList()
+        _overallInsight.value = null
     }
 }

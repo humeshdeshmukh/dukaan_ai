@@ -9,5 +9,6 @@ data class CustomerEntity(
     val phone: String,
     val balance: Double = 0.0,
     val createdAt: Long = System.currentTimeMillis(),
-    val lastActivityAt: Long = System.currentTimeMillis()
+    val lastActivityAt: Long = System.currentTimeMillis(),
+    val khataType: String = "SMALL"  // "SMALL" or "BIG"
 )

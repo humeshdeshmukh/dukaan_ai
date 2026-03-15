@@ -5,7 +5,8 @@ data class Customer(
     val name: String,
     val phone: String,
     val balance: Double,
-    val lastActivityAt: Long
+    val lastActivityAt: Long,
+    val khataType: String = "SMALL"  // "SMALL" or "BIG"
 )
 
 enum class TransactionType {

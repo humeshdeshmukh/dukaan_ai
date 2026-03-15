@@ -37,7 +37,6 @@ import com.dukaan.feature.khata.ui.CustomerListScreen
 import com.dukaan.feature.khata.ui.CustomerDetailScreen
 import com.dukaan.feature.khata.ui.AddTransactionScreen
 import com.dukaan.feature.khata.ui.CustomerStatementScreen
-import com.dukaan.feature.khata.ui.KhataOverviewScreen
 import com.dukaan.feature.khata.ui.KhataViewModel
 import com.dukaan.feature.khata.domain.model.TransactionType
 import com.dukaan.feature.ocr.ui.BillScannerScreen
@@ -77,7 +76,7 @@ sealed class Screen(val route: String) {
     object CustomerStatement : Screen("customer_statement/{customerId}") {
         fun createRoute(customerId: Long) = "customer_statement/$customerId"
     }
-    object KhataOverview : Screen("khata_overview")
+    object KhataOverview : Screen("khata_overview") // unused, kept for route compat
     object ScannedBillHistory : Screen("scanned_bill_history")
     object WholesalerBills : Screen("wholesaler_bills/{sellerName}") {
         fun createRoute(sellerName: String) = "wholesaler_bills/${java.net.URLEncoder.encode(sellerName, "UTF-8")}"
@@ -154,11 +153,13 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             composable(Screen.SmartKhata.route) { entry ->
                 val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 CustomerListScreen(
                     viewModel = viewModel,
                     onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
-                    onOverviewClick = { navController.navigate(Screen.KhataOverview.route) },
-                    onBackClick = null
+                    onBackClick = null,
+                    languageCode = settingsState.languageCode
                 )
             }
 
@@ -221,16 +222,6 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                         val file = PdfGenerator.generateStatementPdf(context, shopInfo, data)
                         pdfPreviewFile = file
                     }
-                )
-            }
-
-            composable(Screen.KhataOverview.route) { entry ->
-                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
-                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
-                KhataOverviewScreen(
-                    viewModel = viewModel,
-                    onBackClick = { navController.popBackStack() },
-                    onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) }
                 )
             }
         }

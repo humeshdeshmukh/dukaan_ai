@@ -58,6 +58,12 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE customers ADD COLUMN khataType TEXT NOT NULL DEFAULT 'SMALL'")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideKhataDatabase(
@@ -67,7 +73,7 @@ object DatabaseModule {
             context,
             KhataDatabase::class.java,
             "dukaan_khata.db"
-        ).addMigrations(MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        ).addMigrations(MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
          .fallbackToDestructiveMigration().build()
     }
 

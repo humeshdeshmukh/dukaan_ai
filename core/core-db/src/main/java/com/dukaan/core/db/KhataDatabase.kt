@@ -18,7 +18,7 @@ import com.dukaan.core.db.entity.*
         ProductEntity::class,
         TranslationCacheEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

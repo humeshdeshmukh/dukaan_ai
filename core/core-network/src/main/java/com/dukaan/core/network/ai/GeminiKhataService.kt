@@ -18,6 +18,8 @@ interface GeminiKhataService {
     suspend fun generatePaymentReminder(customerName: String, amount: Double, shopName: String, languageCode: String = "en"): String
     suspend fun chatAboutKhata(khataContext: String, userMessage: String, languageCode: String = "en"): String
     suspend fun parseTransactionSpeech(speechText: String): TransactionParseResult
+    suspend fun getOverallKhataInsight(khataOverview: String, languageCode: String = "en"): String
+    suspend fun chatAboutOverallKhata(khataOverview: String, userMessage: String, languageCode: String = "en"): String
 }
 
 @Singleton
@@ -183,6 +185,67 @@ class GeminiKhataServiceImpl @Inject constructor(
                 notes = null,
                 confidence = 0.3
             )
+        }
+    }
+
+    override suspend fun getOverallKhataInsight(
+        khataOverview: String,
+        languageCode: String
+    ): String = withContext(Dispatchers.IO) {
+        val prompt = """
+            You are a smart AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
+            Analyze the overall khata (ledger) data and provide a brief business insight.
+
+            Overall Khata Data:
+            $khataOverview
+
+            Provide a 3-4 line insight covering:
+            - Overall business health (receivables vs payables)
+            - Identify risky customers (high balance, long delays)
+            - Actionable suggestion to improve cash flow
+            - Any pattern you notice
+
+            Keep it very concise and practical. Use ₹ for currency.
+            Do not use any markdown formatting like ** or * or #. Use plain text only.
+            ${languageInstruction(languageCode)}
+        """.trimIndent()
+
+        try {
+            val response = generativeModel.generateContent(prompt)
+            response.text ?: "Unable to generate insight at the moment."
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "Unable to generate insight. Please try again."
+        }
+    }
+
+    override suspend fun chatAboutOverallKhata(
+        khataOverview: String,
+        userMessage: String,
+        languageCode: String
+    ): String = withContext(Dispatchers.IO) {
+        val prompt = """
+            You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
+            The user wants to ask about their overall khata (ledger) business data.
+
+            Overall Khata Data:
+            $khataOverview
+
+            User's question: "$userMessage"
+
+            Respond helpfully and concisely in simple, easy-to-understand language.
+            Keep responses short and practical — this is for a busy shopkeeper.
+            Do not use any markdown formatting like ** or * or #. Plain text only.
+            Use ₹ for currency amounts.
+            ${languageInstruction(languageCode)}
+        """.trimIndent()
+
+        try {
+            val response = generativeModel.generateContent(prompt)
+            response.text ?: "Sorry, I couldn't process that. Please try again."
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "Error: ${e.message ?: "Failed to get response"}"
         }
     }
 }

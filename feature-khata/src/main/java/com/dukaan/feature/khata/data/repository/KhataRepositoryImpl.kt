@@ -29,8 +29,8 @@ class KhataRepositoryImpl @Inject constructor(
         return khataDao.getCustomerFlow(customerId).map { it?.toDomain() }
     }
 
-    override suspend fun addCustomer(name: String, phone: String): Long {
-        return khataDao.insertCustomer(CustomerEntity(name = name, phone = phone))
+    override suspend fun addCustomer(name: String, phone: String, khataType: String): Long {
+        return khataDao.insertCustomer(CustomerEntity(name = name, phone = phone, khataType = khataType))
     }
 
     override suspend fun updateCustomer(customerId: Long, name: String, phone: String) {
@@ -73,7 +73,8 @@ class KhataRepositoryImpl @Inject constructor(
         name = name,
         phone = phone,
         balance = balance,
-        lastActivityAt = lastActivityAt
+        lastActivityAt = lastActivityAt,
+        khataType = khataType
     )
 
     private fun TransactionEntity.toDomain() = Transaction(
