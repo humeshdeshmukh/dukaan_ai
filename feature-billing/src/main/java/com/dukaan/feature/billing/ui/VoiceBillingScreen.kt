@@ -203,6 +203,10 @@ fun VoiceBillingScreen(
                 viewModel.selectCustomer(customer.id, customer.name, customer.phone)
                 showCustomerPicker = false
             },
+            onNewCustomer = { name, phone ->
+                viewModel.selectCustomer(null, name, phone)
+                showCustomerPicker = false
+            },
             onClear = {
                 viewModel.clearCustomer()
                 showCustomerPicker = false
@@ -842,8 +846,13 @@ private fun BillItemCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                val priceLabel = if (item.priceUnit.isNotBlank() && !item.priceUnit.equals(item.unit, ignoreCase = true)) {
+                    "${item.quantity} ${item.unit} @ ${currencyFormat.format(item.price)}/${item.priceUnit}"
+                } else {
+                    "${item.quantity} ${item.unit} x ${currencyFormat.format(item.price)}"
+                }
                 Text(
-                    "${item.quantity} ${item.unit} x ${currencyFormat.format(item.price)}",
+                    priceLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -882,6 +891,7 @@ private fun EditItemDialog(
     var qty by remember { mutableStateOf(item?.quantity?.toString() ?: "") }
     var unit by remember { mutableStateOf(item?.unit ?: "pc") }
     var price by remember { mutableStateOf(item?.price?.toString() ?: "") }
+    var priceUnit by remember { mutableStateOf(item?.priceUnit ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -912,15 +922,25 @@ private fun EditItemDialog(
                         singleLine = true
                     )
                 }
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text(strings.pricePerUnit) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    leadingIcon = { Text("₹", style = MaterialTheme.typography.bodyLarge) }
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text(strings.pricePerUnit) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        leadingIcon = { Text("₹", style = MaterialTheme.typography.bodyLarge) }
+                    )
+                    OutlinedTextField(
+                        value = priceUnit,
+                        onValueChange = { priceUnit = it },
+                        label = { Text("Per") },
+                        modifier = Modifier.weight(0.6f),
+                        singleLine = true,
+                        placeholder = { Text(unit.ifBlank { "kg" }, style = MaterialTheme.typography.bodySmall) }
+                    )
+                }
             }
         },
         confirmButton = {
@@ -929,7 +949,13 @@ private fun EditItemDialog(
                     val q = qty.toDoubleOrNull() ?: 0.0
                     val p = price.toDoubleOrNull() ?: 0.0
                     if (name.isNotBlank() && q > 0) {
-                        onSave(BillItem(name = name.trim(), quantity = q, unit = unit.trim().ifEmpty { "pc" }, price = p))
+                        onSave(BillItem(
+                            name = name.trim(),
+                            quantity = q,
+                            unit = unit.trim().ifEmpty { "pc" },
+                            price = p,
+                            priceUnit = priceUnit.trim().ifBlank { unit.trim().ifEmpty { "pc" } }
+                        ))
                     }
                 },
                 enabled = name.isNotBlank() && (qty.toDoubleOrNull() ?: 0.0) > 0
@@ -1160,11 +1186,16 @@ private fun ActionButtonsRow(
 private fun CustomerPickerDialog(
     customers: List<CustomerEntity>,
     onSelect: (CustomerEntity) -> Unit,
+    onNewCustomer: (String, String) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val strings = LocalAppStrings.current
     var search by remember { mutableStateOf("") }
+    var showNewForm by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newPhone by remember { mutableStateOf("") }
+
     val filtered = remember(search, customers) {
         if (search.isBlank()) customers
         else customers.filter {
@@ -1176,63 +1207,135 @@ private fun CustomerPickerDialog(
         onDismissRequest = onDismiss,
         title = { Text(strings.selectCustomer) },
         text = {
-            Column(modifier = Modifier.heightIn(max = 360.dp)) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    placeholder = { Text(strings.searchCustomers) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-                if (filtered.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        contentAlignment = Alignment.Center
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                if (showNewForm) {
+                    // New Customer Form
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text(strings.customerNameLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPhone,
+                        onValueChange = { newPhone = it },
+                        label = { Text(strings.phoneNumberLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(strings.noCustomersFound, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(
+                            onClick = { showNewForm = false },
+                            modifier = Modifier.weight(1f)
+                        ) { Text(strings.back) }
+                        Button(
+                            onClick = {
+                                if (newName.isNotBlank()) {
+                                    onNewCustomer(newName.trim(), newPhone.trim())
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = newName.isNotBlank()
+                        ) { Text(strings.save) }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.heightIn(max = 280.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    // Search + List
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        placeholder = { Text(strings.searchCustomers) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Add New Customer Button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNewForm = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     ) {
-                        items(filtered) { cust ->
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onSelect(cust) },
-                                shape = RoundedCornerShape(8.dp)
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(strings.addCustomer, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+
+                    if (filtered.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(strings.noCustomersFound, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 240.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filtered) { cust ->
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onSelect(cust) },
+                                    shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Surface(
-                                        modifier = Modifier.size(36.dp),
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                cust.name.take(1).uppercase(),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
+                                        Surface(
+                                            modifier = Modifier.size(36.dp),
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    cust.name.take(1).uppercase(),
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(cust.name, fontWeight = FontWeight.Medium)
-                                        Text(
-                                            cust.phone,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(cust.name, fontWeight = FontWeight.Medium)
+                                            if (cust.phone.isNotBlank()) {
+                                                Text(
+                                                    cust.phone,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1242,10 +1345,14 @@ private fun CustomerPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onClear) { Text(strings.clearAll) }
+            if (!showNewForm) {
+                TextButton(onClick = onClear) { Text(strings.clearAll) }
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(strings.cancel) }
+            if (!showNewForm) {
+                TextButton(onClick = onDismiss) { Text(strings.cancel) }
+            }
         }
     )
 }

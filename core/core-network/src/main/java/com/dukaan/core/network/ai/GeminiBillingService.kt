@@ -28,11 +28,27 @@ class GeminiBillingServiceImpl @Inject constructor(
     override suspend fun parseBillingSpeech(speechText: String): List<BillItem> = withContext(Dispatchers.IO) {
         val prompt = """
             You are an AI for a shop management app called Dukaan AI.
-            Extract items from this shopkeeper's speech: "$speechText"
-            Return ONLY a JSON array of objects with: name (string), quantity (number), unit (string), price (number - total price for that item).
-            Example input: "Sugar 2 kilo 80, Soap 1 piece 30"
-            Example output: [{"name": "Sugar", "quantity": 2, "unit": "kg", "price": 80}, {"name": "Soap", "quantity": 1, "unit": "pc", "price": 30}]
-            If no price is mentioned, use 0.
+            Extract items from this Indian shopkeeper's speech: "$speechText"
+
+            Return ONLY a JSON array of objects with these fields:
+            - name (string): item name
+            - quantity (number): the quantity spoken
+            - unit (string): the unit for quantity (g, kg, ml, L, pc, pcs, dozen, packet, box etc.)
+            - price (number): PER-UNIT price (rate per priceUnit)
+            - priceUnit (string): the unit the price is quoted for (e.g. "kg" if price is per kg)
+
+            IMPORTANT RULES:
+            - "price" must be PER-UNIT rate, NOT the total.
+            - If shopkeeper says "500 gram sugar 60 rupees per kg" → quantity=500, unit="g", price=60, priceUnit="kg"
+            - If shopkeeper says "2 kilo rice 40 rupees" → quantity=2, unit="kg", price=40, priceUnit="kg" (same unit)
+            - If shopkeeper says "Soap 3 piece 30 rupees each" → quantity=3, unit="pc", price=30, priceUnit="pc"
+            - If shopkeeper says "doodh 500ml 30 rupee per litre" → quantity=500, unit="ml", price=30, priceUnit="L"
+            - If price seems like a TOTAL (e.g. "sugar 2kg 80 rupees total") → price=40, priceUnit="kg" (divide total by qty)
+            - If unclear, assume price is per unit of the same unit as quantity, set priceUnit same as unit
+            - Hindi/Hinglish words: kilo=kg, gram=g, piece/ek=pc, litre=L, dozen=dozen, packet=pkt
+
+            Example input: "500 gram sugar 60 rupees per kg, 2 sabun 30 rupees each, doodh 1 litre 68 rupees"
+            Example output: [{"name":"Sugar","quantity":500,"unit":"g","price":60,"priceUnit":"kg"},{"name":"Sabun","quantity":2,"unit":"pc","price":30,"priceUnit":"pc"},{"name":"Doodh","quantity":1,"unit":"L","price":68,"priceUnit":"L"}]
         """.trimIndent()
 
         try {

@@ -294,7 +294,12 @@ class BillingViewModel @Inject constructor(
         }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
         state.items.forEach { item ->
-            sb.append("${item.name}: ${item.quantity} ${item.unit} @ ₹${item.price} = ₹${item.total}\n")
+            val priceLabel = if (item.priceUnit.isNotBlank() && !item.priceUnit.equals(item.unit, ignoreCase = true)) {
+                "${item.quantity} ${item.unit} @ ₹${String.format("%.2f", item.price)}/${item.priceUnit}"
+            } else {
+                "${item.quantity} ${item.unit} x ₹${String.format("%.2f", item.price)}"
+            }
+            sb.append("${item.name}: $priceLabel = ₹${String.format("%.2f", item.total)}\n")
         }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
         sb.append("Subtotal: ₹${String.format("%.2f", state.subtotal)}\n")
