@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,6 +21,8 @@ import com.dukaan.feature.khata.domain.model.Customer
 import com.dukaan.feature.khata.domain.model.Transaction
 import com.dukaan.feature.khata.domain.model.TransactionType
 import com.dukaan.feature.khata.ui.components.KhataAiChatSheet
+import com.dukaan.feature.khata.ui.components.DateRangePickerDialog
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,11 +33,13 @@ fun CustomerDetailScreen(
     customerId: Long,
     viewModel: KhataViewModel,
     shopName: String = "",
+    languageCode: String = "en",
     onAddTransaction: (TransactionType) -> Unit,
     onStatementClick: () -> Unit = {},
     onShareReminder: (String) -> Unit = {},
     onBackClick: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val customer by viewModel.getCustomerFlow(customerId).collectAsState(initial = null)
     var selectedFilter by remember { mutableStateOf("All") }
     val transactions by viewModel.getTransactions(customerId).collectAsState(initial = emptyList())
@@ -43,6 +48,9 @@ fun CustomerDetailScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var transactionToDelete by remember { mutableStateOf<Long?>(null) }
     var showAiChat by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var customStartDate by remember { mutableLongStateOf(0L) }
+    var customEndDate by remember { mutableLongStateOf(0L) }
 
     // AI States
     val customerInsight by viewModel.customerInsight.collectAsState()
@@ -51,14 +59,6 @@ fun CustomerDetailScreen(
     val isAiTyping by viewModel.isAiTyping.collectAsState()
     val reminderMessage by viewModel.reminderMessage.collectAsState()
     var showInsight by remember { mutableStateOf(false) }
-
-    // Load AI insight when customer data is available
-    LaunchedEffect(customer, transactions) {
-        val c = customer ?: return@LaunchedEffect
-        if (transactions.isNotEmpty() && customerInsight == null && !isInsightLoading) {
-            viewModel.loadCustomerInsight(c.name, c.balance, transactions)
-        }
-    }
 
     // Handle reminder message
     LaunchedEffect(reminderMessage) {
@@ -69,7 +69,7 @@ fun CustomerDetailScreen(
     }
 
     // Filter transactions by date
-    val filteredTransactions = remember(transactions, selectedFilter) {
+    val filteredTransactions = remember(transactions, selectedFilter, customStartDate, customEndDate) {
         val now = System.currentTimeMillis()
         when (selectedFilter) {
             "Week" -> {
@@ -79,6 +79,11 @@ fun CustomerDetailScreen(
             "Month" -> {
                 val monthAgo = now - 30L * 24 * 60 * 60 * 1000L
                 transactions.filter { it.date >= monthAgo }
+            }
+            "Custom" -> {
+                if (customStartDate > 0 && customEndDate > 0) {
+                    transactions.filter { it.date in customStartDate..customEndDate }
+                } else transactions
             }
             else -> transactions
         }
@@ -91,7 +96,7 @@ fun CustomerDetailScreen(
                 messages = chatMessages,
                 isAiTyping = isAiTyping,
                 onSendMessage = { message ->
-                    viewModel.sendChatMessage(c.name, c.balance, transactions, message)
+                    viewModel.sendChatMessage(c.name, c.balance, transactions, message, languageCode)
                 },
                 onDismiss = {
                     showAiChat = false
@@ -105,18 +110,18 @@ fun CustomerDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(customer?.name ?: "Customer", fontWeight = FontWeight.Bold) },
+                title = { Text(customer?.name ?: strings.customer, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = onStatementClick) {
-                        Icon(Icons.Default.Description, contentDescription = "Statement")
+                        Icon(Icons.Default.Description, contentDescription = strings.statement)
                     }
                     IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Icon(Icons.Default.Edit, contentDescription = strings.edit)
                     }
                 }
             )
@@ -150,7 +155,7 @@ fun CustomerDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = if (c.balance >= 0) "Total BAKI (to collect)" else "Total JAMA (to pay)",
+                            text = if (c.balance >= 0) strings.totalBakiToCollect else strings.totalJamaToPay,
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -173,83 +178,101 @@ fun CustomerDetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
                                 onClick = {
-                                    viewModel.generateReminder(c.name, Math.abs(c.balance), shopName)
+                                    viewModel.generateReminder(c.name, Math.abs(c.balance), shopName, languageCode)
                                 },
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Send Reminder", style = MaterialTheme.typography.labelMedium)
+                                Text(strings.sendReminder, style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
                 }
             }
 
-            // AI Insight Card
-            AnimatedVisibility(visible = customerInsight != null || isInsightLoading) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+            // AI Insight Section
+            customer?.let { c ->
+                if (customerInsight == null && !isInsightLoading) {
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.loadCustomerInsight(c.name, c.balance, transactions, languageCode)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(strings.getAiInsight)
+                    }
+                } else {
+                    AnimatedVisibility(visible = customerInsight != null || isInsightLoading) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         ) {
-                            Icon(
-                                Icons.Default.SmartToy,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "AI Insight",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            IconButton(
-                                onClick = { showInsight = !showInsight },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    if (showInsight) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = "Toggle",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        AnimatedVisibility(visible = showInsight || isInsightLoading) {
-                            if (isInsightLoading) {
+                            Column(modifier = Modifier.padding(12.dp)) {
                                 Row(
-                                    modifier = Modifier.padding(top = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        strokeWidth = 2.dp
+                                    Icon(
+                                        Icons.Default.SmartToy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        "Analyzing...",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        strings.aiInsight,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    IconButton(
+                                        onClick = { showInsight = !showInsight },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            if (showInsight) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                            contentDescription = "Toggle",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
-                            } else {
-                                customerInsight?.let { insight ->
-                                    Text(
-                                        text = insight,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(top = 8.dp)
-                                    )
+                                AnimatedVisibility(visible = showInsight || isInsightLoading) {
+                                    if (isInsightLoading) {
+                                        Row(
+                                            modifier = Modifier.padding(top = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                strings.analyzing,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    } else {
+                                        customerInsight?.let { insight ->
+                                            Text(
+                                                text = insight,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                modifier = Modifier.padding(top = 8.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -260,15 +283,27 @@ fun CustomerDetailScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Date Filter Chips
+            val filterLabels = mapOf(
+                "All" to strings.all,
+                "Week" to strings.week,
+                "Month" to strings.month,
+                "Custom" to strings.custom
+            )
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("All", "Week", "Month").forEach { filter ->
+                listOf("All", "Week", "Month", "Custom").forEach { filter ->
                     FilterChip(
                         selected = selectedFilter == filter,
-                        onClick = { selectedFilter = filter },
-                        label = { Text(filter) },
+                        onClick = {
+                            if (filter == "Custom") {
+                                showDatePicker = true
+                            } else {
+                                selectedFilter = filter
+                            }
+                        },
+                        label = { Text(filterLabels[filter] ?: filter) },
                         leadingIcon = if (selectedFilter == filter) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null
@@ -276,10 +311,21 @@ fun CustomerDetailScreen(
                 }
             }
 
+            // Show selected date range for Custom filter
+            if (selectedFilter == "Custom" && customStartDate > 0 && customEndDate > 0) {
+                val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                Text(
+                    text = "${sdf.format(Date(customStartDate))} - ${sdf.format(Date(customEndDate))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Transactions (${filteredTransactions.size})",
+                text = "${strings.transactions} (${filteredTransactions.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -289,8 +335,8 @@ fun CustomerDetailScreen(
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     EmptyStateView(
                         icon = Icons.Default.ReceiptLong,
-                        title = "No Transactions",
-                        subtitle = "Add a payment or credit to get started"
+                        title = strings.noTransactions,
+                        subtitle = strings.addPaymentOrCredit
                     )
                 }
             } else {
@@ -326,7 +372,7 @@ fun CustomerDetailScreen(
                 ) {
                     Icon(Icons.Default.CallReceived, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("YOU GOT", fontWeight = FontWeight.Bold)
+                    Text(strings.youGot, fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = { onAddTransaction(TransactionType.BAKI) },
@@ -338,7 +384,7 @@ fun CustomerDetailScreen(
                 ) {
                     Icon(Icons.Default.CallMade, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("YOU GAVE", fontWeight = FontWeight.Bold)
+                    Text(strings.youGave, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -359,14 +405,27 @@ fun CustomerDetailScreen(
         // Delete Transaction Confirmation
         transactionToDelete?.let { txnId ->
             ConfirmationDialog(
-                title = "Delete Transaction",
-                message = "This will delete this transaction and reverse the balance. This cannot be undone.",
-                confirmText = "Delete",
+                title = strings.deleteTransaction,
+                message = strings.deleteTransactionMessage,
+                confirmText = strings.delete,
                 onConfirm = {
                     viewModel.deleteTransaction(txnId)
                     transactionToDelete = null
                 },
                 onDismiss = { transactionToDelete = null }
+            )
+        }
+
+        // Custom Date Range Picker
+        if (showDatePicker) {
+            DateRangePickerDialog(
+                onDismiss = { showDatePicker = false },
+                onConfirm = { start, end ->
+                    customStartDate = start
+                    customEndDate = end
+                    selectedFilter = "Custom"
+                    showDatePicker = false
+                }
             )
         }
     }
@@ -381,22 +440,23 @@ fun EditCustomerDialog(
 ) {
     var name by remember { mutableStateOf(currentName) }
     var phone by remember { mutableStateOf(currentPhone) }
+    val strings = LocalAppStrings.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Customer") },
+        title = { Text(strings.editCustomer) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Customer Name") },
+                    label = { Text(strings.customerNameLabel) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
-                    label = { Text("Phone Number") },
+                    label = { Text(strings.phoneNumberLabel) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -406,11 +466,11 @@ fun EditCustomerDialog(
                 onClick = { if (name.isNotBlank() && phone.isNotBlank()) onConfirm(name, phone) },
                 enabled = name.isNotBlank() && phone.isNotBlank()
             ) {
-                Text("Save")
+                Text(strings.save)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(strings.cancel) }
         }
     )
 }
@@ -421,6 +481,7 @@ fun TransactionItem(
     currencyFormat: NumberFormat,
     onDeleteClick: () -> Unit = {}
 ) {
+    val strings = LocalAppStrings.current
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     val isJama = transaction.type == TransactionType.JAMA
     val tint = if (isJama) Color(0xFF00B37E) else Color(0xFFEF4444)
@@ -452,7 +513,7 @@ fun TransactionItem(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isJama) "Payment Received" else "Credit Given",
+                    text = if (isJama) strings.paymentReceived else strings.creditGiven,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -478,7 +539,7 @@ fun TransactionItem(
             IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = strings.delete,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(18.dp)
                 )

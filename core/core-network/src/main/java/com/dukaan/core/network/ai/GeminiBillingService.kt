@@ -16,7 +16,7 @@ interface GeminiBillingService {
     suspend fun parseBillingSpeech(speechText: String): List<BillItem>
     suspend fun parseOcrText(rawText: String): Bill
     suspend fun parseBillImage(image: Bitmap): Bill
-    suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null): String
+    suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null, languageCode: String = "en"): String
     suspend fun parseOrderSpeech(speechText: String): List<OrderItem>
 }
 
@@ -147,8 +147,14 @@ class GeminiBillingServiceImpl @Inject constructor(
     override suspend fun chatAboutBill(
         billJson: String,
         userMessage: String,
-        image: Bitmap?
+        image: Bitmap?,
+        languageCode: String
     ): String = withContext(Dispatchers.IO) {
+        val langInstruction = when (languageCode) {
+            "en" -> "Respond in simple Hinglish (Hindi-English mix)."
+            "hi" -> "Respond in simple Hindi."
+            else -> "Respond in simple, easy language the user understands."
+        }
         val prompt = """
             You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
             The user is looking at a scanned bill and wants to ask you about it.
@@ -158,10 +164,12 @@ class GeminiBillingServiceImpl @Inject constructor(
 
             User's question: "$userMessage"
 
-            Respond helpfully and concisely in the same language the user asks in (Hindi or English).
+            Respond helpfully and concisely in simple, easy-to-understand language.
             If the user asks to correct an item, suggest the exact correction.
             If the user asks about totals, verify by calculating from items.
-            Keep responses short and practical — this is for a shopkeeper.
+            Keep responses short and practical — this is for a busy shopkeeper.
+            Do not use any markdown formatting like ** or * or #. Plain text only.
+            $langInstruction
         """.trimIndent()
 
         try {

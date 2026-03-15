@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +30,7 @@ fun KhataAiChatSheet(
     onSendMessage: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
@@ -63,7 +65,7 @@ fun KhataAiChatSheet(
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Khata AI Assistant",
+                            strings.khataAiAssistant,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -77,7 +79,7 @@ fun KhataAiChatSheet(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = strings.close,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
@@ -93,16 +95,16 @@ fun KhataAiChatSheet(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SuggestionChip(
-                        onClick = { onSendMessage("Payment pattern") },
-                        label = { Text("Payment pattern", style = MaterialTheme.typography.bodySmall) }
+                        onClick = { onSendMessage(strings.paymentPattern) },
+                        label = { Text(strings.paymentPattern, style = MaterialTheme.typography.bodySmall) }
                     )
                     SuggestionChip(
-                        onClick = { onSendMessage("Credit risk?") },
-                        label = { Text("Credit risk?", style = MaterialTheme.typography.bodySmall) }
+                        onClick = { onSendMessage(strings.creditRisk) },
+                        label = { Text(strings.creditRisk, style = MaterialTheme.typography.bodySmall) }
                     )
                     SuggestionChip(
-                        onClick = { onSendMessage("Summary") },
-                        label = { Text("Summary", style = MaterialTheme.typography.bodySmall) }
+                        onClick = { onSendMessage(strings.summary) },
+                        label = { Text(strings.summary, style = MaterialTheme.typography.bodySmall) }
                     )
                 }
             }
@@ -122,7 +124,7 @@ fun KhataAiChatSheet(
                 }
                 if (isAiTyping) {
                     item {
-                        KhataChatBubble(ChatMessage(isUser = false, text = "Thinking...", isLoading = true))
+                        KhataChatBubble(ChatMessage(isUser = false, text = strings.thinking, isLoading = true))
                     }
                 }
             }
@@ -144,7 +146,7 @@ fun KhataAiChatSheet(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Ask about this khata...") },
+                        placeholder = { Text(strings.askAboutThisKhata) },
                         shape = RoundedCornerShape(24.dp),
                         singleLine = false,
                         maxLines = 3
@@ -160,7 +162,7 @@ fun KhataAiChatSheet(
                         enabled = inputText.isNotBlank() && !isAiTyping,
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "Send")
+                        Icon(Icons.Default.Send, contentDescription = strings.send)
                     }
                 }
             }
@@ -170,6 +172,7 @@ fun KhataAiChatSheet(
 
 @Composable
 private fun KhataChatBubble(message: ChatMessage) {
+    val strings = LocalAppStrings.current
     val isUser = message.isUser
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -215,7 +218,7 @@ private fun KhataChatBubble(message: ChatMessage) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Thinking...",
+                        strings.thinking,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

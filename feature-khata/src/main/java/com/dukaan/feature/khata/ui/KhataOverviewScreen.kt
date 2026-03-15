@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.domain.model.Customer
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -27,6 +28,7 @@ fun KhataOverviewScreen(
     onBackClick: () -> Unit,
     onCustomerClick: (Long) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     val customers by viewModel.filteredCustomers.collectAsState()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
@@ -52,10 +54,10 @@ fun KhataOverviewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Khata Overview", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.khataOverview, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -78,14 +80,14 @@ fun KhataOverviewScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.TrendingDown,
                         iconTint = Color(0xFFEF4444),
-                        label = "To Collect",
+                        label = strings.toCollect,
                         value = currencyFormat.format(Math.abs(uiState.totalReceivable))
                     )
                     OverviewStatCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.TrendingUp,
                         iconTint = Color(0xFF00B37E),
-                        label = "To Pay",
+                        label = strings.toPay,
                         value = currencyFormat.format(Math.abs(uiState.totalPayable))
                     )
                 }
@@ -100,14 +102,14 @@ fun KhataOverviewScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.AccountBalance,
                         iconTint = MaterialTheme.colorScheme.primary,
-                        label = "Net Position",
+                        label = strings.netPosition,
                         value = currencyFormat.format(Math.abs(netPosition))
                     )
                     OverviewStatCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.People,
                         iconTint = MaterialTheme.colorScheme.tertiary,
-                        label = "Customers",
+                        label = strings.customers,
                         value = "${uiState.customerCount}"
                     )
                 }
@@ -117,7 +119,7 @@ fun KhataOverviewScreen(
             if (topDebtors.isNotEmpty()) {
                 item {
                     Text(
-                        "Top Debtors (Owe You)",
+                        strings.topDebtorsOweYou,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFEF4444)
@@ -136,7 +138,7 @@ fun KhataOverviewScreen(
             if (topCreditors.isNotEmpty()) {
                 item {
                     Text(
-                        "Top Creditors (You Owe)",
+                        strings.topCreditorsYouOwe,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF00B37E)
@@ -155,7 +157,7 @@ fun KhataOverviewScreen(
             if (recentlyActive.isNotEmpty()) {
                 item {
                     Text(
-                        "Recently Active",
+                        strings.recentlyActive,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

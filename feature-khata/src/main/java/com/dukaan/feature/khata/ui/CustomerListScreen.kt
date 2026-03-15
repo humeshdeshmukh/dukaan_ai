@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.ui.components.ConfirmationDialog
 import com.dukaan.core.ui.components.EmptyStateView
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.ui.components.AddCustomerDialog
 import com.dukaan.feature.khata.ui.components.CustomerItem
 import java.text.NumberFormat
@@ -30,6 +31,7 @@ fun CustomerListScreen(
     onOverviewClick: () -> Unit = {},
     onBackClick: (() -> Unit)? = null
 ) {
+    val strings = LocalAppStrings.current
     val customers by viewModel.filteredCustomers.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
@@ -40,17 +42,17 @@ fun CustomerListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Smart Khata", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.smartKhata, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     onBackClick?.let { click ->
                         IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = onOverviewClick) {
-                        Icon(Icons.Outlined.Analytics, contentDescription = "Overview")
+                        Icon(Icons.Outlined.Analytics, contentDescription = strings.khataOverview)
                     }
                 }
             )
@@ -61,7 +63,7 @@ fun CustomerListScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Default.PersonAdd, contentDescription = "Add Customer")
+                Icon(Icons.Default.PersonAdd, contentDescription = strings.addCustomer)
             }
         }
     ) { padding ->
@@ -94,7 +96,7 @@ fun CustomerListScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFEF4444)
                             )
-                            Text("To Collect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.toCollect, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Outlined.TrendingUp, contentDescription = null, tint = Color(0xFF00B37E), modifier = Modifier.size(20.dp))
@@ -105,7 +107,7 @@ fun CustomerListScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF00B37E)
                             )
-                            Text("To Pay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.toPay, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Outlined.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -116,7 +118,7 @@ fun CustomerListScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            Text("Customers", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.customers, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -129,7 +131,7 @@ fun CustomerListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                placeholder = { Text("Search by name or phone") },
+                placeholder = { Text(strings.searchByNameOrPhone) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -144,10 +146,10 @@ fun CustomerListScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val sortOptions = listOf(
-                    SortOption.NAME to "Name",
-                    SortOption.BALANCE_HIGH to "Highest Balance",
-                    SortOption.BALANCE_LOW to "Lowest Balance",
-                    SortOption.RECENT to "Recent"
+                    SortOption.NAME to strings.sortName,
+                    SortOption.BALANCE_HIGH to strings.sortHighestBalance,
+                    SortOption.BALANCE_LOW to strings.sortLowestBalance,
+                    SortOption.RECENT to strings.sortRecent
                 )
                 items(sortOptions) { (option, label) ->
                     FilterChip(
@@ -167,8 +169,8 @@ fun CustomerListScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     EmptyStateView(
                         icon = Icons.Default.MenuBook,
-                        title = "No Customers Yet",
-                        subtitle = "Add your first customer to start tracking payments"
+                        title = strings.noCustomersYet,
+                        subtitle = strings.addFirstCustomer
                     )
                 }
             } else {
@@ -200,9 +202,9 @@ fun CustomerListScreen(
 
         customerToDelete?.let { customerId ->
             ConfirmationDialog(
-                title = "Delete Customer",
-                message = "This will permanently delete this customer and all their transactions. This cannot be undone.",
-                confirmText = "Delete",
+                title = strings.deleteCustomer,
+                message = strings.deleteCustomerMessage,
+                confirmText = strings.delete,
                 onConfirm = {
                     viewModel.deleteCustomer(customerId)
                     customerToDelete = null

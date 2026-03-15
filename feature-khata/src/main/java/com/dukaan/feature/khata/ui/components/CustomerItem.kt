@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.domain.model.Customer
 import java.text.NumberFormat
 import java.util.*
@@ -23,6 +24,7 @@ fun CustomerItem(
     onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val balanceColor = if (customer.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
 
@@ -72,7 +74,7 @@ fun CustomerItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = if (customer.balance >= 0) "BAKI" else "JAMA",
+                    text = if (customer.balance >= 0) strings.baki else strings.jama,
                     style = MaterialTheme.typography.labelSmall,
                     color = balanceColor,
                     fontWeight = FontWeight.Bold

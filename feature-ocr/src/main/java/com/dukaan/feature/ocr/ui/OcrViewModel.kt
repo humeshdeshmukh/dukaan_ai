@@ -128,7 +128,7 @@ class OcrViewModel @Inject constructor(
     }
 
     /** Send a chat message to AI about the bill */
-    fun sendChatMessage(message: String) {
+    fun sendChatMessage(message: String, languageCode: String = "en") {
         val bill = _uiState.value.scannedBill ?: return
 
         // Add user message
@@ -152,7 +152,8 @@ class OcrViewModel @Inject constructor(
                 val response = geminiService.chatAboutBill(
                     billJson = billJson,
                     userMessage = message,
-                    image = cachedBillBitmap
+                    image = cachedBillBitmap,
+                    languageCode = languageCode
                 )
                 _uiState.update { state ->
                     state.copy(

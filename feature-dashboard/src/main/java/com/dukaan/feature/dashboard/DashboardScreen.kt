@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import com.dukaan.core.db.SupportedLanguages
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,7 @@ fun DashboardScreen(
     onBillClick: (Long) -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
     var animated by remember { mutableStateOf(false) }
@@ -67,7 +70,7 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            "Dukaan AI",
+                            strings.appName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -75,6 +78,19 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        Text(
+                            text = SupportedLanguages.getByCode(uiState.languageCode).nativeName.take(3),
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     IconButton(
                         onClick = onSettingsClick,
                         modifier = Modifier
@@ -86,7 +102,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = strings.settings,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
@@ -141,7 +157,7 @@ fun DashboardScreen(
             ) {
                 Column {
                     Text(
-                        text = "Quick Actions",
+                        text = strings.quickActions,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
@@ -154,16 +170,16 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CompactFeatureCard(
-                            label = "Scan Bill",
-                            subtitle = "OCR Scanner",
+                            label = strings.scanBill,
+                            subtitle = strings.ocrScanner,
                             icon = Icons.Default.QrCodeScanner,
                             accentColor = Color(0xFF065F46),
                             onClick = onScanBillClick,
                             modifier = Modifier.weight(1f)
                         )
                         CompactFeatureCard(
-                            label = "Voice Bill",
-                            subtitle = "Speak Items",
+                            label = strings.voiceBill,
+                            subtitle = strings.speakItems,
                             icon = Icons.Default.Mic,
                             accentColor = Color(0xFFD97706),
                             onClick = onVoiceBillingClick,
@@ -179,16 +195,16 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CompactFeatureCard(
-                            label = "Smart Khata",
-                            subtitle = "Ledger Book",
+                            label = strings.smartKhata,
+                            subtitle = strings.ledgerBook,
                             icon = Icons.Default.MenuBook,
                             accentColor = Color(0xFF7C3AED),
                             onClick = onSmartKhataClick,
                             modifier = Modifier.weight(1f)
                         )
                         CompactFeatureCard(
-                            label = "Orders",
-                            subtitle = "Wholesale",
+                            label = strings.orders,
+                            subtitle = strings.wholesale,
                             icon = Icons.Default.ShoppingCart,
                             accentColor = Color(0xFF2563EB),
                             onClick = onOrdersClick,
@@ -204,16 +220,16 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CompactFeatureCard(
-                            label = "Bill History",
-                            subtitle = "Past Bills",
+                            label = strings.billHistory,
+                            subtitle = strings.pastBills,
                             icon = Icons.Default.Receipt,
                             accentColor = Color(0xFF0891B2),
                             onClick = onBillHistoryClick,
                             modifier = Modifier.weight(1f)
                         )
                         CompactFeatureCard(
-                            label = "Purchase Bills",
-                            subtitle = "By Wholesaler",
+                            label = strings.purchaseBills,
+                            subtitle = strings.byWholesaler,
                             icon = Icons.Default.LocalShipping,
                             accentColor = Color(0xFF9333EA),
                             onClick = onPurchaseBillsClick,
@@ -238,7 +254,7 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Recent Bills",
+                                text = strings.recentBills,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground,
@@ -249,7 +265,7 @@ fun DashboardScreen(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                             ) {
                                 Text(
-                                    "View All",
+                                    strings.viewAll,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -277,13 +293,12 @@ fun DashboardScreen(
 
 @Composable
 private fun CompactGreeting(shopName: String, ownerName: String) {
+    val strings = LocalAppStrings.current
     val calendar = remember { Calendar.getInstance() }
-    val greeting = remember {
-        when (calendar.get(Calendar.HOUR_OF_DAY)) {
-            in 0..11 -> "Good morning"
-            in 12..16 -> "Good afternoon"
-            else -> "Good evening"
-        }
+    val greeting = when (calendar.get(Calendar.HOUR_OF_DAY)) {
+        in 0..11 -> strings.goodMorning
+        in 12..16 -> strings.goodAfternoon
+        else -> strings.goodEvening
     }
     val dateFormat = remember { SimpleDateFormat("dd MMM, EEE", Locale.getDefault()) }
     val todayDate = remember { dateFormat.format(calendar.time) }
@@ -329,20 +344,21 @@ private fun StatsGrid(
     creditDue: String,
     customers: String
 ) {
+    val strings = LocalAppStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                title = "Today's Sales",
+                title = strings.todaysSales,
                 value = todaySales,
                 icon = Icons.Outlined.TrendingUp,
                 accentColor = Color(0xFF00B37E),
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Total Bills",
+                title = strings.totalBills,
                 value = totalBills,
                 icon = Icons.Outlined.Receipt,
                 accentColor = Color(0xFF3B82F6),
@@ -354,14 +370,14 @@ private fun StatsGrid(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                title = "Credit Due",
+                title = strings.creditDue,
                 value = creditDue,
                 icon = Icons.Outlined.AccountBalanceWallet,
                 accentColor = Color(0xFFF59E0B),
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Customers",
+                title = strings.customers,
                 value = customers,
                 icon = Icons.Outlined.People,
                 accentColor = Color(0xFF7C3AED),
@@ -478,6 +494,7 @@ private fun RecentBillRow(
     currencyFormat: NumberFormat,
     onClick: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
     val isOcr = bill.source == "OCR"
 
@@ -512,7 +529,7 @@ private fun RecentBillRow(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${bill.itemCount} items",
+                    text = "${bill.itemCount} ${strings.items}",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

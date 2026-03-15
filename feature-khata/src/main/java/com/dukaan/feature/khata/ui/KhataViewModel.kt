@@ -2,6 +2,7 @@ package com.dukaan.feature.khata.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dukaan.core.db.SupportedLanguages
 import com.dukaan.core.network.ai.GeminiKhataService
 import com.dukaan.core.network.ai.TransactionParseResult
 import com.dukaan.core.voice.SpeechManager
@@ -159,8 +160,8 @@ class KhataViewModel @Inject constructor(
         }
     }
 
-    fun startVoiceInput() {
-        speechManager.startListening()
+    fun startVoiceInput(languageCode: String = "hi") {
+        speechManager.startListening(SupportedLanguages.getSpeechCode(languageCode))
     }
 
     fun stopVoiceInput() {
@@ -169,7 +170,7 @@ class KhataViewModel @Inject constructor(
 
     // --- AI Features ---
 
-    fun loadCustomerInsight(customerName: String, balance: Double, transactions: List<Transaction>) {
+    fun loadCustomerInsight(customerName: String, balance: Double, transactions: List<Transaction>, languageCode: String = "en") {
         viewModelScope.launch {
             _isInsightLoading.value = true
             _customerInsight.value = null
@@ -178,16 +179,16 @@ class KhataViewModel @Inject constructor(
                 val date = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(txn.date))
                 "$date: $type ₹${txn.amount}${if (!txn.notes.isNullOrBlank()) " (${txn.notes})" else ""}"
             }
-            val insight = khataAiService.getCustomerInsight(customerName, balance, summary)
+            val insight = khataAiService.getCustomerInsight(customerName, balance, summary, languageCode)
             _customerInsight.value = insight
             _isInsightLoading.value = false
         }
     }
 
-    fun generateReminder(customerName: String, amount: Double, shopName: String) {
+    fun generateReminder(customerName: String, amount: Double, shopName: String, languageCode: String = "en") {
         viewModelScope.launch {
             _reminderMessage.value = null
-            val message = khataAiService.generatePaymentReminder(customerName, amount, shopName)
+            val message = khataAiService.generatePaymentReminder(customerName, amount, shopName, languageCode)
             _reminderMessage.value = message
         }
     }
@@ -196,7 +197,7 @@ class KhataViewModel @Inject constructor(
         _reminderMessage.value = null
     }
 
-    fun sendChatMessage(customerName: String, balance: Double, transactions: List<Transaction>, userMessage: String) {
+    fun sendChatMessage(customerName: String, balance: Double, transactions: List<Transaction>, userMessage: String, languageCode: String = "en") {
         viewModelScope.launch {
             _chatMessages.update { it + ChatMessage(isUser = true, text = userMessage) }
             _isAiTyping.value = true
@@ -212,7 +213,7 @@ class KhataViewModel @Inject constructor(
                 }
             }
 
-            val response = khataAiService.chatAboutKhata(context, userMessage)
+            val response = khataAiService.chatAboutKhata(context, userMessage, languageCode)
             _isAiTyping.value = false
             _chatMessages.update { it + ChatMessage(isUser = false, text = response) }
         }

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.ui.components.EmptyStateView
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,22 +28,23 @@ fun WholesaleOrderScreen(
     onShareClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Generate Order", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.generateOrder, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     onBackClick?.let { click ->
                         IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 },
                 actions = {
                     if (uiState.items.isNotEmpty()) {
                         IconButton(onClick = { viewModel.clearOrder() }) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear All")
+                            Icon(Icons.Default.DeleteSweep, contentDescription = strings.clearAll)
                         }
                     }
                 }
@@ -70,7 +72,7 @@ fun WholesaleOrderScreen(
                         ) {
                             Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Save")
+                            Text(strings.save)
                         }
                         Button(
                             onClick = {
@@ -84,7 +86,7 @@ fun WholesaleOrderScreen(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Share & Save")
+                            Text(strings.shareAndSave)
                         }
                     }
                 }
@@ -108,7 +110,7 @@ fun WholesaleOrderScreen(
                     if (uiState.isProcessing) {
                         CircularProgressIndicator()
                         Text(
-                            "AI is parsing your order...",
+                            strings.aiIsParsingOrder,
                             modifier = Modifier.padding(top = 8.dp),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -145,7 +147,7 @@ fun WholesaleOrderScreen(
                             ) {
                                 Icon(
                                     if (uiState.isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                                    contentDescription = "Record",
+                                    contentDescription = strings.listening,
                                     modifier = Modifier.size(32.dp),
                                     tint = Color.White
                                 )
@@ -155,7 +157,7 @@ fun WholesaleOrderScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = if (uiState.isRecording) "Listening..." else "Tap to speak your order",
+                            text = if (uiState.isRecording) strings.listening else strings.tapToSpeakOrder,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (uiState.isRecording) MaterialTheme.colorScheme.error
@@ -213,7 +215,7 @@ fun WholesaleOrderScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Order saved successfully!",
+                            strings.orderSaved,
                             color = Color(0xFF065F46),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium
@@ -224,7 +226,7 @@ fun WholesaleOrderScreen(
 
             // Items Header
             Text(
-                text = "Order Items (${uiState.items.size})",
+                text = "${strings.orderItems} (${uiState.items.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -238,8 +240,8 @@ fun WholesaleOrderScreen(
                 ) {
                     EmptyStateView(
                         icon = Icons.Default.ShoppingCart,
-                        title = "No Items Yet",
-                        subtitle = "Say: \"Sugar 10 kg, Oil 5 litre, Soap 2 dozen\""
+                        title = strings.noItemsYet,
+                        subtitle = strings.orderHint
                     )
                 }
             } else {
@@ -291,7 +293,7 @@ fun WholesaleOrderScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "Remove",
+                                        contentDescription = strings.remove,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                         modifier = Modifier.size(18.dp)
                                     )

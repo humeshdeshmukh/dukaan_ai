@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.dukaan.feature.ocr.analyzer.OcrAnalyzer
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -56,6 +57,7 @@ fun BillScannerScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
+    val strings = LocalAppStrings.current
 
     // Lock to portrait while scanner is active
     DisposableEffect(Unit) {
@@ -145,10 +147,10 @@ fun BillScannerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Bill") },
+                title = { Text(strings.scanBill) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -186,10 +188,10 @@ fun BillScannerScreen(
                 // Top guidance text
                 Text(
                     text = when {
-                        uiState.isScanning -> "Processing..."
-                        isTextStable -> "Bill detected! Tap capture"
-                        hasAnyText -> "Hold steady..."
-                        else -> "Point camera at bill"
+                        uiState.isScanning -> strings.processing
+                        isTextStable -> strings.billDetectedTapCapture
+                        hasAnyText -> strings.holdSteady
+                        else -> strings.pointCameraAtBill
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
@@ -221,7 +223,7 @@ fun BillScannerScreen(
                             CircularProgressIndicator(color = Color.White)
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Processing bill...",
+                                strings.processingBill,
                                 color = Color.White,
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -301,7 +303,7 @@ fun BillScannerScreen(
                             .padding(horizontal = 16.dp),
                         action = {
                             TextButton(onClick = { viewModel.resetScan() }) {
-                                Text("Retry")
+                                Text(strings.retry)
                             }
                         }
                     ) {
@@ -323,13 +325,13 @@ fun BillScannerScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Camera permission is required to scan bills.",
+                        strings.cameraPermissionRequired,
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
+                        Text(strings.grantPermission)
                     }
                 }
             }

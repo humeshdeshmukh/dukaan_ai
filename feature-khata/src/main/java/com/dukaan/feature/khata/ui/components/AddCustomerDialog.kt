@@ -5,30 +5,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @Composable
 fun AddCustomerDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String, phone: String) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Customer") },
+        title = { Text(strings.addNewCustomer) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Customer Name") },
+                    label = { Text(strings.customerNameLabel) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
-                    label = { Text("Phone Number") },
+                    label = { Text(strings.phoneNumberLabel) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -42,12 +44,12 @@ fun AddCustomerDialog(
                 },
                 enabled = name.isNotBlank() && phone.isNotBlank()
             ) {
-                Text("Add")
+                Text(strings.add)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         }
     )

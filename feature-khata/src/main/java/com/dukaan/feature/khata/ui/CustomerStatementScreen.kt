@@ -8,15 +8,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.domain.model.Customer
 import com.dukaan.feature.khata.domain.model.StatementShareData
 import com.dukaan.feature.khata.domain.model.Transaction
 import com.dukaan.feature.khata.domain.model.TransactionType
+import com.dukaan.feature.khata.ui.components.DateRangePickerDialog
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,13 +32,17 @@ fun CustomerStatementScreen(
     onBackClick: () -> Unit,
     onShareClick: (StatementShareData) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val customer by viewModel.getCustomerFlow(customerId).collectAsState(initial = null)
     val allTransactions by viewModel.getTransactions(customerId).collectAsState(initial = emptyList())
     var selectedFilter by remember { mutableStateOf("All") }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    var showDatePicker by remember { mutableStateOf(false) }
+    var customStartDate by remember { mutableLongStateOf(0L) }
+    var customEndDate by remember { mutableLongStateOf(0L) }
 
-    val filteredTransactions = remember(allTransactions, selectedFilter) {
+    val filteredTransactions = remember(allTransactions, selectedFilter, customStartDate, customEndDate) {
         val now = System.currentTimeMillis()
         when (selectedFilter) {
             "Week" -> {
@@ -50,6 +57,11 @@ fun CustomerStatementScreen(
                 val threeMonthsAgo = now - 90L * 24 * 60 * 60 * 1000L
                 allTransactions.filter { it.date >= threeMonthsAgo }
             }
+            "Custom" -> {
+                if (customStartDate > 0 && customEndDate > 0) {
+                    allTransactions.filter { it.date in customStartDate..customEndDate }
+                } else allTransactions
+            }
             else -> allTransactions
         }
     }
@@ -61,20 +73,23 @@ fun CustomerStatementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Statement", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.statement, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         val c = customer ?: return@IconButton
+                        val period = if (selectedFilter == "Custom" && customStartDate > 0 && customEndDate > 0) {
+                            "${dateFormat.format(Date(customStartDate))} - ${dateFormat.format(Date(customEndDate))}"
+                        } else selectedFilter
                         onShareClick(
                             StatementShareData(
                                 customerName = c.name,
                                 customerPhone = c.phone,
-                                period = selectedFilter,
+                                period = period,
                                 transactions = filteredTransactions,
                                 totalCredit = totalCredit,
                                 totalPayment = totalPayment,
@@ -82,7 +97,7 @@ fun CustomerStatementScreen(
                             )
                         )
                     }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
+                        Icon(Icons.Default.Share, contentDescription = strings.share)
                     }
                 }
             )
@@ -114,19 +129,43 @@ fun CustomerStatementScreen(
 
             // Date Filter
             item {
+                val filterLabels = mapOf(
+                    "All" to strings.all,
+                    "Week" to strings.week,
+                    "Month" to strings.month,
+                    "3 Months" to strings.threeMonths,
+                    "Custom" to strings.custom
+                )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("All", "Week", "Month", "3 Months").forEach { filter ->
+                    listOf("All", "Week", "Month", "3 Months", "Custom").forEach { filter ->
                         FilterChip(
                             selected = selectedFilter == filter,
-                            onClick = { selectedFilter = filter },
-                            label = { Text(filter, style = MaterialTheme.typography.labelSmall) },
+                            onClick = {
+                                if (filter == "Custom") {
+                                    showDatePicker = true
+                                } else {
+                                    selectedFilter = filter
+                                }
+                            },
+                            label = { Text(filterLabels[filter] ?: filter, style = MaterialTheme.typography.labelSmall) },
                             leadingIcon = if (selectedFilter == filter) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             } else null
                         )
                     }
+                }
+            }
+
+            // Show selected date range for Custom filter
+            if (selectedFilter == "Custom" && customStartDate > 0 && customEndDate > 0) {
+                item {
+                    Text(
+                        text = "${dateFormat.format(Date(customStartDate))} - ${dateFormat.format(Date(customEndDate))}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -142,7 +181,7 @@ fun CustomerStatementScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            "Summary ($selectedFilter)",
+                            "${strings.summary} ($selectedFilter)",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -151,7 +190,7 @@ fun CustomerStatementScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Total Credit (Baki)", style = MaterialTheme.typography.bodyMedium)
+                            Text(strings.totalCreditBaki, style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 currencyFormat.format(totalCredit),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -163,7 +202,7 @@ fun CustomerStatementScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Total Payments (Jama)", style = MaterialTheme.typography.bodyMedium)
+                            Text(strings.totalPaymentsJama, style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 currencyFormat.format(totalPayment),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -177,7 +216,7 @@ fun CustomerStatementScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                "Net Balance",
+                                strings.netBalance,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -189,7 +228,7 @@ fun CustomerStatementScreen(
                             )
                         }
                         Text(
-                            text = if (netBalance > 0) "Customer owes you" else if (netBalance < 0) "You owe customer" else "Settled",
+                            text = if (netBalance > 0) strings.customerOwesYou else if (netBalance < 0) strings.youOweCustomer else strings.settled,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -200,7 +239,7 @@ fun CustomerStatementScreen(
             // Transactions Header
             item {
                 Text(
-                    text = "Transactions (${filteredTransactions.size})",
+                    text = "${strings.transactions} (${filteredTransactions.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -216,7 +255,7 @@ fun CustomerStatementScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "No transactions in this period",
+                            strings.noTransactionsInPeriod,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -229,6 +268,19 @@ fun CustomerStatementScreen(
             }
         }
     }
+
+    // Custom Date Range Picker
+    if (showDatePicker) {
+        DateRangePickerDialog(
+            onDismiss = { showDatePicker = false },
+            onConfirm = { start, end ->
+                customStartDate = start
+                customEndDate = end
+                selectedFilter = "Custom"
+                showDatePicker = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -237,6 +289,7 @@ private fun StatementTransactionRow(
     currencyFormat: NumberFormat,
     dateFormat: SimpleDateFormat
 ) {
+    val strings = LocalAppStrings.current
     val isJama = transaction.type == TransactionType.JAMA
     val tint = if (isJama) Color(0xFF00B37E) else Color(0xFFEF4444)
 
@@ -261,7 +314,7 @@ private fun StatementTransactionRow(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (isJama) "Payment Received" else "Credit Given",
+                text = if (isJama) strings.paymentReceived else strings.creditGiven,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )

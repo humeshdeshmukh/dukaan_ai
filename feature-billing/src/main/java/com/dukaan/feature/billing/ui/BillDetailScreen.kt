@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dukaan.core.network.model.Bill
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -45,6 +46,7 @@ fun BillDetailScreen(
     var showImageViewer by remember { mutableStateOf(false) }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    val strings = LocalAppStrings.current
 
     LaunchedEffect(billId) {
         isLoading = true
@@ -55,16 +57,16 @@ fun BillDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bill Details", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.billDetails, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 },
                 actions = {
                     bill?.let { b ->
                         IconButton(onClick = { onShareClick(b) }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
+                            Icon(Icons.Default.Share, contentDescription = strings.share)
                         }
                     }
                 }
@@ -82,7 +84,7 @@ fun BillDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(strings.total, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text(
                             currencyFormat.format(b.totalAmount),
                             style = MaterialTheme.typography.headlineSmall,
@@ -139,7 +141,7 @@ fun BillDetailScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                "Tap to view full image",
+                                                strings.tapToViewFullImage,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -223,7 +225,7 @@ fun BillDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Bill not found.")
+                        Text(strings.billNotFound)
                     }
                 }
             }
@@ -256,6 +258,7 @@ private fun BillImageViewerDialog(
     var scale by remember { mutableFloatStateOf(1f) }
     var rotation by remember { mutableFloatStateOf(0f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    val strings = LocalAppStrings.current
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -303,9 +306,9 @@ private fun BillImageViewerDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = strings.close, tint = Color.White)
                 }
-                Text("Pinch to zoom", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
+                Text(strings.pinchToZoom, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                 Spacer(Modifier.size(48.dp))
             }
 
@@ -327,7 +330,7 @@ private fun BillImageViewerDialog(
                 ) {
                     Icon(Icons.Default.RotateRight, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Rotate")
+                    Text(strings.rotate)
                 }
                 FilledTonalButton(
                     onClick = { scale = 1f; rotation = 0f; offset = Offset.Zero },
@@ -337,7 +340,7 @@ private fun BillImageViewerDialog(
                 ) {
                     Icon(Icons.Default.Refresh, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Reset")
+                    Text(strings.reset)
                 }
             }
         }

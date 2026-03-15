@@ -3,7 +3,10 @@ package com.dukaan.ai.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -14,7 +17,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dukaan.ai.util.shareViaWhatsApp
 import com.dukaan.ai.util.sharePdfFile
 import com.dukaan.ai.util.PdfGenerator
+import com.dukaan.ai.util.PdfPreviewDialog
 import com.dukaan.ai.util.toShopInfo
+import com.dukaan.ai.translation.TranslationManager
+import com.dukaan.core.db.SupportedLanguages
 import com.dukaan.feature.billing.ui.BillingViewModel
 import com.dukaan.feature.billing.ui.VoiceBillingScreen
 import com.dukaan.feature.billing.ui.BillHistoryScreen
@@ -38,6 +44,7 @@ import com.dukaan.feature.ocr.ui.ScannedBillHistoryViewModel
 import com.dukaan.feature.ocr.ui.WholesalerBillsScreen
 import com.dukaan.feature.orders.ui.WholesaleOrderScreen
 import com.dukaan.feature.orders.ui.OrderViewModel
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -71,8 +78,11 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifier) {
+fun AppNavigation(navController: NavHostController, translationManager: TranslationManager, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val isTranslating by translationManager.isTranslating.collectAsState()
+    var pdfPreviewFile by remember { mutableStateOf<java.io.File?>(null) }
 
     NavHost(
         navController = navController,
@@ -149,6 +159,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     customerId = customerId,
                     viewModel = viewModel,
                     shopName = settingsState.shopName,
+                    languageCode = settingsState.languageCode,
                     onAddTransaction = { type ->
                         navController.navigate(Screen.AddTransaction.createRoute(customerId, type))
                     },
@@ -190,8 +201,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     onBackClick = { navController.popBackStack() },
                     onShareClick = { data ->
                         val shopInfo = settingsState.toShopInfo()
-                        val pdfFile = PdfGenerator.generateStatementPdf(context, shopInfo, data)
-                        sharePdfFile(context, pdfFile, "Share Statement PDF")
+                        val file = PdfGenerator.generateStatementPdf(context, shopInfo, data)
+                        pdfPreviewFile = file
                     }
                 )
             }
@@ -304,8 +315,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onBackClick = { navController.popBackStack() },
                 onShareClick = { bill ->
                     val shopInfo = settingsState.toShopInfo()
-                    val pdfFile = PdfGenerator.generateBillPdf(context, shopInfo, bill)
-                    sharePdfFile(context, pdfFile, "Share Invoice PDF")
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    pdfPreviewFile = file
                 }
             )
         }
@@ -331,6 +342,33 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 bankIfscCode = settingsState.bankIfscCode,
                 onSaveProfile = { sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic ->
                     settingsViewModel.saveProfile(sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic)
+                },
+                languageCode = settingsState.languageCode,
+                onLanguageChange = { settingsViewModel.updateLanguage(it) },
+                onApplyLanguage = { code ->
+                    coroutineScope.launch {
+                        settingsViewModel.updateLanguage(code)
+                        val langName = SupportedLanguages.getByCode(code).englishName
+                        translationManager.translateAndApply(code, langName)
+                    }
+                },
+                isTranslating = isTranslating,
+                onPreviewPdf = {
+                    val shopInfo = settingsState.toShopInfo()
+                    val sampleBill = com.dukaan.core.network.model.Bill(
+                        id = 0,
+                        items = listOf(
+                            com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
+                            com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
+                            com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
+                        ),
+                        totalAmount = 310.0,
+                        sellerName = "",
+                        billNumber = "SAMPLE-001",
+                        timestamp = System.currentTimeMillis()
+                    )
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
+                    pdfPreviewFile = file
                 }
             )
         }
@@ -363,5 +401,17 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onBackClick = { navController.popBackStack() }
             )
         }
+    }
+
+    // PDF Preview Dialog overlay
+    pdfPreviewFile?.let { file ->
+        PdfPreviewDialog(
+            pdfFile = file,
+            onShare = {
+                sharePdfFile(context, file, "Share PDF")
+                pdfPreviewFile = null
+            },
+            onDismiss = { pdfPreviewFile = null }
+        )
     }
 }

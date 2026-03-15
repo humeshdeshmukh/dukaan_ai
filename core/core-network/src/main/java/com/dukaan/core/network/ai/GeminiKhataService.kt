@@ -14,9 +14,9 @@ data class TransactionParseResult(
 )
 
 interface GeminiKhataService {
-    suspend fun getCustomerInsight(customerName: String, balance: Double, transactionSummary: String): String
-    suspend fun generatePaymentReminder(customerName: String, amount: Double, shopName: String): String
-    suspend fun chatAboutKhata(khataContext: String, userMessage: String): String
+    suspend fun getCustomerInsight(customerName: String, balance: Double, transactionSummary: String, languageCode: String = "en"): String
+    suspend fun generatePaymentReminder(customerName: String, amount: Double, shopName: String, languageCode: String = "en"): String
+    suspend fun chatAboutKhata(khataContext: String, userMessage: String, languageCode: String = "en"): String
     suspend fun parseTransactionSpeech(speechText: String): TransactionParseResult
 }
 
@@ -25,10 +25,30 @@ class GeminiKhataServiceImpl @Inject constructor(
     private val generativeModel: GenerativeModel
 ) : GeminiKhataService {
 
+    private fun languageInstruction(languageCode: String): String {
+        return when (languageCode) {
+            "en" -> "Respond in simple, easy-to-understand Hinglish (Hindi-English mix)."
+            "hi" -> "Respond in simple Hindi. Use easy words."
+            else -> {
+                val langName = when (languageCode) {
+                    "bn" -> "Bengali"; "te" -> "Telugu"; "mr" -> "Marathi"; "ta" -> "Tamil"
+                    "ur" -> "Urdu"; "gu" -> "Gujarati"; "kn" -> "Kannada"; "ml" -> "Malayalam"
+                    "or" -> "Odia"; "pa" -> "Punjabi"; "as" -> "Assamese"; "mai" -> "Maithili"
+                    "ne" -> "Nepali"; "kok" -> "Konkani"; "doi" -> "Dogri"; "sa" -> "Sanskrit"
+                    "ks" -> "Kashmiri"; "sd" -> "Sindhi"; "mni" -> "Manipuri"; "brx" -> "Bodo"
+                    "sat" -> "Santali"
+                    else -> "Hindi"
+                }
+                "Respond in simple $langName language. Use easy, everyday words."
+            }
+        }
+    }
+
     override suspend fun getCustomerInsight(
         customerName: String,
         balance: Double,
-        transactionSummary: String
+        transactionSummary: String,
+        languageCode: String
     ): String = withContext(Dispatchers.IO) {
         val balanceType = if (balance < 0) "owes you ₹${Math.abs(balance)}" else "you owe them ₹${Math.abs(balance)}"
         val prompt = """
@@ -45,7 +65,9 @@ class GeminiKhataServiceImpl @Inject constructor(
             - Credit risk assessment (low/medium/high)
             - Actionable suggestion for the shopkeeper
 
-            Keep it very concise and practical. Respond in English. Use ₹ for currency.
+            Keep it very concise and practical. Use ₹ for currency.
+            Do not use any markdown formatting like ** or * or #. Use plain text only.
+            ${languageInstruction(languageCode)}
         """.trimIndent()
 
         try {
@@ -60,7 +82,8 @@ class GeminiKhataServiceImpl @Inject constructor(
     override suspend fun generatePaymentReminder(
         customerName: String,
         amount: Double,
-        shopName: String
+        shopName: String,
+        languageCode: String
     ): String = withContext(Dispatchers.IO) {
         val prompt = """
             You are an AI for Dukaan AI, a shop management app for Indian shopkeepers.
@@ -70,7 +93,7 @@ class GeminiKhataServiceImpl @Inject constructor(
             Outstanding Amount: ₹$amount
             Shop Name: $shopName
 
-            Generate a short, polite, and professional reminder message in Hindi-English mix (Hinglish).
+            Generate a short, polite, and professional reminder message.
             The message should:
             - Be friendly and respectful
             - Mention the amount clearly
@@ -79,6 +102,8 @@ class GeminiKhataServiceImpl @Inject constructor(
             - Be 3-4 lines max
 
             Return ONLY the message text, nothing else.
+            Do not use any markdown formatting like ** or * or #. Plain text only.
+            ${languageInstruction(languageCode)}
         """.trimIndent()
 
         try {
@@ -92,7 +117,8 @@ class GeminiKhataServiceImpl @Inject constructor(
 
     override suspend fun chatAboutKhata(
         khataContext: String,
-        userMessage: String
+        userMessage: String,
+        languageCode: String
     ): String = withContext(Dispatchers.IO) {
         val prompt = """
             You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
@@ -103,9 +129,11 @@ class GeminiKhataServiceImpl @Inject constructor(
 
             User's question: "$userMessage"
 
-            Respond helpfully and concisely in the same language the user asks (Hindi or English).
+            Respond helpfully and concisely in simple, easy-to-understand language.
             Keep responses short and practical — this is for a busy shopkeeper.
+            Do not use any markdown formatting like ** or * or #. Plain text only.
             Use ₹ for currency amounts.
+            ${languageInstruction(languageCode)}
         """.trimIndent()
 
         try {

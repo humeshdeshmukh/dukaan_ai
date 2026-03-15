@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,14 +26,15 @@ fun ScannedBillHistoryScreen(
 ) {
     val sellers by viewModel.sellerSummaries.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Purchase Bills", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.purchaseBills, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -43,7 +45,7 @@ fun ScannedBillHistoryScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search wholesaler...") },
+                placeholder = { Text(strings.searchWholesaler) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,14 +72,14 @@ fun ScannedBillHistoryScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = if (searchQuery.isNotBlank()) "No wholesalers found"
-                                   else "No scanned bills yet",
+                            text = if (searchQuery.isNotBlank()) strings.noWholesalersFound
+                                   else strings.noScannedBillsYet,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (searchQuery.isBlank()) {
                             Text(
-                                text = "Scan a bill to get started!",
+                                text = strings.scanBillToGetStarted,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
@@ -108,6 +110,7 @@ private fun WholesalerSummaryCard(
     onClick: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val strings = LocalAppStrings.current
 
     Card(
         onClick = onClick,
@@ -145,7 +148,7 @@ private fun WholesalerSummaryCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${summary.billCount} bill${if (summary.billCount > 1) "s" else ""} | Last: ${dateFormat.format(Date(summary.lastBillDate))}",
+                    text = "${summary.billCount} ${if (summary.billCount > 1) strings.bills else strings.bill} | Last: ${dateFormat.format(Date(summary.lastBillDate))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -160,7 +163,7 @@ private fun WholesalerSummaryCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Total",
+                    text = strings.total,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

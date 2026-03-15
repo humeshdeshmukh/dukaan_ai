@@ -26,7 +26,8 @@ data class DashboardUiState(
     val totalBills: Int = 0,
     val totalReceivable: Double = 0.0,
     val customerCount: Int = 0,
-    val recentBills: List<RecentBillItem> = emptyList()
+    val recentBills: List<RecentBillItem> = emptyList(),
+    val languageCode: String = "en"
 )
 
 @HiltViewModel
@@ -70,7 +71,8 @@ class DashboardViewModel @Inject constructor(
                     timestamp = bwi.bill.timestamp,
                     source = bwi.bill.source.name
                 )
-            }
+            },
+            languageCode = profile?.languageCode ?: "en"
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.ui.components.ConfirmationDialog
 import com.dukaan.core.ui.components.EmptyStateView
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.inventory.domain.model.Product
 import java.text.NumberFormat
 import java.util.*
@@ -32,14 +33,15 @@ fun InventoryListScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     var productToDelete by remember { mutableStateOf<Long?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Inventory", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.inventory, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -49,7 +51,7 @@ fun InventoryListScreen(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Product")
+                Icon(Icons.Default.Add, contentDescription = strings.addProduct)
             }
         }
     ) { padding ->
@@ -65,7 +67,7 @@ fun InventoryListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search products...") },
+                placeholder = { Text(strings.searchProducts) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
@@ -93,7 +95,7 @@ fun InventoryListScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Text("Products", style = MaterialTheme.typography.labelSmall)
+                        Text(strings.products, style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 Surface(
@@ -113,7 +115,7 @@ fun InventoryListScreen(
                             color = if (uiState.lowStockCount > 0) Color(0xFFEF4444)
                             else MaterialTheme.colorScheme.secondary
                         )
-                        Text("Low Stock", style = MaterialTheme.typography.labelSmall)
+                        Text(strings.lowStock, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -127,8 +129,8 @@ fun InventoryListScreen(
                 ) {
                     EmptyStateView(
                         icon = Icons.Default.Inventory2,
-                        title = "No Products Yet",
-                        subtitle = "Add products to track your inventory"
+                        title = strings.noProductsYet,
+                        subtitle = strings.addProductsToTrack
                     )
                 }
             } else {
@@ -156,7 +158,7 @@ fun InventoryListScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "${lowStockProducts.size} product(s) running low on stock",
+                                        "${lowStockProducts.size} ${strings.lowStockRunning}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFFEF4444),
                                         fontWeight = FontWeight.Medium
@@ -181,9 +183,9 @@ fun InventoryListScreen(
 
         productToDelete?.let { id ->
             ConfirmationDialog(
-                title = "Delete Product",
-                message = "This product will be permanently removed from your inventory.",
-                confirmText = "Delete",
+                title = strings.deleteProduct,
+                message = strings.deleteProductMessage,
+                confirmText = strings.delete,
                 onConfirm = {
                     viewModel.deleteProduct(id)
                     productToDelete = null
@@ -206,6 +208,7 @@ fun InventoryListScreen(
 
 @Composable
 private fun ProductCard(product: Product, currencyFormat: NumberFormat, onDeleteClick: () -> Unit) {
+    val strings = LocalAppStrings.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -261,7 +264,7 @@ private fun ProductCard(product: Product, currencyFormat: NumberFormat, onDelete
             IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = strings.delete,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(18.dp)
                 )
@@ -282,23 +285,24 @@ private fun AddProductDialog(
     var costPrice by remember { mutableStateOf("") }
     var sellingPrice by remember { mutableStateOf("") }
     var threshold by remember { mutableStateOf("5") }
+    val strings = LocalAppStrings.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Product") },
+        title = { Text(strings.addProduct) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Product Name*") },
+                    label = { Text(strings.productNameLabel) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Category") },
+                    label = { Text(strings.categoryLabel) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -306,14 +310,14 @@ private fun AddProductDialog(
                     OutlinedTextField(
                         value = stock,
                         onValueChange = { stock = it },
-                        label = { Text("Stock*") },
+                        label = { Text(strings.stockLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = unit,
                         onValueChange = { unit = it },
-                        label = { Text("Unit*") },
+                        label = { Text(strings.unitLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -322,14 +326,14 @@ private fun AddProductDialog(
                     OutlinedTextField(
                         value = costPrice,
                         onValueChange = { costPrice = it },
-                        label = { Text("Cost Price") },
+                        label = { Text(strings.costPriceLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = sellingPrice,
                         onValueChange = { sellingPrice = it },
-                        label = { Text("Selling Price*") },
+                        label = { Text(strings.sellingPriceLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -337,7 +341,7 @@ private fun AddProductDialog(
                 OutlinedTextField(
                     value = threshold,
                     onValueChange = { threshold = it },
-                    label = { Text("Low Stock Alert At") },
+                    label = { Text(strings.lowStockAlertAt) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -355,8 +359,8 @@ private fun AddProductDialog(
                     }
                 },
                 enabled = name.isNotBlank() && unit.isNotBlank()
-            ) { Text("Add") }
+            ) { Text(strings.add) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } }
     )
 }

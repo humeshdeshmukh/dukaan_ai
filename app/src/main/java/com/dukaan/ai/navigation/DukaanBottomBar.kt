@@ -9,18 +9,28 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @Composable
 fun DukaanBottomBar(
     navController: NavHostController,
     currentRoute: String?
 ) {
+    val strings = LocalAppStrings.current
     val tabs = listOf(
         BottomNavItem.Home,
         BottomNavItem.Scan,
         BottomNavItem.Bills,
         BottomNavItem.Khata,
         BottomNavItem.Orders
+    )
+
+    val labelMap = mapOf(
+        BottomNavItem.Home to strings.navHome,
+        BottomNavItem.Scan to strings.navScan,
+        BottomNavItem.Bills to strings.navBills,
+        BottomNavItem.Khata to strings.navKhata,
+        BottomNavItem.Orders to strings.navOrders
     )
 
     val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
@@ -60,12 +70,12 @@ fun DukaanBottomBar(
                 icon = {
                     Icon(
                         imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.label
+                        contentDescription = labelMap[item] ?: item.label
                     )
                 },
                 label = {
                     Text(
-                        text = item.label,
+                        text = labelMap[item] ?: item.label,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                     )

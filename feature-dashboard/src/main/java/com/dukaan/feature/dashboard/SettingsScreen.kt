@@ -1,6 +1,7 @@
 package com.dukaan.feature.dashboard
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.db.SupportedLanguages
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,18 +40,25 @@ fun SettingsScreen(
     bankIfscCode: String = "",
     onSaveProfile: (shopName: String, ownerName: String, phone: String, address: String,
                     gstNumber: String, email: String, upiId: String, tagline: String,
-                    bankName: String, bankAccountNumber: String, bankIfscCode: String) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> }
+                    bankName: String, bankAccountNumber: String, bankIfscCode: String) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
+    languageCode: String = "en",
+    onLanguageChange: (String) -> Unit = {},
+    onApplyLanguage: (String) -> Unit = {},
+    isTranslating: Boolean = false,
+    onPreviewPdf: () -> Unit = {}
 ) {
+    val strings = LocalAppStrings.current
     var showEditProfile by remember { mutableStateOf(false) }
+    var pendingLanguageCode by remember(languageCode) { mutableStateOf(languageCode) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.settings, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     onBackClick?.let { click ->
                         IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 }
@@ -64,7 +74,7 @@ fun SettingsScreen(
         ) {
             // Shop Profile Section
             Text(
-                "Shop Profile",
+                strings.shopProfile,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -119,8 +129,8 @@ fun SettingsScreen(
                             }
                         }
                     } else {
-                        Text("Set up your shop profile", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Your shop details will appear on invoices and statements", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(strings.setUpYourShopProfile, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(strings.profileOnInvoices, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
@@ -130,7 +140,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit Profile")
+                        Text(strings.editProfile)
                     }
                 }
             }
@@ -139,7 +149,7 @@ fun SettingsScreen(
 
             // Appearance
             Text(
-                "Appearance",
+                strings.appearance,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -157,7 +167,7 @@ fun SettingsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Dark Theme", fontWeight = FontWeight.Medium)
+                        Text(strings.darkTheme, fontWeight = FontWeight.Medium)
                     }
                     Switch(checked = isDarkTheme, onCheckedChange = onToggleDarkTheme)
                 }
@@ -165,9 +175,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // About
+            // Language
             Text(
-                "About",
+                strings.appLanguage,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -178,16 +188,126 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    SettingsRow(icon = Icons.Outlined.Info, title = "App Version", value = "1.0.0")
+                    var showLanguagePicker by remember { mutableStateOf(false) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showLanguagePicker = !showLanguagePicker },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(strings.language, fontWeight = FontWeight.Medium)
+                                Text(
+                                    SupportedLanguages.getLanguageName(languageCode),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(
+                            if (showLanguagePicker) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = "Expand"
+                        )
+                    }
+
+                    AnimatedVisibility(visible = showLanguagePicker) {
+                        Column(modifier = Modifier.padding(top = 12.dp)) {
+                            SupportedLanguages.languages.chunked(3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    row.forEach { lang ->
+                                        FilterChip(
+                                            selected = pendingLanguageCode == lang.code,
+                                            onClick = { pendingLanguageCode = lang.code },
+                                            label = {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(lang.nativeName, style = MaterialTheme.typography.labelSmall)
+                                                    Text(lang.englishName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
+
+                            // Apply button
+                            if (pendingLanguageCode != languageCode) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { onApplyLanguage(pendingLanguageCode) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    enabled = !isTranslating
+                                ) {
+                                    if (isTranslating) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(strings.translatingApp)
+                                    } else {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(strings.applyLanguage)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // PDF Preview
+            OutlinedButton(
+                onClick = onPreviewPdf,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                enabled = shopName.isNotBlank()
+            ) {
+                Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(strings.previewInvoicePdf)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // About
+            Text(
+                strings.about,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SettingsRow(icon = Icons.Outlined.Info, title = strings.appVersion, value = "1.0.0")
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    SettingsRow(icon = Icons.Outlined.AutoAwesome, title = "Powered by", value = "Gemini AI")
+                    SettingsRow(icon = Icons.Outlined.AutoAwesome, title = strings.poweredBy, value = "Gemini AI")
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                "Made with care for Indian Shopkeepers",
+                strings.madeWithCare,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -248,45 +368,46 @@ private fun EditProfileDialog(
     var editBankAccountNumber by remember { mutableStateOf(bankAccountNumber) }
     var editBankIfscCode by remember { mutableStateOf(bankIfscCode) }
     var showBankSection by remember { mutableStateOf(bankName.isNotBlank()) }
+    val strings = LocalAppStrings.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Shop Profile", fontWeight = FontWeight.Bold) },
+        title = { Text(strings.editShopProfile, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Basic Info
-                Text("Basic Info", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(strings.basicInfo, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 OutlinedTextField(
                     value = editShopName, onValueChange = { editShopName = it },
-                    label = { Text("Shop Name *") },
+                    label = { Text(strings.shopNameLabel) },
                     leadingIcon = { Icon(Icons.Outlined.Store, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(
                     value = editOwnerName, onValueChange = { editOwnerName = it },
-                    label = { Text("Owner Name") },
+                    label = { Text(strings.ownerNameLabel) },
                     leadingIcon = { Icon(Icons.Outlined.Person, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(
                     value = editPhone, onValueChange = { editPhone = it },
-                    label = { Text("Phone") },
+                    label = { Text(strings.phoneLabel) },
                     leadingIcon = { Icon(Icons.Outlined.Phone, null, Modifier.size(20.dp)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(
                     value = editAddress, onValueChange = { editAddress = it },
-                    label = { Text("Address") },
+                    label = { Text(strings.addressLabel) },
                     leadingIcon = { Icon(Icons.Outlined.LocationOn, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), maxLines = 2
                 )
                 OutlinedTextField(
                     value = editTagline, onValueChange = { editTagline = it },
-                    label = { Text("Tagline / Description") },
+                    label = { Text(strings.taglineLabel) },
                     leadingIcon = { Icon(Icons.Outlined.FormatQuote, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
@@ -294,23 +415,23 @@ private fun EditProfileDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Tax & Payment
-                Text("Tax & Payment", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(strings.taxAndPayment, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 OutlinedTextField(
                     value = editGstNumber, onValueChange = { editGstNumber = it.uppercase() },
-                    label = { Text("GST Number (GSTIN)") },
+                    label = { Text(strings.gstNumberLabel) },
                     leadingIcon = { Icon(Icons.Outlined.Receipt, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(
                     value = editEmail, onValueChange = { editEmail = it },
-                    label = { Text("Email") },
+                    label = { Text(strings.emailLabel) },
                     leadingIcon = { Icon(Icons.Outlined.Email, null, Modifier.size(20.dp)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
                 OutlinedTextField(
                     value = editUpiId, onValueChange = { editUpiId = it },
-                    label = { Text("UPI ID (e.g. shop@upi)") },
+                    label = { Text(strings.upiIdLabel) },
                     leadingIcon = { Icon(Icons.Outlined.AccountBalanceWallet, null, Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
@@ -323,29 +444,29 @@ private fun EditProfileDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Bank Details", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(strings.bankDetails, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     TextButton(onClick = { showBankSection = !showBankSection }) {
-                        Text(if (showBankSection) "Hide" else "Show")
+                        Text(if (showBankSection) strings.hide else strings.show)
                     }
                 }
                 AnimatedVisibility(visible = showBankSection) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedTextField(
                             value = editBankName, onValueChange = { editBankName = it },
-                            label = { Text("Bank Name") },
+                            label = { Text(strings.bankNameLabel) },
                             leadingIcon = { Icon(Icons.Outlined.AccountBalance, null, Modifier.size(20.dp)) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true
                         )
                         OutlinedTextField(
                             value = editBankAccountNumber, onValueChange = { editBankAccountNumber = it },
-                            label = { Text("Account Number") },
+                            label = { Text(strings.accountNumberLabel) },
                             leadingIcon = { Icon(Icons.Outlined.CreditCard, null, Modifier.size(20.dp)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(), singleLine = true
                         )
                         OutlinedTextField(
                             value = editBankIfscCode, onValueChange = { editBankIfscCode = it.uppercase() },
-                            label = { Text("IFSC Code") },
+                            label = { Text(strings.ifscCodeLabel) },
                             leadingIcon = { Icon(Icons.Outlined.Pin, null, Modifier.size(20.dp)) },
                             modifier = Modifier.fillMaxWidth(), singleLine = true
                         )
@@ -361,10 +482,10 @@ private fun EditProfileDialog(
                         editBankName, editBankAccountNumber, editBankIfscCode)
                 },
                 enabled = editShopName.isNotBlank()
-            ) { Text("Save") }
+            ) { Text(strings.save) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(strings.cancel) }
         }
     )
 }

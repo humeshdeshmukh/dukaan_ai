@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.network.model.Bill
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,6 +27,7 @@ fun WholesalerBillsScreen(
     onBackClick: () -> Unit
 ) {
     val bills by viewModel.getBillsByWholesaler(sellerName).collectAsState(initial = emptyList())
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
@@ -34,7 +36,7 @@ fun WholesalerBillsScreen(
                     Column {
                         Text(sellerName, fontWeight = FontWeight.Bold)
                         Text(
-                            "${bills.size} bill${if (bills.size != 1) "s" else ""}",
+                            "${bills.size} ${if (bills.size != 1) strings.bills else strings.bill}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -42,7 +44,7 @@ fun WholesalerBillsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -54,7 +56,7 @@ fun WholesalerBillsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No bills found",
+                    strings.noBillsFound,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -78,7 +80,7 @@ fun WholesalerBillsScreen(
                     ) {
                         Column {
                             Text(
-                                "Total Purchases",
+                                strings.totalPurchases,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
@@ -127,6 +129,7 @@ private fun BillCard(
     onClick: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+    val strings = LocalAppStrings.current
 
     Card(
         onClick = onClick,
@@ -154,7 +157,7 @@ private fun BillCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "${bill.items.size} item${if (bill.items.size != 1) "s" else ""}",
+                    text = "${bill.items.size} ${if (bill.items.size != 1) strings.items else strings.item}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

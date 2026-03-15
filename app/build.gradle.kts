@@ -53,6 +53,8 @@ dependencies {
     implementation(project(":core:core-db"))
     implementation(project(":core:core-network"))
     implementation(project(":core:core-voice"))
+
+    implementation(libs.retrofit.gson)
     
     implementation(project(":feature-billing"))
     implementation(project(":feature-khata"))

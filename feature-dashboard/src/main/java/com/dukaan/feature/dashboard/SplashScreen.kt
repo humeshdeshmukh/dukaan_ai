@@ -18,11 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @Composable
 fun SplashScreen(
     onNavigateToDashboard: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var startAnimation by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
@@ -101,7 +103,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = "Dukaan AI",
+                text = strings.appName,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
@@ -111,7 +113,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Your Smart Shop Assistant",
+                text = strings.smartShopAssistant,
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White.copy(alpha = 0.7f),
                 fontWeight = FontWeight.Medium

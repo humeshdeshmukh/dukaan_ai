@@ -3,6 +3,8 @@ package com.dukaan.core.network.di
 import com.dukaan.core.network.BuildConfig
 import com.dukaan.core.network.ai.GeminiKhataService
 import com.dukaan.core.network.ai.GeminiKhataServiceImpl
+import com.dukaan.core.network.ai.GeminiTranslationService
+import com.dukaan.core.network.ai.GeminiTranslationServiceImpl
 import com.google.ai.client.generativeai.GenerativeModel
 import dagger.Module
 import dagger.Provides
@@ -27,5 +29,11 @@ object NetworkModule {
     @Singleton
     fun provideGeminiKhataService(generativeModel: GenerativeModel): GeminiKhataService {
         return GeminiKhataServiceImpl(generativeModel)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGeminiTranslationService(generativeModel: GenerativeModel): GeminiTranslationService {
+        return GeminiTranslationServiceImpl(generativeModel)
     }
 }

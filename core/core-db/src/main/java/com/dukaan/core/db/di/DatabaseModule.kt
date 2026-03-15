@@ -25,6 +25,18 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS translation_cache (
+                    languageCode TEXT NOT NULL PRIMARY KEY,
+                    translationsJson TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL
+                )
+            """.trimIndent())
+        }
+    }
+
     @Provides
     @Singleton
     fun provideKhataDatabase(
@@ -34,7 +46,7 @@ object DatabaseModule {
             context,
             KhataDatabase::class.java,
             "dukaan_khata.db"
-        ).addMigrations(MIGRATION_2_3)
+        ).addMigrations(MIGRATION_2_3, MIGRATION_4_5)
          .fallbackToDestructiveMigration().build()
     }
 
@@ -61,5 +73,10 @@ object DatabaseModule {
     @Provides
     fun provideProductDao(database: KhataDatabase): ProductDao {
         return database.productDao()
+    }
+
+    @Provides
+    fun provideTranslationDao(database: KhataDatabase): TranslationDao {
+        return database.translationDao()
     }
 }

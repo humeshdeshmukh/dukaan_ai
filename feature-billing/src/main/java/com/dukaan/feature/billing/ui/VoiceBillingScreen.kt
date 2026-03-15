@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dukaan.core.network.model.BillItem
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.NumberFormat
 import java.util.*
 
@@ -32,14 +33,15 @@ fun VoiceBillingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Voice Billing", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.voiceBilling, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -56,7 +58,7 @@ fun VoiceBillingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Total Amount", style = MaterialTheme.typography.labelSmall)
+                            Text(strings.totalAmount, style = MaterialTheme.typography.labelSmall)
                             Text(
                                 currencyFormat.format(uiState.totalAmount),
                                 style = MaterialTheme.typography.titleLarge,
@@ -65,7 +67,7 @@ fun VoiceBillingScreen(
                             )
                         }
                         Button(
-                            onClick = { 
+                            onClick = {
                                 onShareClick(viewModel.formatWhatsAppMessage())
                                 viewModel.saveBill()
                             },
@@ -74,7 +76,7 @@ fun VoiceBillingScreen(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Share & Save")
+                            Text(strings.shareAndSave)
                         }
                     }
                 }
@@ -97,7 +99,7 @@ fun VoiceBillingScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (uiState.isParsing) {
                         CircularProgressIndicator()
-                        Text("AI is parsing...", modifier = Modifier.padding(top = 8.dp))
+                        Text(strings.aiIsParsing, modifier = Modifier.padding(top = 8.dp))
                     } else {
                         RecordingButton(
                             isRecording = uiState.isRecording,
@@ -105,7 +107,7 @@ fun VoiceBillingScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (uiState.isRecording) "Listening..." else "Tap to Speak Items",
+                            text = if (uiState.isRecording) strings.listening else strings.tapToSpeakItems,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (uiState.isRecording) Color.Red else MaterialTheme.colorScheme.primary
@@ -124,7 +126,7 @@ fun VoiceBillingScreen(
 
             // Items List
             Text(
-                text = "Bill Items",
+                text = strings.billItems,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)
@@ -133,7 +135,7 @@ fun VoiceBillingScreen(
             if (uiState.items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        "No items added yet.\nTry: \"Chini 1 kilo 40\"", 
+                        strings.noItemsAddedHint,
                         lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -193,6 +195,7 @@ fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
 
 @Composable
 fun BillItemRow(item: BillItem, currencyFormat: NumberFormat, onDelete: () -> Unit) {
+    val strings = LocalAppStrings.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -219,7 +222,7 @@ fun BillItemRow(item: BillItem, currencyFormat: NumberFormat, onDelete: () -> Un
                 color = MaterialTheme.colorScheme.primary
             )
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
+                Icon(Icons.Default.Delete, contentDescription = strings.delete, tint = Color.Red.copy(alpha = 0.6f))
             }
         }
     }

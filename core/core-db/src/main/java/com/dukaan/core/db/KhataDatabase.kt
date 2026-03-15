@@ -15,9 +15,10 @@ import com.dukaan.core.db.entity.*
         OrderEntity::class,
         OrderItemEntity::class,
         ShopProfileEntity::class,
-        ProductEntity::class
+        ProductEntity::class,
+        TranslationCacheEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,4 +28,5 @@ abstract class KhataDatabase : RoomDatabase() {
     abstract fun orderDao(): OrderDao
     abstract fun shopProfileDao(): ShopProfileDao
     abstract fun productDao(): ProductDao
+    abstract fun translationDao(): TranslationDao
 }

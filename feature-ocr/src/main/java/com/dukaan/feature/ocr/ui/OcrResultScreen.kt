@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.network.model.BillItem
 import com.dukaan.core.ui.components.LargeActionButton
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +49,7 @@ fun OcrResultScreen(
     var showImageViewer by remember { mutableStateOf(false) }
     var showAiChat by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val strings = LocalAppStrings.current
 
     // Show save success feedback then navigate
     LaunchedEffect(state.isSaved) {
@@ -61,10 +63,10 @@ fun OcrResultScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Verify Scanned Bill") },
+                title = { Text(strings.verifyScannedBill) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -74,7 +76,7 @@ fun OcrResultScreen(
                 Box(modifier = Modifier.padding(16.dp)) {
                     LargeActionButton(
                         icon = Icons.Default.Check,
-                        label = "Confirm & Save Bill",
+                        label = strings.confirmAndSaveBill,
                         onClick = onSaveClick,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -88,7 +90,7 @@ fun OcrResultScreen(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 ) {
-                    Icon(Icons.Default.SmartToy, contentDescription = "AI Assistant")
+                    Icon(Icons.Default.SmartToy, contentDescription = strings.aiAssistant)
                 }
             }
         }
@@ -100,7 +102,7 @@ fun OcrResultScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "AI is reading your bill...",
+                            strings.aiIsReadingBill,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -131,7 +133,7 @@ fun OcrResultScreen(
                                 sellerName = it
                                 onSellerNameChanged(it)
                             },
-                            label = { Text("Wholesaler / Seller Name") },
+                            label = { Text(strings.wholesalerSellerName) },
                             leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -143,7 +145,7 @@ fun OcrResultScreen(
                         // Existing wholesaler suggestions
                         if (existingSellerNames.isNotEmpty()) {
                             Text(
-                                text = "Select existing wholesaler:",
+                                text = strings.selectExistingWholesaler,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -235,14 +237,14 @@ fun OcrResultScreen(
                                 }) {
                                     Icon(
                                         Icons.Default.Edit,
-                                        contentDescription = "Edit",
+                                        contentDescription = strings.edit,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 IconButton(onClick = { onDeleteItem(item) }) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "Delete",
+                                        contentDescription = strings.delete,
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -261,7 +263,7 @@ fun OcrResultScreen(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Add Missing Item")
+                            Text(strings.addMissingItem)
                         }
                     }
                 }
@@ -281,7 +283,7 @@ fun OcrResultScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total Amount", style = MaterialTheme.typography.titleLarge)
+                        Text(strings.totalAmount, style = MaterialTheme.typography.titleLarge)
                         Text(
                             "₹${"%.2f".format(state.scannedBill.totalAmount)}",
                             style = MaterialTheme.typography.headlineMedium,
@@ -300,7 +302,7 @@ fun OcrResultScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("No bill data found. Please try scanning again.")
+                        Text(strings.noBillDataFound)
                     }
                 }
             }
@@ -364,6 +366,7 @@ fun OcrResultScreen(
 @Composable
 private fun BillImageThumbnail(imagePath: String?, onClick: () -> Unit = {}) {
     if (imagePath == null) return
+    val strings = LocalAppStrings.current
 
     val bitmap = remember(imagePath) {
         try {
@@ -397,7 +400,7 @@ private fun BillImageThumbnail(imagePath: String?, onClick: () -> Unit = {}) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tap to view full image",
+                        text = strings.tapToViewFullImage,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -425,16 +428,17 @@ fun EditItemDialog(
     var quantity by remember { mutableStateOf(item.quantity.toString()) }
     var unit by remember { mutableStateOf(item.unit) }
     var price by remember { mutableStateOf(item.price.toString()) }
+    val strings = LocalAppStrings.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isAddMode) "Add Item" else "Edit Item") },
+        title = { Text(if (isAddMode) strings.addItem else strings.editItem) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Item Name") },
+                    label = { Text(strings.itemNameLabel) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -442,7 +446,7 @@ fun EditItemDialog(
                     OutlinedTextField(
                         value = quantity,
                         onValueChange = { quantity = it },
-                        label = { Text("Qty") },
+                        label = { Text(strings.qtyLabel) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true
@@ -450,7 +454,7 @@ fun EditItemDialog(
                     OutlinedTextField(
                         value = unit,
                         onValueChange = { unit = it },
-                        label = { Text("Unit") },
+                        label = { Text(strings.unitLabel) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -458,7 +462,7 @@ fun EditItemDialog(
                 OutlinedTextField(
                     value = price,
                     onValueChange = { price = it },
-                    label = { Text("Price (₹)") },
+                    label = { Text(strings.priceLabel) },
                     prefix = { Text("₹") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -480,11 +484,11 @@ fun EditItemDialog(
                 },
                 enabled = name.isNotBlank()
             ) {
-                Text(if (isAddMode) "Add" else "Save")
+                Text(if (isAddMode) strings.add else strings.save)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(strings.cancel) }
         }
     )
 }

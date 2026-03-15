@@ -24,7 +24,8 @@ data class SettingsUiState(
     val bankName: String = "",
     val bankAccountNumber: String = "",
     val bankIfscCode: String = "",
-    val isDarkTheme: Boolean = false
+    val isDarkTheme: Boolean = false,
+    val languageCode: String = "en"
 )
 
 @HiltViewModel
@@ -47,7 +48,8 @@ class SettingsViewModel @Inject constructor(
                     bankName = profile.bankName,
                     bankAccountNumber = profile.bankAccountNumber,
                     bankIfscCode = profile.bankIfscCode,
-                    isDarkTheme = profile.isDarkTheme
+                    isDarkTheme = profile.isDarkTheme,
+                    languageCode = profile.languageCode
                 )
             } else {
                 SettingsUiState()
@@ -82,6 +84,12 @@ class SettingsViewModel @Inject constructor(
     fun toggleDarkTheme(enabled: Boolean) {
         viewModelScope.launch {
             shopProfileDao.updateDarkTheme(enabled)
+        }
+    }
+
+    fun updateLanguage(code: String) {
+        viewModelScope.launch {
+            shopProfileDao.updateLanguage(code)
         }
     }
 }

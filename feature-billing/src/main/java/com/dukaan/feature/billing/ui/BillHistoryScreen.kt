@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.dukaan.core.network.model.Bill
 import com.dukaan.core.ui.components.ConfirmationDialog
 import com.dukaan.core.ui.components.EmptyStateView
+import com.dukaan.core.ui.translation.LocalAppStrings
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,15 +32,16 @@ fun BillHistoryScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     var billToDelete by remember { mutableStateOf<Long?>(null) }
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Bill History", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.billHistory, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     onBackClick?.let { click ->
                         IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 }
@@ -53,8 +55,8 @@ fun BillHistoryScreen(
             ) {
                 EmptyStateView(
                     icon = Icons.Default.Receipt,
-                    title = "No Bills Yet",
-                    subtitle = "Bills created via Voice Billing or Scan will appear here"
+                    title = strings.noBillsYet,
+                    subtitle = strings.billsAppearHere
                 )
             }
         } else {
@@ -77,9 +79,9 @@ fun BillHistoryScreen(
 
         billToDelete?.let { id ->
             ConfirmationDialog(
-                title = "Delete Bill",
-                message = "This bill will be permanently deleted.",
-                confirmText = "Delete",
+                title = strings.deleteBill,
+                message = strings.deleteBillMessage,
+                confirmText = strings.delete,
                 onConfirm = {
                     viewModel.deleteBill(id)
                     billToDelete = null
@@ -99,6 +101,7 @@ private fun BillHistoryCard(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -124,7 +127,7 @@ private fun BillHistoryCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${bill.items.size} items",
+                    text = "${bill.items.size} ${strings.items}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -143,7 +146,7 @@ private fun BillHistoryCard(
             IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = strings.delete,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(18.dp)
                 )

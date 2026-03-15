@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 data class ChatMessage(
     val isUser: Boolean,
@@ -35,6 +36,7 @@ fun BillAiChatSheet(
 ) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val strings = LocalAppStrings.current
 
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
@@ -68,13 +70,13 @@ fun BillAiChatSheet(
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "AI Bill Assistant",
+                            strings.aiBillAssistant,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            "Ask anything about this bill",
+                            strings.askAboutThisBill,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
@@ -82,7 +84,7 @@ fun BillAiChatSheet(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = strings.close,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
@@ -97,9 +99,9 @@ fun BillAiChatSheet(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    SuggestionChipItem("Verify total", onSendMessage)
-                    SuggestionChipItem("Any discount?", onSendMessage)
-                    SuggestionChipItem("Summarize bill", onSendMessage)
+                    SuggestionChipItem(strings.verifyTotal, onSendMessage)
+                    SuggestionChipItem(strings.anyDiscount, onSendMessage)
+                    SuggestionChipItem(strings.summarizeBill, onSendMessage)
                 }
             }
 
@@ -118,7 +120,7 @@ fun BillAiChatSheet(
                 }
                 if (isAiTyping) {
                     item {
-                        ChatBubble(ChatMessage(isUser = false, text = "Thinking...", isLoading = true))
+                        ChatBubble(ChatMessage(isUser = false, text = strings.thinking, isLoading = true))
                     }
                 }
             }
@@ -140,7 +142,7 @@ fun BillAiChatSheet(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Ask about this bill...") },
+                        placeholder = { Text(strings.askAboutBill) },
                         shape = RoundedCornerShape(24.dp),
                         singleLine = false,
                         maxLines = 3
@@ -156,7 +158,7 @@ fun BillAiChatSheet(
                         enabled = inputText.isNotBlank() && !isAiTyping,
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "Send")
+                        Icon(Icons.Default.Send, contentDescription = strings.send)
                     }
                 }
             }
@@ -166,6 +168,7 @@ fun BillAiChatSheet(
 
 @Composable
 private fun ChatBubble(message: ChatMessage) {
+    val strings = LocalAppStrings.current
     val isUser = message.isUser
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -211,7 +214,7 @@ private fun ChatBubble(message: ChatMessage) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Thinking...",
+                        strings.thinking,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

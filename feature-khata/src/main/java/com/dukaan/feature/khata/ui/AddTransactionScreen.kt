@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dukaan.core.ui.translation.LocalAppStrings
 import com.dukaan.feature.khata.domain.model.Transaction
 import com.dukaan.feature.khata.domain.model.TransactionType
 
@@ -28,6 +29,7 @@ fun AddTransactionScreen(
     onSuccess: () -> Unit,
     onBackClick: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var isListeningForAmount by remember { mutableStateOf(false) }
@@ -68,7 +70,7 @@ fun AddTransactionScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (isJama) "Payment Received (Jama)" else "Credit Given (Baki)",
+                        if (isJama) strings.paymentReceivedJama else strings.creditGivenBaki,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -77,7 +79,7 @@ fun AddTransactionScreen(
                         viewModel.clearVoiceParseResult()
                         onBackClick()
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
             )
@@ -123,7 +125,7 @@ fun AddTransactionScreen(
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
-                label = { Text("Add notes (Optional)") },
+                label = { Text(strings.addNotesOptional) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -153,7 +155,7 @@ fun AddTransactionScreen(
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { currentType = type }) {
-                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                            Text(strings.undo, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -171,7 +173,7 @@ fun AddTransactionScreen(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "AI is parsing your voice...",
+                        strings.aiParsingVoice,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -207,7 +209,7 @@ fun AddTransactionScreen(
             ) {
                 Icon(Icons.Default.Check, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("SAVE ENTRY", fontWeight = FontWeight.Bold)
+                Text(strings.saveEntry, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -241,11 +243,11 @@ fun AddTransactionScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            if (isListeningForAmount) "Listening... tap to stop" else "Smart Voice Entry",
+                            if (isListeningForAmount) strings.listeningTapToStop else strings.smartVoiceEntry,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Say naturally: \"500 rupees mila\" or \"200 ka udhar\"",
+                            strings.voiceEntryHint,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
