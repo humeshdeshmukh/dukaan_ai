@@ -10,6 +10,12 @@ data class ShopProfileEntity(
     val phone: String = "",
     val address: String = "",
     val gstNumber: String? = null,
+    val email: String = "",
+    val upiId: String = "",
+    val tagline: String = "",
+    val bankName: String = "",
+    val bankAccountNumber: String = "",
+    val bankIfscCode: String = "",
     val isDarkTheme: Boolean = false,
     val languageCode: String = "en"
 )

@@ -29,6 +29,7 @@ import java.util.*
 fun CustomerDetailScreen(
     customerId: Long,
     viewModel: KhataViewModel,
+    shopName: String = "",
     onAddTransaction: (TransactionType) -> Unit,
     onStatementClick: () -> Unit = {},
     onShareReminder: (String) -> Unit = {},
@@ -172,7 +173,7 @@ fun CustomerDetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
                                 onClick = {
-                                    viewModel.generateReminder(c.name, Math.abs(c.balance), "")
+                                    viewModel.generateReminder(c.name, Math.abs(c.balance), shopName)
                                 },
                                 shape = RoundedCornerShape(8.dp)
                             ) {

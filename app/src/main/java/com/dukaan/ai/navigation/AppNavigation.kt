@@ -12,6 +12,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dukaan.ai.util.shareViaWhatsApp
+import com.dukaan.ai.util.sharePdfFile
+import com.dukaan.ai.util.PdfGenerator
+import com.dukaan.ai.util.toShopInfo
 import com.dukaan.feature.billing.ui.BillingViewModel
 import com.dukaan.feature.billing.ui.VoiceBillingScreen
 import com.dukaan.feature.billing.ui.BillHistoryScreen
@@ -140,9 +143,12 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
                 val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 CustomerDetailScreen(
                     customerId = customerId,
                     viewModel = viewModel,
+                    shopName = settingsState.shopName,
                     onAddTransaction = { type ->
                         navController.navigate(Screen.AddTransaction.createRoute(customerId, type))
                     },
@@ -176,12 +182,16 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
                 val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 CustomerStatementScreen(
                     customerId = customerId,
                     viewModel = viewModel,
                     onBackClick = { navController.popBackStack() },
-                    onShareClick = { message ->
-                        shareViaWhatsApp(context, message)
+                    onShareClick = { data ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val pdfFile = PdfGenerator.generateStatementPdf(context, shopInfo, data)
+                        sharePdfFile(context, pdfFile, "Share Statement PDF")
                     }
                 )
             }
@@ -286,12 +296,16 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
         composable(Screen.BillDetail.route) { backStackEntry ->
             val billId = backStackEntry.arguments?.getString("billId")?.toLongOrNull() ?: return@composable
             val billingViewModel: BillingViewModel = hiltViewModel()
+            val settingsVm: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsVm.uiState.collectAsState()
             BillDetailScreen(
                 billId = billId,
                 viewModel = billingViewModel,
                 onBackClick = { navController.popBackStack() },
-                onShareClick = { message ->
-                    shareViaWhatsApp(context, message)
+                onShareClick = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val pdfFile = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    sharePdfFile(context, pdfFile, "Share Invoice PDF")
                 }
             )
         }
@@ -308,8 +322,15 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 ownerName = settingsState.ownerName,
                 phone = settingsState.phone,
                 address = settingsState.address,
-                onSaveProfile = { sn, on, ph, addr ->
-                    settingsViewModel.saveProfile(sn, on, ph, addr)
+                gstNumber = settingsState.gstNumber,
+                email = settingsState.email,
+                upiId = settingsState.upiId,
+                tagline = settingsState.tagline,
+                bankName = settingsState.bankName,
+                bankAccountNumber = settingsState.bankAccountNumber,
+                bankIfscCode = settingsState.bankIfscCode,
+                onSaveProfile = { sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic ->
+                    settingsViewModel.saveProfile(sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic)
                 }
             )
         }

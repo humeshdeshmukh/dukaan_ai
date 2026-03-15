@@ -38,7 +38,7 @@ fun BillDetailScreen(
     billId: Long,
     viewModel: BillingViewModel,
     onBackClick: () -> Unit,
-    onShareClick: (String) -> Unit
+    onShareClick: (Bill) -> Unit
 ) {
     var bill by remember { mutableStateOf<Bill?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -63,19 +63,7 @@ fun BillDetailScreen(
                 },
                 actions = {
                     bill?.let { b ->
-                        IconButton(onClick = {
-                            val msg = buildString {
-                                append("*Dukaan AI - Bill*\n━━━━━━━━━━━━━━━━━━\n")
-                                if (b.sellerName.isNotBlank()) {
-                                    append("*Seller: ${b.sellerName}*\n")
-                                }
-                                b.items.forEach { item ->
-                                    append("${item.name}: ${item.quantity} ${item.unit} @ ₹${item.price} = ₹${item.total}\n")
-                                }
-                                append("━━━━━━━━━━━━━━━━━━\n*Total: ₹${b.totalAmount}*")
-                            }
-                            onShareClick(msg)
-                        }) {
+                        IconButton(onClick = { onShareClick(b) }) {
                             Icon(Icons.Default.Share, contentDescription = "Share")
                         }
                     }

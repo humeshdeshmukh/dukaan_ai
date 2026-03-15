@@ -18,6 +18,12 @@ data class SettingsUiState(
     val phone: String = "",
     val address: String = "",
     val gstNumber: String = "",
+    val email: String = "",
+    val upiId: String = "",
+    val tagline: String = "",
+    val bankName: String = "",
+    val bankAccountNumber: String = "",
+    val bankIfscCode: String = "",
     val isDarkTheme: Boolean = false
 )
 
@@ -35,6 +41,12 @@ class SettingsViewModel @Inject constructor(
                     phone = profile.phone,
                     address = profile.address,
                     gstNumber = profile.gstNumber ?: "",
+                    email = profile.email,
+                    upiId = profile.upiId,
+                    tagline = profile.tagline,
+                    bankName = profile.bankName,
+                    bankAccountNumber = profile.bankAccountNumber,
+                    bankIfscCode = profile.bankIfscCode,
                     isDarkTheme = profile.isDarkTheme
                 )
             } else {
@@ -43,14 +55,25 @@ class SettingsViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
-    fun saveProfile(shopName: String, ownerName: String, phone: String, address: String) {
+    fun saveProfile(
+        shopName: String, ownerName: String, phone: String, address: String,
+        gstNumber: String, email: String, upiId: String, tagline: String,
+        bankName: String, bankAccountNumber: String, bankIfscCode: String
+    ) {
         viewModelScope.launch {
             val existing = shopProfileDao.getProfileOnce()
             val entity = (existing ?: ShopProfileEntity()).copy(
                 shopName = shopName,
                 ownerName = ownerName,
                 phone = phone,
-                address = address
+                address = address,
+                gstNumber = gstNumber.ifBlank { null },
+                email = email,
+                upiId = upiId,
+                tagline = tagline,
+                bankName = bankName,
+                bankAccountNumber = bankAccountNumber,
+                bankIfscCode = bankIfscCode
             )
             shopProfileDao.upsertProfile(entity)
         }
