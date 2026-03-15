@@ -10,12 +10,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,7 +29,6 @@ fun DashboardScreen(
     onVoiceBillingClick: () -> Unit,
     onSmartKhataClick: () -> Unit,
     onOrdersClick: () -> Unit,
-    onInventoryClick: () -> Unit,
     onProfileClick: () -> Unit = {},
     onBillHistoryClick: () -> Unit = {},
     onPurchaseBillsClick: () -> Unit = {}
@@ -179,19 +176,11 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Row 3: Inventory + Bill History
+                    // Row 3: Bill History + Purchase Bills
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        FeatureCard(
-                            label = "Inventory",
-                            subtitle = "Stock Mgmt",
-                            icon = Icons.Default.Inventory2,
-                            accentColor = Color(0xFFDB2777),
-                            onClick = onInventoryClick,
-                            modifier = Modifier.weight(1f)
-                        )
                         FeatureCard(
                             label = "Bill History",
                             subtitle = "Past Bills",
@@ -200,15 +189,6 @@ fun DashboardScreen(
                             onClick = onBillHistoryClick,
                             modifier = Modifier.weight(1f)
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Row 4: Purchase Bills
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
                         FeatureCard(
                             label = "Purchase Bills",
                             subtitle = "By Wholesaler",
@@ -217,30 +197,8 @@ fun DashboardScreen(
                             onClick = onPurchaseBillsClick,
                             modifier = Modifier.weight(1f)
                         )
-                        // Empty spacer to keep grid alignment
-                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Today's Summary Section
-            AnimatedVisibility(
-                visible = animated,
-                enter = fadeIn(tween(600, delayMillis = 300))
-            ) {
-                TodaySummarySection()
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // AI Tip Card
-            AnimatedVisibility(
-                visible = animated,
-                enter = fadeIn(tween(600, delayMillis = 450))
-            ) {
-                AiTipCard()
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -371,121 +329,3 @@ fun FeatureCard(
     }
 }
 
-@Composable
-private fun TodaySummarySection() {
-    Column {
-        Text(
-            text = "Today's Summary",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SummaryChip(
-                label = "Sales",
-                value = "0",
-                icon = Icons.Outlined.TrendingUp,
-                color = Color(0xFF00B37E),
-                modifier = Modifier.weight(1f)
-            )
-            SummaryChip(
-                label = "Credit",
-                value = "0",
-                icon = Icons.Outlined.AccountBalanceWallet,
-                color = Color(0xFFEF4444),
-                modifier = Modifier.weight(1f)
-            )
-            SummaryChip(
-                label = "Items",
-                value = "0",
-                icon = Icons.Outlined.Inventory2,
-                color = Color(0xFF3B82F6),
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SummaryChip(
-    label: String,
-    value: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.08f)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = color
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = color.copy(alpha = 0.8f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun AiTipCard() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lightbulb,
-                    contentDescription = null,
-                    modifier = Modifier.padding(8.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "AI Tip",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = "Try saying \"Sugar 2 kilo 80, Soap 1 piece 30\" in Voice Billing for instant bill creation!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}

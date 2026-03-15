@@ -17,8 +17,6 @@ import com.dukaan.feature.billing.ui.BillDetailScreen
 import com.dukaan.feature.dashboard.DashboardScreen
 import com.dukaan.feature.dashboard.SettingsScreen
 import com.dukaan.feature.dashboard.SettingsViewModel
-import com.dukaan.feature.inventory.ui.InventoryListScreen
-import com.dukaan.feature.inventory.ui.InventoryViewModel
 import com.dukaan.feature.khata.ui.CustomerListScreen
 import com.dukaan.feature.khata.ui.CustomerDetailScreen
 import com.dukaan.feature.khata.ui.AddTransactionScreen
@@ -53,7 +51,6 @@ sealed class Screen(val route: String) {
         fun createRoute(billId: Long) = "bill_detail/$billId"
     }
     object Settings : Screen("settings")
-    object Inventory : Screen("inventory")
     object ScannedBillHistory : Screen("scanned_bill_history")
     object WholesalerBills : Screen("wholesaler_bills/{sellerName}") {
         fun createRoute(sellerName: String) = "wholesaler_bills/${java.net.URLEncoder.encode(sellerName, "UTF-8")}"
@@ -84,7 +81,6 @@ fun AppNavigation(navController: NavHostController) {
                 onVoiceBillingClick = { navController.navigate(Screen.VoiceBilling.route) },
                 onSmartKhataClick = { navController.navigate(Screen.SmartKhata.route) },
                 onOrdersClick = { navController.navigate(Screen.WholesaleOrder.route) },
-                onInventoryClick = { navController.navigate(Screen.Inventory.route) },
                 onProfileClick = { navController.navigate(Screen.Settings.route) },
                 onBillHistoryClick = { navController.navigate(Screen.BillHistory.route) },
                 onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) }
@@ -240,15 +236,6 @@ fun AppNavigation(navController: NavHostController) {
                 onSaveProfile = { sn, on, ph, addr ->
                     settingsViewModel.saveProfile(sn, on, ph, addr)
                 }
-            )
-        }
-
-        // Inventory
-        composable(Screen.Inventory.route) {
-            val inventoryViewModel: InventoryViewModel = hiltViewModel()
-            InventoryListScreen(
-                viewModel = inventoryViewModel,
-                onBackClick = { navController.popBackStack() }
             )
         }
 
