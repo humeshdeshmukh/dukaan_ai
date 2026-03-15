@@ -41,7 +41,9 @@ data class BillingUiState(
     // Data
     val customers: List<CustomerEntity> = emptyList(),
     // Tab
-    val selectedTab: Int = 0
+    val selectedTab: Int = 0,
+    // Editing existing bill
+    val editingBillId: Long? = null
 )
 
 @HiltViewModel
@@ -227,6 +229,10 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _uiState.value
             if (state.items.isEmpty()) return@launch
+            // If editing an existing bill, delete the old one first
+            state.editingBillId?.let { oldId ->
+                repository.deleteBill(oldId)
+            }
             val bill = Bill(
                 items = state.items,
                 totalAmount = state.grandTotal,
@@ -237,6 +243,7 @@ class BillingViewModel @Inject constructor(
                 taxAmount = state.taxAmount,
                 customerName = state.selectedCustomerName,
                 customerId = state.selectedCustomerId,
+                customerPhone = state.selectedCustomerPhone,
                 paymentMode = state.paymentMode,
                 notes = state.notes,
                 isDraft = asDraft
@@ -264,6 +271,7 @@ class BillingViewModel @Inject constructor(
             taxAmount = state.taxAmount,
             customerName = state.selectedCustomerName,
             customerId = state.selectedCustomerId,
+            customerPhone = state.selectedCustomerPhone,
             paymentMode = state.paymentMode,
             notes = state.notes
         )
@@ -284,6 +292,27 @@ class BillingViewModel @Inject constructor(
     }
 
     suspend fun getBillById(id: Long): Bill? = repository.getBillById(id)
+
+    fun loadBillForEditing(billId: Long) {
+        viewModelScope.launch {
+            val bill = repository.getBillById(billId) ?: return@launch
+            _uiState.update { state ->
+                state.copy(
+                    items = bill.items,
+                    selectedCustomerName = bill.customerName,
+                    selectedCustomerId = bill.customerId,
+                    selectedCustomerPhone = bill.customerPhone,
+                    discountPercent = bill.discountPercent,
+                    taxPercent = bill.taxPercent,
+                    paymentMode = bill.paymentMode,
+                    notes = bill.notes,
+                    editingBillId = bill.id,
+                    selectedTab = 0
+                )
+            }
+            recalculate()
+        }
+    }
 
     fun formatWhatsAppMessage(): String {
         val state = _uiState.value

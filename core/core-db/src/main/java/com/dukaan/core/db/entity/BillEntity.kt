@@ -18,6 +18,7 @@ data class BillEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val customerName: String = "",
     val customerId: Long? = null,
+    val customerPhone: String = "",
     val discountPercent: Double = 0.0,
     val discountAmount: Double = 0.0,
     val taxPercent: Double = 0.0,

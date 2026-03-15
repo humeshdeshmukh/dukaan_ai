@@ -95,6 +95,14 @@ object PdfGenerator {
         val body = bodyPaint()
         val bold = boldPaint()
 
+        if (bill.customerName.isNotBlank()) {
+            canvas.drawText("Customer: ${bill.customerName}", MARGIN, y + 12f, bold)
+            y += 18f
+            if (bill.customerPhone.isNotBlank()) {
+                canvas.drawText("Phone: ${bill.customerPhone}", MARGIN, y + 12f, body)
+                y += 16f
+            }
+        }
         if (bill.sellerName.isNotBlank()) {
             canvas.drawText("Seller: ${bill.sellerName}", MARGIN, y + 12f, bold)
             y += 18f

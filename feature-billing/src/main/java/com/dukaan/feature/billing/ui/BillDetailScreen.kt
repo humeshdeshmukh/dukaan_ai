@@ -39,7 +39,9 @@ fun BillDetailScreen(
     billId: Long,
     viewModel: BillingViewModel,
     onBackClick: () -> Unit,
-    onShareClick: (Bill) -> Unit
+    onShareClick: (Bill) -> Unit,
+    onSendPdfToWhatsApp: (Bill) -> Unit,
+    onEditBill: (Long) -> Unit
 ) {
     var bill by remember { mutableStateOf<Bill?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -65,6 +67,12 @@ fun BillDetailScreen(
                 },
                 actions = {
                     bill?.let { b ->
+                        IconButton(onClick = { onEditBill(b.id) }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        }
+                        IconButton(onClick = { onSendPdfToWhatsApp(b) }) {
+                            Icon(Icons.Default.Send, contentDescription = "WhatsApp", tint = Color(0xFF25D366))
+                        }
                         IconButton(onClick = { onShareClick(b) }) {
                             Icon(Icons.Default.Share, contentDescription = strings.share)
                         }
@@ -153,6 +161,48 @@ fun BillDetailScreen(
                                             )
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    // Customer info
+                    item {
+                        if (b.customerName.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    b.customerName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (b.customerPhone.isNotBlank()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Phone,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        b.customerPhone,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }

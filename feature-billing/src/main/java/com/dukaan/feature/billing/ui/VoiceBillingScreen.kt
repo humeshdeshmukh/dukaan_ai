@@ -50,7 +50,8 @@ fun VoiceBillingScreen(
     onShareClick: (String) -> Unit,
     onShareToPhone: (String, String) -> Unit,
     onBillClick: (Long) -> Unit,
-    onGeneratePdf: (Bill) -> Unit
+    onGeneratePdf: (Bill) -> Unit,
+    onSendPdfToWhatsApp: (Bill) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val allBills by viewModel.allBills.collectAsState()
@@ -135,14 +136,9 @@ fun VoiceBillingScreen(
                     hasItems = uiState.items.isNotEmpty(),
                     onSaveDraft = { viewModel.saveBill(asDraft = true) },
                     onWhatsApp = {
-                        val msg = viewModel.formatWhatsAppMessage()
-                        val phone = uiState.selectedCustomerPhone
+                        val bill = viewModel.buildBillForPdf()
                         viewModel.saveBill()
-                        if (phone.isNotBlank()) {
-                            onShareToPhone(msg, phone)
-                        } else {
-                            onShareClick(msg)
-                        }
+                        onSendPdfToWhatsApp(bill)
                     },
                     onSavePdf = {
                         val bill = viewModel.buildBillForPdf()
@@ -169,6 +165,7 @@ fun VoiceBillingScreen(
                 currencyFormat = currencyFormat,
                 onBillClick = onBillClick,
                 onDeleteBill = viewModel::deleteBill,
+                onSendPdf = { bill -> onSendPdfToWhatsApp(bill) },
                 modifier = Modifier.padding(padding)
             )
         }
@@ -422,6 +419,7 @@ private fun HistoryTab(
     currencyFormat: NumberFormat,
     onBillClick: (Long) -> Unit,
     onDeleteBill: (Long) -> Unit,
+    onSendPdf: (Bill) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalAppStrings.current
@@ -527,7 +525,8 @@ private fun HistoryTab(
                         timeFormat = todayFormat,
                         showDate = false,
                         onClick = { onBillClick(bill.id) },
-                        onDelete = { deleteConfirmBillId = bill.id }
+                        onDelete = { deleteConfirmBillId = bill.id },
+                        onSendPdf = { onSendPdf(bill) }
                     )
                 }
             }
@@ -550,7 +549,8 @@ private fun HistoryTab(
                         timeFormat = dateFormat,
                         showDate = true,
                         onClick = { onBillClick(bill.id) },
-                        onDelete = { deleteConfirmBillId = bill.id }
+                        onDelete = { deleteConfirmBillId = bill.id },
+                        onSendPdf = { onSendPdf(bill) }
                     )
                 }
             }
@@ -584,7 +584,8 @@ private fun BillHistoryItem(
     timeFormat: SimpleDateFormat,
     showDate: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onSendPdf: () -> Unit
 ) {
     val strings = LocalAppStrings.current
     Card(
@@ -667,6 +668,14 @@ private fun BillHistoryItem(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.titleSmall
+                )
+            }
+            IconButton(onClick = onSendPdf, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Share,
+                    contentDescription = null,
+                    tint = Color(0xFF25D366),
+                    modifier = Modifier.size(18.dp)
                 )
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {

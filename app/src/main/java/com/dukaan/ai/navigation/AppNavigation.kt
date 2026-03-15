@@ -1,6 +1,7 @@
 package com.dukaan.ai.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dukaan.ai.util.shareViaWhatsApp
 import com.dukaan.ai.util.shareViaWhatsAppToPhone
 import com.dukaan.ai.util.sharePdfFile
+import com.dukaan.ai.util.sharePdfViaWhatsAppToPhone
+import com.dukaan.ai.util.sharePdfViaWhatsApp
 import com.dukaan.ai.util.PdfGenerator
 import com.dukaan.ai.util.PdfPreviewDialog
 import com.dukaan.ai.util.toShopInfo
@@ -58,6 +61,9 @@ sealed class Screen(val route: String) {
         fun createRoute(customerId: Long, type: TransactionType) = "add_transaction/$customerId/${type.name}"
     }
     object VoiceBilling : Screen("voice_billing")
+    object EditBill : Screen("voice_billing/edit/{billId}") {
+        fun createRoute(billId: Long) = "voice_billing/edit/$billId"
+    }
     object OcrFlow : Screen("ocr_flow")
     object KhataFlow : Screen("khata_flow")
     object ScanBill : Screen("scan_bill")
@@ -307,6 +313,55 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     val shopInfo = settingsState.toShopInfo()
                     val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
                     pdfPreviewFile = file
+                },
+                onSendPdfToWhatsApp = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    if (bill.customerPhone.isNotBlank()) {
+                        sharePdfViaWhatsAppToPhone(context, file, bill.customerPhone)
+                    } else {
+                        sharePdfViaWhatsApp(context, file)
+                    }
+                }
+            )
+        }
+
+        // Edit Bill (loads into Voice Billing for editing)
+        composable(Screen.EditBill.route) { backStackEntry ->
+            val billId = backStackEntry.arguments?.getString("billId")?.toLongOrNull() ?: return@composable
+            val billingViewModel: BillingViewModel = hiltViewModel()
+            val settingsVm: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsVm.uiState.collectAsState()
+
+            LaunchedEffect(billId) {
+                billingViewModel.loadBillForEditing(billId)
+            }
+
+            VoiceBillingScreen(
+                viewModel = billingViewModel,
+                onBackClick = { navController.popBackStack() },
+                onShareClick = { message ->
+                    shareViaWhatsApp(context, message)
+                },
+                onShareToPhone = { message, phone ->
+                    shareViaWhatsAppToPhone(context, message, phone)
+                },
+                onBillClick = { id ->
+                    navController.navigate(Screen.BillDetail.createRoute(id))
+                },
+                onGeneratePdf = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    pdfPreviewFile = file
+                },
+                onSendPdfToWhatsApp = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    if (bill.customerPhone.isNotBlank()) {
+                        sharePdfViaWhatsAppToPhone(context, file, bill.customerPhone)
+                    } else {
+                        sharePdfViaWhatsApp(context, file)
+                    }
                 }
             )
         }
@@ -337,6 +392,18 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     val shopInfo = settingsState.toShopInfo()
                     val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
                     pdfPreviewFile = file
+                },
+                onSendPdfToWhatsApp = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    if (bill.customerPhone.isNotBlank()) {
+                        sharePdfViaWhatsAppToPhone(context, file, bill.customerPhone)
+                    } else {
+                        sharePdfViaWhatsApp(context, file)
+                    }
+                },
+                onEditBill = { editBillId ->
+                    navController.navigate(Screen.EditBill.createRoute(editBillId))
                 }
             )
         }

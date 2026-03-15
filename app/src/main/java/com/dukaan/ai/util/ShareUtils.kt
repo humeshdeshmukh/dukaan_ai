@@ -69,3 +69,24 @@ fun sharePdfViaWhatsApp(context: Context, file: File, caption: String = "") {
         sharePdfFile(context, file, "Share PDF")
     }
 }
+
+fun sharePdfViaWhatsAppToPhone(context: Context, file: File, phone: String, caption: String = "") {
+    val cleanPhone = phone.replace(Regex("[^0-9+]"), "")
+    val formattedPhone = if (cleanPhone.startsWith("+")) cleanPhone
+        else if (cleanPhone.length == 10) "+91$cleanPhone"
+        else cleanPhone
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/pdf"
+        setPackage("com.whatsapp")
+        putExtra(Intent.EXTRA_STREAM, uri)
+        putExtra("jid", "${formattedPhone.removePrefix("+")}@s.whatsapp.net")
+        if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        sharePdfViaWhatsApp(context, file, caption)
+    }
+}
