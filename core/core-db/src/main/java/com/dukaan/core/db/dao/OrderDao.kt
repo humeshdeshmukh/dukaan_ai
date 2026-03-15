@@ -50,4 +50,31 @@ interface OrderDao {
 
     @Query("SELECT COUNT(*) FROM orders")
     fun getOrderCount(): Flow<Int>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM orders WHERE status = :status ORDER BY timestamp DESC")
+    fun getOrdersByStatus(status: String): Flow<List<OrderWithItems>>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM orders WHERE supplierName LIKE '%' || :query || '%' ORDER BY timestamp DESC")
+    fun searchOrders(query: String): Flow<List<OrderWithItems>>
+
+    @Query("UPDATE orders SET supplierName = :name, notes = :notes WHERE id = :orderId")
+    suspend fun updateOrderDetails(orderId: Long, name: String?, notes: String?)
+
+    @Query("UPDATE orders SET itemCount = :count WHERE id = :orderId")
+    suspend fun updateItemCount(orderId: Long, count: Int)
+
+    @Query("DELETE FROM order_items WHERE orderId = :orderId")
+    suspend fun deleteOrderItems(orderId: Long)
+
+    @androidx.room.Transaction
+    suspend fun updateOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
+        deleteOrderItems(order.id)
+        val itemsWithOrderId = items.map { it.copy(orderId = order.id) }
+        insertOrderItems(itemsWithOrderId)
+        updateOrderDetails(order.id, order.supplierName, order.notes)
+        updateItemCount(order.id, items.size)
+        updateOrderStatus(order.id, order.status.name)
+    }
 }

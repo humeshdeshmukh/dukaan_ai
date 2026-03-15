@@ -40,7 +40,6 @@ fun DashboardScreen(
     onOrdersClick: () -> Unit,
     onBillHistoryClick: () -> Unit = {},
     onPurchaseBillsClick: () -> Unit = {},
-    onBillClick: (Long) -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val strings = LocalAppStrings.current
@@ -241,51 +240,6 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Recent Bills
-            if (uiState.recentBills.isNotEmpty()) {
-                AnimatedVisibility(
-                    visible = animated,
-                    enter = fadeIn(tween(400, delayMillis = 300))
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = strings.recentBills,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(start = 2.dp)
-                            )
-                            TextButton(
-                                onClick = onBillHistoryClick,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                            ) {
-                                Text(
-                                    strings.viewAll,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        uiState.recentBills.forEach { bill ->
-                            RecentBillRow(
-                                bill = bill,
-                                currencyFormat = currencyFormat,
-                                onClick = { onBillClick(bill.id) }
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -300,7 +254,7 @@ private fun CompactGreeting(shopName: String, ownerName: String) {
         in 12..16 -> strings.goodAfternoon
         else -> strings.goodEvening
     }
-    val dateFormat = remember { SimpleDateFormat("dd MMM, EEE", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("dd MMM, EEE", Locale("mr", "IN")) }
     val todayDate = remember { dateFormat.format(calendar.time) }
 
     Row(
@@ -484,68 +438,6 @@ private fun CompactFeatureCard(
                     maxLines = 1
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun RecentBillRow(
-    bill: RecentBillItem,
-    currencyFormat: NumberFormat,
-    onClick: () -> Unit
-) {
-    val strings = LocalAppStrings.current
-    val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
-    val isOcr = bill.source == "OCR"
-
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.5.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(36.dp),
-                shape = RoundedCornerShape(10.dp),
-                color = if (isOcr)
-                    Color(0xFF065F46).copy(alpha = 0.1f)
-                else
-                    Color(0xFFD97706).copy(alpha = 0.1f)
-            ) {
-                Icon(
-                    imageVector = if (isOcr) Icons.Default.QrCodeScanner else Icons.Default.Mic,
-                    contentDescription = null,
-                    modifier = Modifier.padding(8.dp),
-                    tint = if (isOcr) Color(0xFF065F46) else Color(0xFFD97706)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${bill.itemCount} ${strings.items}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = dateFormat.format(Date(bill.timestamp)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Text(
-                text = currencyFormat.format(bill.totalAmount),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
     }
 }

@@ -47,6 +47,7 @@ import com.dukaan.feature.ocr.ui.ScannedBillHistoryViewModel
 import com.dukaan.feature.ocr.ui.WholesalerBillsScreen
 import com.dukaan.feature.orders.ui.WholesaleOrderScreen
 import com.dukaan.feature.orders.ui.OrderViewModel
+import com.dukaan.feature.orders.ui.OrderDetailScreen
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
@@ -68,6 +69,13 @@ sealed class Screen(val route: String) {
     object ScanBill : Screen("scan_bill")
     object OcrResult : Screen("ocr_result")
     object WholesaleOrder : Screen("wholesale_order")
+    object OrdersFlow : Screen("orders_flow")
+    object OrderDetail : Screen("order_detail/{orderId}") {
+        fun createRoute(orderId: Long) = "order_detail/$orderId"
+    }
+    object EditOrder : Screen("edit_order/{orderId}") {
+        fun createRoute(orderId: Long) = "edit_order/$orderId"
+    }
     object BillHistory : Screen("bill_history")
     object BillDetail : Screen("bill_detail/{billId}") {
         fun createRoute(billId: Long) = "bill_detail/$billId"
@@ -126,7 +134,7 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     }
                 },
                 onOrdersClick = {
-                    navController.navigate(Screen.WholesaleOrder.route) {
+                    navController.navigate(Screen.OrdersFlow.route) {
                         popUpTo(Screen.Dashboard.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
@@ -141,11 +149,6 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 },
                 onPurchaseBillsClick = {
                     navController.navigate(Screen.ScannedBillHistory.route) {
-                        launchSingleTop = true
-                    }
-                },
-                onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
                         launchSingleTop = true
                     }
                 },
@@ -291,16 +294,69 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             }
         }
 
-        // Orders tab
-        composable(Screen.WholesaleOrder.route) {
-            val orderViewModel: OrderViewModel = hiltViewModel()
-            WholesaleOrderScreen(
-                viewModel = orderViewModel,
-                onBackClick = null,
-                onShareClick = { message ->
-                    shareViaWhatsApp(context, message)
+        // Orders tab - nested navigation so all screens share OrderViewModel
+        navigation(
+            startDestination = Screen.WholesaleOrder.route,
+            route = Screen.OrdersFlow.route
+        ) {
+            composable(Screen.WholesaleOrder.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
+                val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+                WholesaleOrderScreen(
+                    viewModel = orderViewModel,
+                    onBackClick = null,
+                    onShareClick = { message ->
+                        shareViaWhatsApp(context, message)
+                    },
+                    onOrderClick = { orderId ->
+                        navController.navigate(Screen.OrderDetail.createRoute(orderId)) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.OrderDetail.route) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")?.toLongOrNull() ?: return@composable
+                val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
+                val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+                OrderDetailScreen(
+                    orderId = orderId,
+                    viewModel = orderViewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onShareClick = { message ->
+                        shareViaWhatsApp(context, message)
+                    },
+                    onEditClick = { editId ->
+                        navController.navigate(Screen.EditOrder.createRoute(editId)) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.EditOrder.route) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")?.toLongOrNull() ?: return@composable
+                val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
+                val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+
+                LaunchedEffect(orderId) {
+                    orderViewModel.loadOrderForEditing(orderId)
                 }
-            )
+
+                WholesaleOrderScreen(
+                    viewModel = orderViewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onShareClick = { message ->
+                        shareViaWhatsApp(context, message)
+                    },
+                    onOrderClick = { id ->
+                        navController.navigate(Screen.OrderDetail.createRoute(id)) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
         }
 
         // Voice Billing (bottom nav tab)

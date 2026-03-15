@@ -35,7 +35,10 @@ data class BillItem(
 data class Order(
     val id: String = UUID.randomUUID().toString(),
     val items: List<OrderItem>,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val supplierName: String? = null,
+    val status: String = "PENDING",
+    val notes: String? = null
 )
 
 data class OrderItem(

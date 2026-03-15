@@ -43,6 +43,6 @@ sealed class BottomNavItem(
         label = "Orders",
         selectedIcon = Icons.Filled.ShoppingCart,
         unselectedIcon = Icons.Outlined.ShoppingCart,
-        route = Screen.WholesaleOrder.route
+        route = Screen.OrdersFlow.route
     )
 }

@@ -14,5 +14,6 @@ data class OrderEntity(
     val supplierName: String? = null,
     val status: OrderStatus = OrderStatus.PENDING,
     val itemCount: Int = 0,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val notes: String? = null
 )
