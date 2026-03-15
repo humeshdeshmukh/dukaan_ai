@@ -25,6 +25,10 @@ class KhataRepositoryImpl @Inject constructor(
         return khataDao.getCustomerById(customerId)?.toDomain()
     }
 
+    override fun getCustomerFlow(customerId: Long): Flow<Customer?> {
+        return khataDao.getCustomerFlow(customerId).map { it?.toDomain() }
+    }
+
     override suspend fun addCustomer(name: String, phone: String): Long {
         return khataDao.insertCustomer(CustomerEntity(name = name, phone = phone))
     }

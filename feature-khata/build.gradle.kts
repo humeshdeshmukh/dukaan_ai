@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":core:core-ui"))
     implementation(project(":core:core-db"))
     implementation(project(":core:core-voice"))
+    implementation(project(":core:core-network"))
     
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlin.stdlib)

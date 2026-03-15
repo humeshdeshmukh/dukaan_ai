@@ -42,6 +42,7 @@ fun DukaanBottomBar(
         tabs.forEach { item ->
             val isSelected = when (item) {
                 is BottomNavItem.Scan -> currentRoute == Screen.ScanBill.route
+                is BottomNavItem.Khata -> currentRoute == Screen.SmartKhata.route
                 else -> currentRoute == item.route
             }
 

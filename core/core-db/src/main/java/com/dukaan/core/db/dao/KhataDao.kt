@@ -24,6 +24,9 @@ interface KhataDao {
     @Query("SELECT * FROM customers WHERE id = :customerId")
     suspend fun getCustomerById(customerId: Long): CustomerEntity?
 
+    @Query("SELECT * FROM customers WHERE id = :customerId")
+    fun getCustomerFlow(customerId: Long): Flow<CustomerEntity?>
+
     @Query("UPDATE customers SET balance = balance + :amountChange, lastActivityAt = :timestamp WHERE id = :customerId")
     suspend fun updateCustomerBalance(customerId: Long, amountChange: Double, timestamp: Long = System.currentTimeMillis())
 

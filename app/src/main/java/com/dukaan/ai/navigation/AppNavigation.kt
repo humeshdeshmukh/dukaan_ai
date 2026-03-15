@@ -22,6 +22,8 @@ import com.dukaan.feature.dashboard.SettingsViewModel
 import com.dukaan.feature.khata.ui.CustomerListScreen
 import com.dukaan.feature.khata.ui.CustomerDetailScreen
 import com.dukaan.feature.khata.ui.AddTransactionScreen
+import com.dukaan.feature.khata.ui.CustomerStatementScreen
+import com.dukaan.feature.khata.ui.KhataOverviewScreen
 import com.dukaan.feature.khata.ui.KhataViewModel
 import com.dukaan.feature.khata.domain.model.TransactionType
 import com.dukaan.feature.ocr.ui.BillScannerScreen
@@ -45,6 +47,7 @@ sealed class Screen(val route: String) {
     }
     object VoiceBilling : Screen("voice_billing")
     object OcrFlow : Screen("ocr_flow")
+    object KhataFlow : Screen("khata_flow")
     object ScanBill : Screen("scan_bill")
     object OcrResult : Screen("ocr_result")
     object WholesaleOrder : Screen("wholesale_order")
@@ -53,6 +56,10 @@ sealed class Screen(val route: String) {
         fun createRoute(billId: Long) = "bill_detail/$billId"
     }
     object Settings : Screen("settings")
+    object CustomerStatement : Screen("customer_statement/{customerId}") {
+        fun createRoute(customerId: Long) = "customer_statement/$customerId"
+    }
+    object KhataOverview : Screen("khata_overview")
     object ScannedBillHistory : Screen("scanned_bill_history")
     object WholesalerBills : Screen("wholesaler_bills/{sellerName}") {
         fun createRoute(sellerName: String) = "wholesaler_bills/${java.net.URLEncoder.encode(sellerName, "UTF-8")}"
@@ -86,7 +93,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 onScanBillClick = { navController.navigate(Screen.OcrFlow.route) },
                 onVoiceBillingClick = { navController.navigate(Screen.VoiceBilling.route) },
                 onSmartKhataClick = {
-                    navController.navigate(Screen.SmartKhata.route) {
+                    navController.navigate(Screen.KhataFlow.route) {
                         popUpTo(Screen.Dashboard.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
@@ -112,42 +119,81 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             )
         }
 
-        // Khata tab
-        composable(Screen.SmartKhata.route) {
-            val viewModel: KhataViewModel = hiltViewModel()
-            CustomerListScreen(
-                viewModel = viewModel,
-                onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
-                onBackClick = null
-            )
-        }
+        // Khata tab - nested navigation so all screens share KhataViewModel
+        navigation(
+            startDestination = Screen.SmartKhata.route,
+            route = Screen.KhataFlow.route
+        ) {
+            composable(Screen.SmartKhata.route) {
+                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                CustomerListScreen(
+                    viewModel = viewModel,
+                    onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
+                    onOverviewClick = { navController.navigate(Screen.KhataOverview.route) },
+                    onBackClick = null
+                )
+            }
 
-        composable(Screen.CustomerDetail.route) { backStackEntry ->
-            val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
-            val viewModel: KhataViewModel = hiltViewModel()
-            CustomerDetailScreen(
-                customerId = customerId,
-                viewModel = viewModel,
-                onAddTransaction = { type ->
-                    navController.navigate(Screen.AddTransaction.createRoute(customerId, type))
-                },
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+            composable(Screen.CustomerDetail.route) { backStackEntry ->
+                val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
+                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                CustomerDetailScreen(
+                    customerId = customerId,
+                    viewModel = viewModel,
+                    onAddTransaction = { type ->
+                        navController.navigate(Screen.AddTransaction.createRoute(customerId, type))
+                    },
+                    onStatementClick = {
+                        navController.navigate(Screen.CustomerStatement.createRoute(customerId))
+                    },
+                    onShareReminder = { message ->
+                        shareViaWhatsApp(context, message)
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
 
-        composable(Screen.AddTransaction.route) { backStackEntry ->
-            val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
-            val typeStr = backStackEntry.arguments?.getString("type") ?: return@composable
-            val type = TransactionType.valueOf(typeStr)
-            val viewModel: KhataViewModel = hiltViewModel()
+            composable(Screen.AddTransaction.route) { backStackEntry ->
+                val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
+                val typeStr = backStackEntry.arguments?.getString("type") ?: return@composable
+                val type = TransactionType.valueOf(typeStr)
+                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
 
-            AddTransactionScreen(
-                customerId = customerId,
-                type = type,
-                viewModel = viewModel,
-                onSuccess = { navController.popBackStack() },
-                onBackClick = { navController.popBackStack() }
-            )
+                AddTransactionScreen(
+                    customerId = customerId,
+                    type = type,
+                    viewModel = viewModel,
+                    onSuccess = { navController.popBackStack() },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.CustomerStatement.route) { backStackEntry ->
+                val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
+                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                CustomerStatementScreen(
+                    customerId = customerId,
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onShareClick = { message ->
+                        shareViaWhatsApp(context, message)
+                    }
+                )
+            }
+
+            composable(Screen.KhataOverview.route) {
+                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val viewModel: KhataViewModel = hiltViewModel(parentEntry)
+                KhataOverviewScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) }
+                )
+            }
         }
 
         // OCR Flow (Scan tab) - nested navigation so both screens share the same OcrViewModel

@@ -36,7 +36,7 @@ sealed class BottomNavItem(
         label = "Khata",
         selectedIcon = Icons.Filled.MenuBook,
         unselectedIcon = Icons.Outlined.MenuBook,
-        route = Screen.SmartKhata.route
+        route = Screen.KhataFlow.route
     )
 
     object Orders : BottomNavItem(

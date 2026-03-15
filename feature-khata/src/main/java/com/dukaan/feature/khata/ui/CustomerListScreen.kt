@@ -1,9 +1,8 @@
 package com.dukaan.feature.khata.ui
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,10 +27,12 @@ import java.util.*
 fun CustomerListScreen(
     viewModel: KhataViewModel,
     onCustomerClick: (Long) -> Unit,
+    onOverviewClick: () -> Unit = {},
     onBackClick: (() -> Unit)? = null
 ) {
     val customers by viewModel.filteredCustomers.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val sortOption by viewModel.sortOption.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var customerToDelete by remember { mutableStateOf<Long?>(null) }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
@@ -45,6 +46,11 @@ fun CustomerListScreen(
                         IconButton(onClick = click) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOverviewClick) {
+                        Icon(Icons.Outlined.Analytics, contentDescription = "Overview")
                     }
                 }
             )
@@ -128,6 +134,32 @@ fun CustomerListScreen(
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Sort Chips
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val sortOptions = listOf(
+                    SortOption.NAME to "Name",
+                    SortOption.BALANCE_HIGH to "Highest Balance",
+                    SortOption.BALANCE_LOW to "Lowest Balance",
+                    SortOption.RECENT to "Recent"
+                )
+                items(sortOptions) { (option, label) ->
+                    FilterChip(
+                        selected = sortOption == option,
+                        onClick = { viewModel.setSortOption(option) },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        leadingIcon = if (sortOption == option) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                        } else null
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

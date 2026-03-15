@@ -1,5 +1,6 @@
 package com.dukaan.feature.khata.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,19 +32,36 @@ fun AddTransactionScreen(
     var notes by remember { mutableStateOf("") }
     var isListeningForAmount by remember { mutableStateOf(false) }
     val speechText by viewModel.speechText.collectAsState()
+    val voiceParseResult by viewModel.voiceParseResult.collectAsState()
+    val isVoiceParsing by viewModel.isVoiceParsing.collectAsState()
+    var currentType by remember { mutableStateOf(type) }
 
+    // AI voice parsing
     LaunchedEffect(speechText) {
         if (speechText.isNotBlank() && isListeningForAmount) {
-            val extracted = speechText.filter { it.isDigit() || it == '.' }
-            if (extracted.isNotBlank()) {
-                amount = extracted
-            }
             isListeningForAmount = false
+            viewModel.parseVoiceTransaction(speechText)
         }
     }
 
-    val isJama = type == TransactionType.JAMA
-    val accentColor = if (isJama) androidx.compose.ui.graphics.Color(0xFF00B37E) else androidx.compose.ui.graphics.Color(0xFFEF4444)
+    // Apply AI parse result
+    LaunchedEffect(voiceParseResult) {
+        voiceParseResult?.let { result ->
+            if (result.amount > 0) {
+                amount = result.amount.toLong().let { if (result.amount == it.toDouble()) it.toString() else result.amount.toString() }
+            }
+            val parsedNotes = result.notes
+            if (!parsedNotes.isNullOrBlank()) {
+                notes = parsedNotes
+            }
+            if (result.confidence > 0.7) {
+                currentType = if (result.type == "JAMA") TransactionType.JAMA else TransactionType.BAKI
+            }
+        }
+    }
+
+    val isJama = currentType == TransactionType.JAMA
+    val accentColor = if (isJama) Color(0xFF00B37E) else Color(0xFFEF4444)
 
     Scaffold(
         topBar = {
@@ -54,7 +73,10 @@ fun AddTransactionScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = {
+                        viewModel.clearVoiceParseResult()
+                        onBackClick()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -106,6 +128,56 @@ fun AddTransactionScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // Type toggle (if AI suggests different type)
+            if (currentType != type) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "AI detected this as ${if (isJama) "Jama (Payment)" else "Baki (Credit)"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { currentType = type }) {
+                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            // AI Parse Result Preview
+            AnimatedVisibility(visible = isVoiceParsing) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "AI is parsing your voice...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
@@ -117,11 +189,12 @@ fun AddTransactionScreen(
                                 id = 0,
                                 customerId = customerId,
                                 amount = amountVal,
-                                type = type,
+                                type = currentType,
                                 date = System.currentTimeMillis(),
                                 notes = notes.ifBlank { null }
                             )
                         )
+                        viewModel.clearVoiceParseResult()
                         onSuccess()
                     }
                 },
@@ -139,7 +212,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Voice shortcut - now functional
+            // Voice shortcut - AI-powered
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -168,11 +241,11 @@ fun AddTransactionScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            if (isListeningForAmount) "Listening... tap to stop" else "Use Voice Instead",
+                            if (isListeningForAmount) "Listening... tap to stop" else "Smart Voice Entry",
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Say the amount number clearly",
+                            "Say naturally: \"500 rupees mila\" or \"200 ka udhar\"",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface KhataRepository {
     fun getAllCustomers(): Flow<List<Customer>>
     suspend fun getCustomerById(customerId: Long): Customer?
+    fun getCustomerFlow(customerId: Long): Flow<Customer?>
     suspend fun addCustomer(name: String, phone: String): Long
     suspend fun updateCustomer(customerId: Long, name: String, phone: String)
     suspend fun deleteCustomer(customerId: Long)
