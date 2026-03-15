@@ -23,7 +23,7 @@ import com.dukaan.core.ui.components.EmptyStateView
 @Composable
 fun WholesaleOrderScreen(
     viewModel: OrderViewModel,
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     onShareClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -33,8 +33,10 @@ fun WholesaleOrderScreen(
             TopAppBar(
                 title = { Text("Generate Order", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    onBackClick?.let { click ->
+                        IconButton(onClick = click) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {

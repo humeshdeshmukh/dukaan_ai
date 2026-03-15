@@ -38,7 +38,8 @@ fun DashboardScreen(
     onOrdersClick: () -> Unit,
     onBillHistoryClick: () -> Unit = {},
     onPurchaseBillsClick: () -> Unit = {},
-    onBillClick: (Long) -> Unit = {}
+    onBillClick: (Long) -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -70,6 +71,24 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                RoundedCornerShape(10.dp)
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 },

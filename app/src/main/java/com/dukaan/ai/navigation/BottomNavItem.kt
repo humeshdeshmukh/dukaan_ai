@@ -39,10 +39,10 @@ sealed class BottomNavItem(
         route = Screen.SmartKhata.route
     )
 
-    object Settings : BottomNavItem(
-        label = "Settings",
-        selectedIcon = Icons.Filled.Settings,
-        unselectedIcon = Icons.Outlined.Settings,
-        route = Screen.Settings.route
+    object Orders : BottomNavItem(
+        label = "Orders",
+        selectedIcon = Icons.Filled.ShoppingCart,
+        unselectedIcon = Icons.Outlined.ShoppingCart,
+        route = Screen.WholesaleOrder.route
     )
 }

@@ -92,7 +92,13 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                         restoreState = true
                     }
                 },
-                onOrdersClick = { navController.navigate(Screen.WholesaleOrder.route) },
+                onOrdersClick = {
+                    navController.navigate(Screen.WholesaleOrder.route) {
+                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onBillHistoryClick = {
                     navController.navigate(Screen.BillHistory.route) {
                         popUpTo(Screen.Dashboard.route) { saveState = true }
@@ -101,7 +107,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                     }
                 },
                 onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) },
-                onBillClick = { billId -> navController.navigate(Screen.BillDetail.createRoute(billId)) }
+                onBillClick = { billId -> navController.navigate(Screen.BillDetail.createRoute(billId)) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) }
             )
         }
 
@@ -192,12 +199,12 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             }
         }
 
-        // Wholesale Order
+        // Orders tab
         composable(Screen.WholesaleOrder.route) {
             val orderViewModel: OrderViewModel = hiltViewModel()
             WholesaleOrderScreen(
                 viewModel = orderViewModel,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = null,
                 onShareClick = { message ->
                     shareViaWhatsApp(context, message)
                 }
@@ -242,12 +249,12 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             )
         }
 
-        // Settings tab
+        // Settings (sub-screen, accessed from dashboard header)
         composable(Screen.Settings.route) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsState()
             SettingsScreen(
-                onBackClick = null,
+                onBackClick = { navController.popBackStack() },
                 isDarkTheme = settingsState.isDarkTheme,
                 onToggleDarkTheme = { settingsViewModel.toggleDarkTheme(it) },
                 shopName = settingsState.shopName,

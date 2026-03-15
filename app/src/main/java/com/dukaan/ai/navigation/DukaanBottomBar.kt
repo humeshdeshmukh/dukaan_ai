@@ -20,7 +20,7 @@ fun DukaanBottomBar(
         BottomNavItem.Scan,
         BottomNavItem.Bills,
         BottomNavItem.Khata,
-        BottomNavItem.Settings
+        BottomNavItem.Orders
     )
 
     val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
