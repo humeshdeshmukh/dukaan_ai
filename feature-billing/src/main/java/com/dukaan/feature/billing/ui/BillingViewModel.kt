@@ -2,6 +2,8 @@ package com.dukaan.feature.billing.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dukaan.core.db.dao.KhataDao
+import com.dukaan.core.db.entity.CustomerEntity
 import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
@@ -14,19 +16,37 @@ import javax.inject.Inject
 
 data class BillingUiState(
     val items: List<BillItem> = emptyList(),
-    val totalAmount: Double = 0.0,
     val isRecording: Boolean = false,
     val recognizedText: String = "",
     val isParsing: Boolean = false,
     val error: String? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    // Calculation
+    val subtotal: Double = 0.0,
+    val discountPercent: Double = 0.0,
+    val discountAmount: Double = 0.0,
+    val taxPercent: Double = 0.0,
+    val taxAmount: Double = 0.0,
+    val grandTotal: Double = 0.0,
+    // Customer
+    val selectedCustomerName: String = "",
+    val selectedCustomerId: Long? = null,
+    // Payment
+    val paymentMode: String = "CASH",
+    val notes: String = "",
+    // UI
+    val editingItemIndex: Int = -1,
+    val snackbarMessage: String? = null,
+    // Data
+    val customers: List<CustomerEntity> = emptyList()
 )
 
 @HiltViewModel
 class BillingViewModel @Inject constructor(
     private val repository: BillingRepository,
     private val geminiService: GeminiBillingService,
-    private val speechManager: SpeechManager
+    private val speechManager: SpeechManager,
+    private val khataDao: KhataDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BillingUiState())
@@ -41,6 +61,7 @@ class BillingViewModel @Inject constructor(
                 _uiState.update { it.copy(recognizedText = text) }
             }
         }
+        loadCustomers()
     }
 
     fun toggleRecording() {
@@ -65,11 +86,11 @@ class BillingViewModel @Inject constructor(
                     val newItems = state.items + parsedItems
                     state.copy(
                         items = newItems,
-                        totalAmount = newItems.sumOf { it.total },
                         isParsing = false,
                         recognizedText = ""
                     )
                 }
+                recalculate()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -83,27 +104,133 @@ class BillingViewModel @Inject constructor(
 
     fun removeItem(item: BillItem) {
         _uiState.update { state ->
-            val newItems = state.items.filter { it != item }
+            state.copy(items = state.items.filter { it != item })
+        }
+        recalculate()
+    }
+
+    fun updateItem(index: Int, updated: BillItem) {
+        _uiState.update { state ->
+            val newItems = state.items.toMutableList()
+            if (index in newItems.indices) {
+                newItems[index] = updated
+            }
+            state.copy(items = newItems, editingItemIndex = -1)
+        }
+        recalculate()
+    }
+
+    fun addItemManually(name: String, quantity: Double, unit: String, price: Double) {
+        val item = BillItem(name = name, quantity = quantity, unit = unit, price = price)
+        _uiState.update { state ->
+            state.copy(items = state.items + item)
+        }
+        recalculate()
+    }
+
+    fun setDiscount(percent: Double) {
+        _uiState.update { it.copy(discountPercent = percent.coerceIn(0.0, 100.0)) }
+        recalculate()
+    }
+
+    fun setTax(percent: Double) {
+        _uiState.update { it.copy(taxPercent = percent.coerceIn(0.0, 100.0)) }
+        recalculate()
+    }
+
+    fun setPaymentMode(mode: String) {
+        _uiState.update { it.copy(paymentMode = mode) }
+    }
+
+    fun selectCustomer(id: Long?, name: String) {
+        _uiState.update { it.copy(selectedCustomerId = id, selectedCustomerName = name) }
+    }
+
+    fun clearCustomer() {
+        _uiState.update { it.copy(selectedCustomerId = null, selectedCustomerName = "") }
+    }
+
+    fun setNotes(notes: String) {
+        _uiState.update { it.copy(notes = notes) }
+    }
+
+    fun setEditingItem(index: Int) {
+        _uiState.update { it.copy(editingItemIndex = index) }
+    }
+
+    fun dismissSnackbar() {
+        _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    private fun recalculate() {
+        _uiState.update { state ->
+            val subtotal = state.items.sumOf { it.total }
+            val discountAmount = subtotal * state.discountPercent / 100.0
+            val afterDiscount = subtotal - discountAmount
+            val taxAmount = afterDiscount * state.taxPercent / 100.0
+            val grandTotal = afterDiscount + taxAmount
             state.copy(
-                items = newItems,
-                totalAmount = newItems.sumOf { it.total }
+                subtotal = subtotal,
+                discountAmount = discountAmount,
+                taxAmount = taxAmount,
+                grandTotal = grandTotal
             )
         }
     }
 
-    fun saveBill() {
+    private fun loadCustomers() {
         viewModelScope.launch {
+            khataDao.getAllCustomers().collect { customers ->
+                _uiState.update { it.copy(customers = customers) }
+            }
+        }
+    }
+
+    fun saveBill(asDraft: Boolean = false) {
+        viewModelScope.launch {
+            val state = _uiState.value
             val bill = Bill(
-                items = _uiState.value.items,
-                totalAmount = _uiState.value.totalAmount
+                items = state.items,
+                totalAmount = state.grandTotal,
+                subtotal = state.subtotal,
+                discountPercent = state.discountPercent,
+                discountAmount = state.discountAmount,
+                taxPercent = state.taxPercent,
+                taxAmount = state.taxAmount,
+                customerName = state.selectedCustomerName,
+                customerId = state.selectedCustomerId,
+                paymentMode = state.paymentMode,
+                notes = state.notes,
+                isDraft = asDraft
             )
             repository.saveBill(bill, "VOICE")
-            _uiState.update { it.copy(isSaved = true) }
+            if (asDraft) {
+                _uiState.update { it.copy(snackbarMessage = "Draft saved!") }
+            } else {
+                _uiState.update { it.copy(isSaved = true, snackbarMessage = "Bill saved!") }
+            }
         }
+    }
+
+    fun buildBillForPdf(): Bill {
+        val state = _uiState.value
+        return Bill(
+            items = state.items,
+            totalAmount = state.grandTotal,
+            subtotal = state.subtotal,
+            discountPercent = state.discountPercent,
+            discountAmount = state.discountAmount,
+            taxPercent = state.taxPercent,
+            taxAmount = state.taxAmount,
+            customerName = state.selectedCustomerName,
+            customerId = state.selectedCustomerId,
+            paymentMode = state.paymentMode,
+            notes = state.notes
+        )
     }
 
     fun clearBill() {
-        _uiState.value = BillingUiState()
+        _uiState.value = BillingUiState(customers = _uiState.value.customers)
     }
 
     fun deleteBill(billId: Long) {
@@ -119,14 +246,29 @@ class BillingViewModel @Inject constructor(
     suspend fun getBillById(id: Long): Bill? = repository.getBillById(id)
 
     fun formatWhatsAppMessage(): String {
+        val state = _uiState.value
         val sb = StringBuilder()
         sb.append("*Dukaan AI - Bill*\n")
+        if (state.selectedCustomerName.isNotEmpty()) {
+            sb.append("Customer: ${state.selectedCustomerName}\n")
+        }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
-        _uiState.value.items.forEach { item ->
+        state.items.forEach { item ->
             sb.append("${item.name}: ${item.quantity} ${item.unit} @ ₹${item.price} = ₹${item.total}\n")
         }
         sb.append("━━━━━━━━━━━━━━━━━━\n")
-        sb.append("*Total: ₹${_uiState.value.totalAmount}*\n")
+        sb.append("Subtotal: ₹${String.format("%.2f", state.subtotal)}\n")
+        if (state.discountPercent > 0) {
+            sb.append("Discount (${state.discountPercent}%): -₹${String.format("%.2f", state.discountAmount)}\n")
+        }
+        if (state.taxPercent > 0) {
+            sb.append("Tax/GST (${state.taxPercent}%): +₹${String.format("%.2f", state.taxAmount)}\n")
+        }
+        sb.append("*Total: ₹${String.format("%.2f", state.grandTotal)}*\n")
+        sb.append("Payment: ${state.paymentMode}\n")
+        if (state.notes.isNotEmpty()) {
+            sb.append("Note: ${state.notes}\n")
+        }
         sb.append("\n_Sent via Dukaan AI_")
         return sb.toString()
     }

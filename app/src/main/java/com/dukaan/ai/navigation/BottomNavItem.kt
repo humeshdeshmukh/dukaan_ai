@@ -25,11 +25,11 @@ sealed class BottomNavItem(
         route = Screen.OcrFlow.route
     )
 
-    object Bills : BottomNavItem(
-        label = "Bills",
-        selectedIcon = Icons.Filled.Receipt,
-        unselectedIcon = Icons.Outlined.Receipt,
-        route = Screen.BillHistory.route
+    object VoiceBill : BottomNavItem(
+        label = "Voice Bill",
+        selectedIcon = Icons.Filled.Mic,
+        unselectedIcon = Icons.Outlined.Mic,
+        route = Screen.VoiceBilling.route
     )
 
     object Khata : BottomNavItem(

@@ -105,7 +105,13 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             DashboardScreen(
                 viewModel = dashboardViewModel,
                 onScanBillClick = { navController.navigate(Screen.OcrFlow.route) },
-                onVoiceBillingClick = { navController.navigate(Screen.VoiceBilling.route) },
+                onVoiceBillingClick = {
+                    navController.navigate(Screen.VoiceBilling.route) {
+                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onSmartKhataClick = {
                     navController.navigate(Screen.KhataFlow.route) {
                         popUpTo(Screen.Dashboard.route) { saveState = true }
@@ -279,14 +285,24 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             )
         }
 
-        // Voice Billing
+        // Voice Billing (bottom nav tab)
         composable(Screen.VoiceBilling.route) {
             val billingViewModel: BillingViewModel = hiltViewModel()
+            val settingsVm: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsVm.uiState.collectAsState()
             VoiceBillingScreen(
                 viewModel = billingViewModel,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = null,
                 onShareClick = { message ->
                     shareViaWhatsApp(context, message)
+                },
+                onBillClick = { billId ->
+                    navController.navigate(Screen.BillDetail.createRoute(billId))
+                },
+                onGeneratePdf = { bill ->
+                    val shopInfo = settingsState.toShopInfo()
+                    val file = PdfGenerator.generateBillPdf(context, shopInfo, bill)
+                    pdfPreviewFile = file
                 }
             )
         }

@@ -20,7 +20,7 @@ fun DukaanBottomBar(
     val tabs = listOf(
         BottomNavItem.Home,
         BottomNavItem.Scan,
-        BottomNavItem.Bills,
+        BottomNavItem.VoiceBill,
         BottomNavItem.Khata,
         BottomNavItem.Orders
     )
@@ -28,7 +28,7 @@ fun DukaanBottomBar(
     val labelMap = mapOf(
         BottomNavItem.Home to strings.navHome,
         BottomNavItem.Scan to strings.navScan,
-        BottomNavItem.Bills to strings.navBills,
+        BottomNavItem.VoiceBill to strings.navVoiceBill,
         BottomNavItem.Khata to strings.navKhata,
         BottomNavItem.Orders to strings.navOrders
     )

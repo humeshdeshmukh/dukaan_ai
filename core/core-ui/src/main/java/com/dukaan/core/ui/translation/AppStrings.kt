@@ -1,274 +1,295 @@
 package com.dukaan.core.ui.translation
 
-data class AppStrings(
+class AppStrings {
     // === COMMON ===
-    val back: String = "Back",
-    val save: String = "Save",
-    val cancel: String = "Cancel",
-    val delete: String = "Delete",
-    val add: String = "Add",
-    val edit: String = "Edit",
-    val close: String = "Close",
-    val retry: String = "Retry",
-    val share: String = "Share",
-    val total: String = "Total",
-    val settings: String = "Settings",
-    val items: String = "items",
-    val item: String = "item",
-    val send: String = "Send",
-    val ok: String = "OK",
-    val remove: String = "Remove",
+    var back: String = "Back"
+    var save: String = "Save"
+    var cancel: String = "Cancel"
+    var delete: String = "Delete"
+    var add: String = "Add"
+    var edit: String = "Edit"
+    var close: String = "Close"
+    var retry: String = "Retry"
+    var share: String = "Share"
+    var total: String = "Total"
+    var settings: String = "Settings"
+    var items: String = "items"
+    var item: String = "item"
+    var send: String = "Send"
+    var ok: String = "OK"
+    var remove: String = "Remove"
 
     // === BOTTOM NAV ===
-    val navHome: String = "Home",
-    val navScan: String = "Scan",
-    val navBills: String = "Bills",
-    val navKhata: String = "Khata",
-    val navOrders: String = "Orders",
+    var navHome: String = "Home"
+    var navScan: String = "Scan"
+    var navBills: String = "Bills"
+    var navVoiceBill: String = "Voice Bill"
+    var navKhata: String = "Khata"
+    var navOrders: String = "Orders"
 
     // === SPLASH ===
-    val appName: String = "Dukaan AI",
-    val smartShopAssistant: String = "Your Smart Shop Assistant",
+    var appName: String = "Dukaan AI"
+    var smartShopAssistant: String = "Your Smart Shop Assistant"
 
     // === DASHBOARD ===
-    val goodMorning: String = "Good morning",
-    val goodAfternoon: String = "Good afternoon",
-    val goodEvening: String = "Good evening",
-    val quickActions: String = "Quick Actions",
-    val scanBill: String = "Scan Bill",
-    val ocrScanner: String = "OCR Scanner",
-    val voiceBill: String = "Voice Bill",
-    val speakItems: String = "Speak Items",
-    val smartKhata: String = "Smart Khata",
-    val ledgerBook: String = "Ledger Book",
-    val orders: String = "Orders",
-    val wholesale: String = "Wholesale",
-    val billHistory: String = "Bill History",
-    val pastBills: String = "Past Bills",
-    val purchaseBills: String = "Purchase Bills",
-    val byWholesaler: String = "By Wholesaler",
-    val recentBills: String = "Recent Bills",
-    val viewAll: String = "View All",
-    val todaysSales: String = "Today's Sales",
-    val totalBills: String = "Total Bills",
-    val creditDue: String = "Credit Due",
-    val customers: String = "Customers",
+    var goodMorning: String = "Good morning"
+    var goodAfternoon: String = "Good afternoon"
+    var goodEvening: String = "Good evening"
+    var quickActions: String = "Quick Actions"
+    var scanBill: String = "Scan Bill"
+    var ocrScanner: String = "OCR Scanner"
+    var voiceBill: String = "Voice Bill"
+    var speakItems: String = "Speak Items"
+    var smartKhata: String = "Smart Khata"
+    var ledgerBook: String = "Ledger Book"
+    var orders: String = "Orders"
+    var wholesale: String = "Wholesale"
+    var billHistory: String = "Bill History"
+    var pastBills: String = "Past Bills"
+    var purchaseBills: String = "Purchase Bills"
+    var byWholesaler: String = "By Wholesaler"
+    var recentBills: String = "Recent Bills"
+    var viewAll: String = "View All"
+    var todaysSales: String = "Today's Sales"
+    var totalBills: String = "Total Bills"
+    var creditDue: String = "Credit Due"
+    var customers: String = "Customers"
 
     // === SETTINGS ===
-    val shopProfile: String = "Shop Profile",
-    val setUpYourShopProfile: String = "Set up your shop profile",
-    val profileOnInvoices: String = "Your shop details will appear on invoices and statements",
-    val editProfile: String = "Edit Profile",
-    val appearance: String = "Appearance",
-    val darkTheme: String = "Dark Theme",
-    val appLanguage: String = "App Language",
-    val language: String = "Language",
-    val previewInvoicePdf: String = "Preview Invoice PDF",
-    val about: String = "About",
-    val appVersion: String = "App Version",
-    val poweredBy: String = "Powered by",
-    val madeWithCare: String = "Made with care for Indian Shopkeepers",
-    val editShopProfile: String = "Edit Shop Profile",
-    val basicInfo: String = "Basic Info",
-    val shopNameLabel: String = "Shop Name *",
-    val ownerNameLabel: String = "Owner Name",
-    val phoneLabel: String = "Phone",
-    val addressLabel: String = "Address",
-    val taglineLabel: String = "Tagline / Description",
-    val taxAndPayment: String = "Tax & Payment",
-    val gstNumberLabel: String = "GST Number (GSTIN)",
-    val emailLabel: String = "Email",
-    val upiIdLabel: String = "UPI ID (e.g. shop@upi)",
-    val bankDetails: String = "Bank Details",
-    val bankNameLabel: String = "Bank Name",
-    val accountNumberLabel: String = "Account Number",
-    val ifscCodeLabel: String = "IFSC Code",
-    val hide: String = "Hide",
-    val show: String = "Show",
-    val applyLanguage: String = "Apply",
-    val translatingApp: String = "Translating app...",
+    var shopProfile: String = "Shop Profile"
+    var setUpYourShopProfile: String = "Set up your shop profile"
+    var profileOnInvoices: String = "Your shop details will appear on invoices and statements"
+    var editProfile: String = "Edit Profile"
+    var appearance: String = "Appearance"
+    var darkTheme: String = "Dark Theme"
+    var appLanguage: String = "App Language"
+    var language: String = "Language"
+    var previewInvoicePdf: String = "Preview Invoice PDF"
+    var about: String = "About"
+    var appVersion: String = "App Version"
+    var poweredBy: String = "Powered by"
+    var madeWithCare: String = "Made with care for Indian Shopkeepers"
+    var editShopProfile: String = "Edit Shop Profile"
+    var basicInfo: String = "Basic Info"
+    var shopNameLabel: String = "Shop Name *"
+    var ownerNameLabel: String = "Owner Name"
+    var phoneLabel: String = "Phone"
+    var addressLabel: String = "Address"
+    var taglineLabel: String = "Tagline / Description"
+    var taxAndPayment: String = "Tax & Payment"
+    var gstNumberLabel: String = "GST Number (GSTIN)"
+    var emailLabel: String = "Email"
+    var upiIdLabel: String = "UPI ID (e.g. shop@upi)"
+    var bankDetails: String = "Bank Details"
+    var bankNameLabel: String = "Bank Name"
+    var accountNumberLabel: String = "Account Number"
+    var ifscCodeLabel: String = "IFSC Code"
+    var hide: String = "Hide"
+    var show: String = "Show"
+    var applyLanguage: String = "Apply"
+    var translatingApp: String = "Translating app..."
 
     // === KHATA - Customer List ===
-    val toCollect: String = "To Collect",
-    val toPay: String = "To Pay",
-    val searchByNameOrPhone: String = "Search by name or phone",
-    val sortName: String = "Name",
-    val sortHighestBalance: String = "Highest Balance",
-    val sortLowestBalance: String = "Lowest Balance",
-    val sortRecent: String = "Recent",
-    val noCustomersYet: String = "No Customers Yet",
-    val addFirstCustomer: String = "Add your first customer to start tracking payments",
-    val deleteCustomer: String = "Delete Customer",
-    val deleteCustomerMessage: String = "This will permanently delete this customer and all their transactions. This cannot be undone.",
-    val addNewCustomer: String = "Add New Customer",
-    val addCustomer: String = "Add Customer",
-    val customerNameLabel: String = "Customer Name",
-    val phoneNumberLabel: String = "Phone Number",
+    var toCollect: String = "To Collect"
+    var toPay: String = "To Pay"
+    var searchByNameOrPhone: String = "Search by name or phone"
+    var sortName: String = "Name"
+    var sortHighestBalance: String = "Highest Balance"
+    var sortLowestBalance: String = "Lowest Balance"
+    var sortRecent: String = "Recent"
+    var noCustomersYet: String = "No Customers Yet"
+    var addFirstCustomer: String = "Add your first customer to start tracking payments"
+    var deleteCustomer: String = "Delete Customer"
+    var deleteCustomerMessage: String = "This will permanently delete this customer and all their transactions. This cannot be undone."
+    var addNewCustomer: String = "Add New Customer"
+    var addCustomer: String = "Add Customer"
+    var customerNameLabel: String = "Customer Name"
+    var phoneNumberLabel: String = "Phone Number"
 
     // === KHATA - Customer Detail ===
-    val customer: String = "Customer",
-    val totalBakiToCollect: String = "Total BAKI (to collect)",
-    val totalJamaToPay: String = "Total JAMA (to pay)",
-    val sendReminder: String = "Send Reminder",
-    val getAiInsight: String = "Get AI Insight",
-    val aiInsight: String = "AI Insight",
-    val analyzing: String = "Analyzing...",
-    val all: String = "All",
-    val week: String = "Week",
-    val month: String = "Month",
-    val custom: String = "Custom",
-    val transactions: String = "Transactions",
-    val noTransactions: String = "No Transactions",
-    val addPaymentOrCredit: String = "Add a payment or credit to get started",
-    val youGot: String = "YOU GOT",
-    val youGave: String = "YOU GAVE",
-    val paymentReceived: String = "Payment Received",
-    val creditGiven: String = "Credit Given",
-    val editCustomer: String = "Edit Customer",
-    val deleteTransaction: String = "Delete Transaction",
-    val deleteTransactionMessage: String = "This will delete this transaction and reverse the balance. This cannot be undone.",
-    val baki: String = "BAKI",
-    val jama: String = "JAMA",
+    var customer: String = "Customer"
+    var totalBakiToCollect: String = "Total BAKI (to collect)"
+    var totalJamaToPay: String = "Total JAMA (to pay)"
+    var sendReminder: String = "Send Reminder"
+    var getAiInsight: String = "Get AI Insight"
+    var aiInsight: String = "AI Insight"
+    var analyzing: String = "Analyzing..."
+    var all: String = "All"
+    var week: String = "Week"
+    var month: String = "Month"
+    var custom: String = "Custom"
+    var transactions: String = "Transactions"
+    var noTransactions: String = "No Transactions"
+    var addPaymentOrCredit: String = "Add a payment or credit to get started"
+    var youGot: String = "YOU GOT"
+    var youGave: String = "YOU GAVE"
+    var paymentReceived: String = "Payment Received"
+    var creditGiven: String = "Credit Given"
+    var editCustomer: String = "Edit Customer"
+    var deleteTransaction: String = "Delete Transaction"
+    var deleteTransactionMessage: String = "This will delete this transaction and reverse the balance. This cannot be undone."
+    var baki: String = "BAKI"
+    var jama: String = "JAMA"
 
     // === KHATA - Statement ===
-    val statement: String = "Statement",
-    val threeMonths: String = "3 Months",
-    val summary: String = "Summary",
-    val totalCreditBaki: String = "Total Credit (Baki)",
-    val totalPaymentsJama: String = "Total Payments (Jama)",
-    val netBalance: String = "Net Balance",
-    val customerOwesYou: String = "Customer owes you",
-    val youOweCustomer: String = "You owe customer",
-    val settled: String = "Settled",
-    val noTransactionsInPeriod: String = "No transactions in this period",
+    var statement: String = "Statement"
+    var threeMonths: String = "3 Months"
+    var summary: String = "Summary"
+    var totalCreditBaki: String = "Total Credit (Baki)"
+    var totalPaymentsJama: String = "Total Payments (Jama)"
+    var netBalance: String = "Net Balance"
+    var customerOwesYou: String = "Customer owes you"
+    var youOweCustomer: String = "You owe customer"
+    var settled: String = "Settled"
+    var noTransactionsInPeriod: String = "No transactions in this period"
 
     // === KHATA - Add Transaction ===
-    val paymentReceivedJama: String = "Payment Received (Jama)",
-    val creditGivenBaki: String = "Credit Given (Baki)",
-    val addNotesOptional: String = "Add notes (Optional)",
-    val saveEntry: String = "SAVE ENTRY",
-    val smartVoiceEntry: String = "Smart Voice Entry",
-    val voiceEntryHint: String = "Say naturally: \"500 rupees mila\" or \"200 ka udhar\"",
-    val listeningTapToStop: String = "Listening... tap to stop",
-    val aiParsingVoice: String = "AI is parsing your voice...",
-    val undo: String = "Undo",
+    var paymentReceivedJama: String = "Payment Received (Jama)"
+    var creditGivenBaki: String = "Credit Given (Baki)"
+    var addNotesOptional: String = "Add notes (Optional)"
+    var saveEntry: String = "SAVE ENTRY"
+    var smartVoiceEntry: String = "Smart Voice Entry"
+    var voiceEntryHint: String = "Say naturally: \"500 rupees mila\" or \"200 ka udhar\""
+    var listeningTapToStop: String = "Listening... tap to stop"
+    var aiParsingVoice: String = "AI is parsing your voice..."
+    var undo: String = "Undo"
 
     // === KHATA - Overview ===
-    val khataOverview: String = "Khata Overview",
-    val netPosition: String = "Net Position",
-    val topDebtorsOweYou: String = "Top Debtors (Owe You)",
-    val topCreditorsYouOwe: String = "Top Creditors (You Owe)",
-    val recentlyActive: String = "Recently Active",
+    var khataOverview: String = "Khata Overview"
+    var netPosition: String = "Net Position"
+    var topDebtorsOweYou: String = "Top Debtors (Owe You)"
+    var topCreditorsYouOwe: String = "Top Creditors (You Owe)"
+    var recentlyActive: String = "Recently Active"
 
     // === KHATA - AI Chat ===
-    val khataAiAssistant: String = "Khata AI Assistant",
-    val paymentPattern: String = "Payment pattern",
-    val creditRisk: String = "Credit risk?",
-    val thinking: String = "Thinking...",
-    val askAboutThisKhata: String = "Ask about this khata...",
+    var khataAiAssistant: String = "Khata AI Assistant"
+    var paymentPattern: String = "Payment pattern"
+    var creditRisk: String = "Credit risk?"
+    var thinking: String = "Thinking..."
+    var askAboutThisKhata: String = "Ask about this khata..."
 
     // === VOICE BILLING ===
-    val voiceBilling: String = "Voice Billing",
-    val aiIsParsing: String = "AI is parsing...",
-    val listening: String = "Listening...",
-    val tapToSpeakItems: String = "Tap to Speak Items",
-    val billItems: String = "Bill Items",
-    val noItemsAddedHint: String = "No items added yet.\nTry: \"Chini 1 kilo 40\"",
-    val totalAmount: String = "Total Amount",
-    val shareAndSave: String = "Share & Save",
+    var voiceBilling: String = "Voice Billing"
+    var aiIsParsing: String = "AI is parsing..."
+    var listening: String = "Listening..."
+    var tapToSpeakItems: String = "Tap to Speak Items"
+    var billItems: String = "Bill Items"
+    var noItemsAddedHint: String = "No items added yet.\nTap mic or add manually"
+    var totalAmount: String = "Total Amount"
+    var shareAndSave: String = "Share & Save"
+    var selectCustomer: String = "Select Customer (Optional)"
+    var subtotal: String = "Subtotal"
+    var discount: String = "Discount"
+    var taxGst: String = "Tax/GST"
+    var grandTotal: String = "Grand Total"
+    var cash: String = "Cash"
+    var upi: String = "UPI"
+    var credit: String = "Credit"
+    var addNote: String = "Add a note..."
+    var saveDraft: String = "Save Draft"
+    var whatsApp: String = "WhatsApp"
+    var savePdf: String = "Save & PDF"
+    var searchCustomers: String = "Search customers..."
+    var noCustomersFound: String = "No customers found"
+    var draftSaved: String = "Draft saved!"
+    var billSaved: String = "Bill saved!"
+    var clearBillConfirm: String = "Clear all items?"
+    var quantity: String = "Quantity"
+    var pricePerUnit: String = "Price per unit"
+    var itemName: String = "Item Name"
 
     // === BILL HISTORY ===
-    val noBillsYet: String = "No Bills Yet",
-    val billsAppearHere: String = "Bills created via Voice Billing or Scan will appear here",
-    val deleteBill: String = "Delete Bill",
-    val deleteBillMessage: String = "This bill will be permanently deleted.",
+    var noBillsYet: String = "No Bills Yet"
+    var billsAppearHere: String = "Bills created via Voice Billing or Scan will appear here"
+    var deleteBill: String = "Delete Bill"
+    var deleteBillMessage: String = "This bill will be permanently deleted."
 
     // === BILL DETAIL ===
-    val billDetails: String = "Bill Details",
-    val tapToViewFullImage: String = "Tap to view full image",
-    val billNotFound: String = "Bill not found.",
-    val pinchToZoom: String = "Pinch to zoom",
-    val rotate: String = "Rotate",
-    val reset: String = "Reset",
+    var billDetails: String = "Bill Details"
+    var tapToViewFullImage: String = "Tap to view full image"
+    var billNotFound: String = "Bill not found."
+    var pinchToZoom: String = "Pinch to zoom"
+    var rotate: String = "Rotate"
+    var reset: String = "Reset"
 
     // === OCR / SCANNER ===
-    val processing: String = "Processing...",
-    val billDetectedTapCapture: String = "Bill detected! Tap capture",
-    val holdSteady: String = "Hold steady...",
-    val pointCameraAtBill: String = "Point camera at bill",
-    val processingBill: String = "Processing bill...",
-    val cameraPermissionRequired: String = "Camera permission is required to scan bills.",
-    val grantPermission: String = "Grant Permission",
+    var processing: String = "Processing..."
+    var billDetectedTapCapture: String = "Bill detected! Tap capture"
+    var holdSteady: String = "Hold steady..."
+    var pointCameraAtBill: String = "Point camera at bill"
+    var processingBill: String = "Processing bill..."
+    var cameraPermissionRequired: String = "Camera permission is required to scan bills."
+    var grantPermission: String = "Grant Permission"
 
     // === OCR RESULT ===
-    val verifyScannedBill: String = "Verify Scanned Bill",
-    val confirmAndSaveBill: String = "Confirm & Save Bill",
-    val aiIsReadingBill: String = "AI is reading your bill...",
-    val wholesalerSellerName: String = "Wholesaler / Seller Name",
-    val selectExistingWholesaler: String = "Select existing wholesaler:",
-    val addMissingItem: String = "Add Missing Item",
-    val noBillDataFound: String = "No bill data found. Please try scanning again.",
-    val addItem: String = "Add Item",
-    val editItem: String = "Edit Item",
-    val itemNameLabel: String = "Item Name",
-    val qtyLabel: String = "Qty",
-    val unitLabel: String = "Unit",
-    val priceLabel: String = "Price (₹)",
+    var verifyScannedBill: String = "Verify Scanned Bill"
+    var confirmAndSaveBill: String = "Confirm & Save Bill"
+    var aiIsReadingBill: String = "AI is reading your bill..."
+    var wholesalerSellerName: String = "Wholesaler / Seller Name"
+    var selectExistingWholesaler: String = "Select existing wholesaler:"
+    var addMissingItem: String = "Add Missing Item"
+    var noBillDataFound: String = "No bill data found. Please try scanning again."
+    var addItem: String = "Add Item"
+    var editItem: String = "Edit Item"
+    var itemNameLabel: String = "Item Name"
+    var qtyLabel: String = "Qty"
+    var unitLabel: String = "Unit"
+    var priceLabel: String = "Price (₹)"
 
     // === SCANNED BILL HISTORY ===
-    val searchWholesaler: String = "Search wholesaler...",
-    val noWholesalersFound: String = "No wholesalers found",
-    val noScannedBillsYet: String = "No scanned bills yet",
-    val scanBillToGetStarted: String = "Scan a bill to get started!",
-    val totalPurchases: String = "Total Purchases",
-    val noBillsFound: String = "No bills found",
-    val bill: String = "bill",
-    val bills: String = "bills",
+    var searchWholesaler: String = "Search wholesaler..."
+    var noWholesalersFound: String = "No wholesalers found"
+    var noScannedBillsYet: String = "No scanned bills yet"
+    var scanBillToGetStarted: String = "Scan a bill to get started!"
+    var totalPurchases: String = "Total Purchases"
+    var noBillsFound: String = "No bills found"
+    var bill: String = "bill"
+    var bills: String = "bills"
 
     // === OCR AI CHAT ===
-    val aiBillAssistant: String = "AI Bill Assistant",
-    val askAboutThisBill: String = "Ask anything about this bill",
-    val verifyTotal: String = "Verify total",
-    val anyDiscount: String = "Any discount?",
-    val summarizeBill: String = "Summarize bill",
-    val askAboutBill: String = "Ask about this bill...",
+    var aiBillAssistant: String = "AI Bill Assistant"
+    var askAboutThisBill: String = "Ask anything about this bill"
+    var verifyTotal: String = "Verify total"
+    var anyDiscount: String = "Any discount?"
+    var summarizeBill: String = "Summarize bill"
+    var askAboutBill: String = "Ask about this bill..."
 
     // === WHOLESALE ORDERS ===
-    val generateOrder: String = "Generate Order",
-    val clearAll: String = "Clear All",
-    val aiIsParsingOrder: String = "AI is parsing your order...",
-    val tapToSpeakOrder: String = "Tap to speak your order",
-    val orderSaved: String = "Order saved successfully!",
-    val orderItems: String = "Order Items",
-    val noItemsYet: String = "No Items Yet",
-    val orderHint: String = "Say: \"Sugar 10 kg, Oil 5 litre, Soap 2 dozen\"",
+    var generateOrder: String = "Generate Order"
+    var clearAll: String = "Clear All"
+    var aiIsParsingOrder: String = "AI is parsing your order..."
+    var tapToSpeakOrder: String = "Tap to speak your order"
+    var orderSaved: String = "Order saved successfully!"
+    var orderItems: String = "Order Items"
+    var noItemsYet: String = "No Items Yet"
+    var orderHint: String = "Say: \"Sugar 10 kg, Oil 5 litre, Soap 2 dozen\""
 
     // === INVENTORY ===
-    val inventory: String = "Inventory",
-    val searchProducts: String = "Search products...",
-    val products: String = "Products",
-    val lowStock: String = "Low Stock",
-    val noProductsYet: String = "No Products Yet",
-    val addProductsToTrack: String = "Add products to track your inventory",
-    val lowStockRunning: String = "product(s) running low on stock",
-    val addProduct: String = "Add Product",
-    val productNameLabel: String = "Product Name*",
-    val categoryLabel: String = "Category",
-    val stockLabel: String = "Stock*",
-    val costPriceLabel: String = "Cost Price",
-    val sellingPriceLabel: String = "Selling Price*",
-    val lowStockAlertAt: String = "Low Stock Alert At",
-    val deleteProduct: String = "Delete Product",
-    val deleteProductMessage: String = "This product will be permanently removed from your inventory.",
+    var inventory: String = "Inventory"
+    var searchProducts: String = "Search products..."
+    var products: String = "Products"
+    var lowStock: String = "Low Stock"
+    var noProductsYet: String = "No Products Yet"
+    var addProductsToTrack: String = "Add products to track your inventory"
+    var lowStockRunning: String = "product(s) running low on stock"
+    var addProduct: String = "Add Product"
+    var productNameLabel: String = "Product Name*"
+    var categoryLabel: String = "Category"
+    var stockLabel: String = "Stock*"
+    var costPriceLabel: String = "Cost Price"
+    var sellingPriceLabel: String = "Selling Price*"
+    var lowStockAlertAt: String = "Low Stock Alert At"
+    var deleteProduct: String = "Delete Product"
+    var deleteProductMessage: String = "This product will be permanently removed from your inventory."
 
     // === PDF PREVIEW ===
-    val pdfPreview: String = "PDF Preview",
-    val unableToRenderPdf: String = "Unable to render PDF preview",
-    val sharePdf: String = "Share",
+    var pdfPreview: String = "PDF Preview"
+    var unableToRenderPdf: String = "Unable to render PDF preview"
+    var sharePdf: String = "Share"
 
     // === DATE PICKER ===
-    val selectDateRange: String = "Select Date Range",
+    var selectDateRange: String = "Select Date Range"
 
     // === AI ASSISTANT ===
-    val aiAssistant: String = "AI Assistant",
-)
+    var aiAssistant: String = "AI Assistant"
+}

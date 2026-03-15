@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
 
                     val topLevelRoutes = setOf(
                         Screen.Dashboard.route,
-                        Screen.BillHistory.route,
+                        Screen.VoiceBilling.route,
                         Screen.SmartKhata.route,
                         Screen.WholesaleOrder.route,
                         Screen.ScanBill.route

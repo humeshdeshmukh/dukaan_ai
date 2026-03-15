@@ -161,7 +161,7 @@ class KhataViewModel @Inject constructor(
     }
 
     fun startVoiceInput(languageCode: String = "hi") {
-        speechManager.startListening(SupportedLanguages.getSpeechCode(languageCode))
+        speechManager.startListening()
     }
 
     fun stopVoiceInput() {

@@ -15,5 +15,15 @@ data class BillEntity(
     val sellerName: String = "",
     val billNumber: String = "",
     val imagePath: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val customerName: String = "",
+    val customerId: Long? = null,
+    val discountPercent: Double = 0.0,
+    val discountAmount: Double = 0.0,
+    val taxPercent: Double = 0.0,
+    val taxAmount: Double = 0.0,
+    val subtotal: Double = 0.0,
+    val paymentMode: String = "CASH",
+    val notes: String = "",
+    val isDraft: Boolean = false
 )

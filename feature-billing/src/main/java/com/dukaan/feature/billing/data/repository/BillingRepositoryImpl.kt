@@ -24,7 +24,17 @@ class BillingRepositoryImpl @Inject constructor(
             sellerName = bill.sellerName,
             billNumber = bill.billNumber,
             imagePath = imagePath,
-            timestamp = bill.timestamp
+            timestamp = bill.timestamp,
+            customerName = bill.customerName,
+            customerId = bill.customerId,
+            discountPercent = bill.discountPercent,
+            discountAmount = bill.discountAmount,
+            taxPercent = bill.taxPercent,
+            taxAmount = bill.taxAmount,
+            subtotal = bill.subtotal,
+            paymentMode = bill.paymentMode,
+            notes = bill.notes,
+            isDraft = bill.isDraft
         )
         val itemEntities = bill.items.map { item ->
             BillItemEntity(
@@ -83,7 +93,17 @@ class BillingRepositoryImpl @Inject constructor(
             sellerName = bill.sellerName,
             billNumber = bill.billNumber,
             imagePath = bill.imagePath,
-            timestamp = bill.timestamp
+            timestamp = bill.timestamp,
+            customerName = bill.customerName,
+            customerId = bill.customerId,
+            discountPercent = bill.discountPercent,
+            discountAmount = bill.discountAmount,
+            taxPercent = bill.taxPercent,
+            taxAmount = bill.taxAmount,
+            subtotal = bill.subtotal,
+            paymentMode = bill.paymentMode,
+            notes = bill.notes,
+            isDraft = bill.isDraft
         )
     }
 }
