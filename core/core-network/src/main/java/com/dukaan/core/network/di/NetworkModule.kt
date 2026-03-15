@@ -1,5 +1,6 @@
 package com.dukaan.core.network.di
 
+import com.dukaan.core.network.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import dagger.Module
 import dagger.Provides
@@ -14,10 +15,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideGenerativeModel(): GenerativeModel {
-        // NOTE: Replace with actual API key or fetch fromBuildConfig/SafeArgs
         return GenerativeModel(
-                modelName = "gemini-2.5-flash-lite",
-                apiKey = "AIzaSyCRTsm2bzegLxHTGP3Ul3wX6KtTMjPwxVQ"
+            modelName = "gemini-2.5-flash-lite",
+            apiKey = BuildConfig.GEMINI_API_KEY
         )
     }
 }

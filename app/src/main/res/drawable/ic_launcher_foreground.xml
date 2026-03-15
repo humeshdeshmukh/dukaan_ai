@@ -4,7 +4,103 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Safe zone: 24-84 (60x60 centered content) -->
+
+    <!-- ===== SHOP BUILDING ===== -->
+
+    <!-- Awning top bar -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M31,31h46v46h-46z" />
+        android:pathData="M30,38 L78,38 L78,35 Q78,33 76,33 L32,33 Q30,33 30,35 Z" />
+
+    <!-- Shop awning with scalloped edge -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,38 L78,38 L78,43
+            Q75,47 72,43
+            Q69,47 66,43
+            Q63,47 60,43
+            Q57,47 54,43
+            Q51,47 48,43
+            Q45,47 42,43
+            Q39,47 36,43
+            Q33,47 30,43 Z" />
+
+    <!-- Shop body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M33,43 L75,43 L75,74 Q75,76 73,76 L35,76 Q33,76 33,74 Z" />
+
+    <!-- Left window -->
+    <path
+        android:fillColor="#10B981"
+        android:fillAlpha="0.3"
+        android:pathData="M36,47 L46,47 L46,56 Q46,57 45,57 L37,57 Q36,57 36,56 Z" />
+
+    <!-- Left window cross -->
+    <path
+        android:pathData="M41,47 L41,57"
+        android:strokeColor="#065F46"
+        android:strokeAlpha="0.2"
+        android:strokeWidth="0.5" />
+    <path
+        android:pathData="M36,52 L46,52"
+        android:strokeColor="#065F46"
+        android:strokeAlpha="0.2"
+        android:strokeWidth="0.5" />
+
+    <!-- Right window -->
+    <path
+        android:fillColor="#10B981"
+        android:fillAlpha="0.3"
+        android:pathData="M62,47 L72,47 L72,56 Q72,57 71,57 L63,57 Q62,57 62,56 Z" />
+
+    <!-- Right window cross -->
+    <path
+        android:pathData="M67,47 L67,57"
+        android:strokeColor="#065F46"
+        android:strokeAlpha="0.2"
+        android:strokeWidth="0.5" />
+    <path
+        android:pathData="M62,52 L72,52"
+        android:strokeColor="#065F46"
+        android:strokeAlpha="0.2"
+        android:strokeWidth="0.5" />
+
+    <!-- Door -->
+    <path
+        android:fillColor="#065F46"
+        android:fillAlpha="0.25"
+        android:pathData="M48,58 L60,58 Q60,58 60,58 L60,76 L48,76 Z" />
+
+    <!-- Door arch top -->
+    <path
+        android:fillColor="#065F46"
+        android:fillAlpha="0.25"
+        android:pathData="M48,58 Q54,52 60,58 Z" />
+
+    <!-- Door handle -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M57,67 A1.2,1.2 0 1,1 57,66.98 Z" />
+
+    <!-- ===== AI SPARKLE (Gold) ===== -->
+
+    <!-- Main sparkle star - top right -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M71,31 L72.8,26.5 L74.6,31 L79,32.8 L74.6,34.6 L72.8,39 L71,34.6 L66.5,32.8 Z" />
+
+    <!-- Small sparkle - accent -->
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M64,26.5 L65,24.5 L66,26.5 L68,27.5 L66,28.5 L65,30.5 L64,28.5 L62,27.5 Z" />
+
+    <!-- Tiny sparkle dot -->
+    <path
+        android:fillColor="#FDE68A"
+        android:fillAlpha="0.7"
+        android:pathData="M78,27 A1,1 0 1,1 78,26.99 Z" />
+
 </vector>
