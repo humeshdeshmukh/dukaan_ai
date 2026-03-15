@@ -3,6 +3,7 @@ package com.dukaan.ai.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -124,8 +125,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             startDestination = Screen.SmartKhata.route,
             route = Screen.KhataFlow.route
         ) {
-            composable(Screen.SmartKhata.route) {
-                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+            composable(Screen.SmartKhata.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
                 CustomerListScreen(
                     viewModel = viewModel,
@@ -137,7 +138,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
             composable(Screen.CustomerDetail.route) { backStackEntry ->
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
-                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
                 CustomerDetailScreen(
                     customerId = customerId,
@@ -159,7 +160,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
                 val typeStr = backStackEntry.arguments?.getString("type") ?: return@composable
                 val type = TransactionType.valueOf(typeStr)
-                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
 
                 AddTransactionScreen(
@@ -173,7 +174,7 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
 
             composable(Screen.CustomerStatement.route) { backStackEntry ->
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
-                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+                val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
                 CustomerStatementScreen(
                     customerId = customerId,
@@ -185,8 +186,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 )
             }
 
-            composable(Screen.KhataOverview.route) {
-                val parentEntry = navController.getBackStackEntry(Screen.KhataFlow.route)
+            composable(Screen.KhataOverview.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
                 KhataOverviewScreen(
                     viewModel = viewModel,
@@ -201,8 +202,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
             startDestination = Screen.ScanBill.route,
             route = Screen.OcrFlow.route
         ) {
-            composable(Screen.ScanBill.route) {
-                val parentEntry = navController.getBackStackEntry(Screen.OcrFlow.route)
+            composable(Screen.ScanBill.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OcrFlow.route) }
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 BillScannerScreen(
                     viewModel = ocrViewModel,
@@ -217,8 +218,8 @@ fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifie
                 )
             }
 
-            composable(Screen.OcrResult.route) {
-                val parentEntry = navController.getBackStackEntry(Screen.OcrFlow.route)
+            composable(Screen.OcrResult.route) { entry ->
+                val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OcrFlow.route) }
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
                 OcrResultScreen(
