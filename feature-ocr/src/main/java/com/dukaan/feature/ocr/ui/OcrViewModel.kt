@@ -10,6 +10,9 @@ import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
 import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.feature.billing.domain.repository.BillingRepository
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,16 +22,30 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import kotlin.coroutines.resume
+
+enum class ScanProgress {
+    IDLE,
+    READING_TEXT,
+    PARSING_ITEMS,
+    DONE
+}
 
 data class OcrUiState(
     val isScanning: Boolean = false,
+    val isSaving: Boolean = false,
+    val saveError: String? = null,
     val scannedBill: Bill? = null,
     val error: String? = null,
     val isSaved: Boolean = false,
     val capturedImageUri: String? = null,
+    val scannedPageUris: List<String> = emptyList(),
+    val scanProgress: ScanProgress = ScanProgress.IDLE,
+    val docScannerAvailable: Boolean = true,
     val chatMessages: List<ChatMessage> = emptyList(),
     val isAiTyping: Boolean = false
 )
@@ -48,35 +65,71 @@ class OcrViewModel @Inject constructor(
     // Cached bitmap for AI chat with image context
     private var cachedBillBitmap: Bitmap? = null
 
-    /** Process a captured camera image via Gemini vision */
+    // ML Kit text recognizer for extracting OCR text from bitmaps
+    private val textRecognizer = TextRecognition.getClient(
+        DevanagariTextRecognizerOptions.Builder().build()
+    )
+
+    /** Extract text from bitmap using ML Kit (on-device OCR) */
+    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String {
+        return suspendCancellableCoroutine { cont ->
+            val inputImage = InputImage.fromBitmap(bitmap, 0)
+            textRecognizer.process(inputImage)
+                .addOnSuccessListener { visionText ->
+                    cont.resume(visionText.text)
+                }
+                .addOnFailureListener {
+                    cont.resume("")
+                }
+        }
+    }
+
+    /** Extract text from multiple bitmaps */
+    private suspend fun extractTextsFromBitmaps(bitmaps: List<Bitmap>): List<String> {
+        return bitmaps.map { extractTextFromBitmap(it) }
+    }
+
+    /** Process a captured camera image via ML Kit OCR + Gemini vision (dual extraction) */
     fun processCapturedImage(imagePath: String) {
         if (_uiState.value.isScanning) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imagePath) }
+            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imagePath, scanProgress = ScanProgress.READING_TEXT) }
             try {
                 val bitmap = withContext(Dispatchers.IO) {
                     BitmapFactory.decodeFile(imagePath)
                 }
                 if (bitmap != null) {
                     cachedBillBitmap = bitmap
-                    val bill = geminiService.parseBillImage(bitmap)
-                    _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
+
+                    // Step 1: Extract text using ML Kit (on-device OCR)
+                    val ocrText = extractTextFromBitmap(bitmap)
+
+                    _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
+
+                    // Step 2: Send BOTH image + OCR text to Gemini for best accuracy
+                    val bill = if (ocrText.isNotBlank()) {
+                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                    } else {
+                        geminiService.parseBillImage(bitmap)
+                    }
+
+                    _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
                 } else {
-                    _uiState.update { it.copy(error = "Failed to load captured image.", isScanning = false) }
+                    _uiState.update { it.copy(error = "Failed to load captured image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to process bill image.", isScanning = false) }
+                _uiState.update { it.copy(error = "Failed to process bill image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
             }
         }
     }
 
-    /** Process a gallery image via Gemini vision */
+    /** Process a gallery image via ML Kit OCR + Gemini vision (dual extraction) */
     fun processGalleryImage(context: Context, imageUri: Uri) {
         if (_uiState.value.isScanning) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null) }
+            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
             try {
                 val result = withContext(Dispatchers.IO) {
                     val inputStream = context.contentResolver.openInputStream(imageUri)
@@ -101,13 +154,25 @@ class OcrViewModel @Inject constructor(
                     val (bitmap, savedPath) = result
                     cachedBillBitmap = bitmap
                     _uiState.update { it.copy(capturedImageUri = savedPath) }
-                    val bill = geminiService.parseBillImage(bitmap)
-                    _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
+
+                    // Step 1: Extract text using ML Kit
+                    val ocrText = extractTextFromBitmap(bitmap)
+
+                    _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
+
+                    // Step 2: Send BOTH image + OCR text to Gemini
+                    val bill = if (ocrText.isNotBlank()) {
+                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                    } else {
+                        geminiService.parseBillImage(bitmap)
+                    }
+
+                    _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
                 } else {
-                    _uiState.update { it.copy(error = "Failed to load image.", isScanning = false) }
+                    _uiState.update { it.copy(error = "Failed to load image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to process image.", isScanning = false) }
+                _uiState.update { it.copy(error = "Failed to process image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
             }
         }
     }
@@ -212,13 +277,111 @@ class OcrViewModel @Inject constructor(
 
     fun saveBill() {
         val bill = _uiState.value.scannedBill ?: return
+        if (_uiState.value.isSaving) return
+
+        val validItems = bill.items.filter { it.name.isNotBlank() }
+        if (validItems.isEmpty()) {
+            _uiState.update { it.copy(saveError = "Cannot save bill with no items.") }
+            return
+        }
+
         val imagePath = _uiState.value.capturedImageUri
+        _uiState.update { it.copy(isSaving = true, saveError = null) }
+
         viewModelScope.launch {
-            billingRepository.saveBill(bill, "OCR", imagePath)
-            // Set isSaved to trigger navigation, then clear scannedBill
-            // to prevent re-navigation loop when returning to BillScannerScreen
-            _uiState.update { it.copy(isSaved = true, scannedBill = null) }
-            cachedBillBitmap = null
+            try {
+                val billToSave = bill.copy(
+                    items = validItems,
+                    totalAmount = validItems.sumOf { it.total }
+                )
+                billingRepository.saveBill(billToSave, "OCR", imagePath)
+                _uiState.update { it.copy(isSaved = true, isSaving = false, scannedBill = null) }
+                cachedBillBitmap = null
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isSaving = false,
+                    saveError = "Failed to save bill: ${e.localizedMessage ?: "Unknown error"}"
+                ) }
+            }
+        }
+    }
+
+    fun clearSaveError() {
+        _uiState.update { it.copy(saveError = null) }
+    }
+
+    fun setDocScannerUnavailable() {
+        _uiState.update { it.copy(docScannerAvailable = false) }
+    }
+
+    /** Process scanned pages from ML Kit Document Scanner with dual extraction */
+    fun processScannedPages(context: Context, pageUris: List<Uri>) {
+        if (_uiState.value.isScanning) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
+            try {
+                val bitmaps = withContext(Dispatchers.IO) {
+                    pageUris.mapNotNull { uri ->
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream)
+                        }
+                    }
+                }
+
+                if (bitmaps.isEmpty()) {
+                    _uiState.update { it.copy(error = "Failed to load scanned pages.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                    return@launch
+                }
+
+                // Step 1: Run ML Kit OCR on all bitmaps (on-device, fast)
+                val ocrTexts = extractTextsFromBitmaps(bitmaps)
+
+                // Save page images to internal storage
+                val savedPaths = withContext(Dispatchers.IO) {
+                    val photoDir = File(context.filesDir, "bills")
+                    photoDir.mkdirs()
+                    bitmaps.mapIndexed { index, bitmap ->
+                        val file = File(photoDir, "${System.currentTimeMillis()}_page${index}.jpg")
+                        file.outputStream().use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        }
+                        file.absolutePath
+                    }
+                }
+
+                _uiState.update { it.copy(
+                    capturedImageUri = savedPaths.firstOrNull(),
+                    scannedPageUris = savedPaths,
+                    scanProgress = ScanProgress.PARSING_ITEMS
+                ) }
+
+                cachedBillBitmap = bitmaps.first()
+
+                // Step 2: Send images + OCR text to Gemini (dual extraction)
+                val hasOcrText = ocrTexts.any { it.isNotBlank() }
+                val bill = if (bitmaps.size == 1) {
+                    if (hasOcrText) {
+                        geminiService.parseBillImageWithOcr(bitmaps.first(), ocrTexts.first())
+                    } else {
+                        geminiService.parseBillImage(bitmaps.first())
+                    }
+                } else {
+                    if (hasOcrText) {
+                        geminiService.parseMultiPageBillWithOcr(bitmaps, ocrTexts)
+                    } else {
+                        geminiService.parseMultiPageBill(bitmaps)
+                    }
+                }
+
+                _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Failed to process scanned pages: ${e.localizedMessage}",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
+            }
         }
     }
 

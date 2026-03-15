@@ -19,6 +19,7 @@ fun LargeActionButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
@@ -30,13 +31,14 @@ fun LargeActionButton(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = { if (enabled) onClick() },
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
             .graphicsLayer {
                 scaleX = scale.value
                 scaleY = scale.value
+                alpha = if (enabled) 1f else 0.5f
             },
         interactionSource = interactionSource,
         shape = RoundedCornerShape(16.dp),

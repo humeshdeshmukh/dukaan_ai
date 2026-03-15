@@ -1,9 +1,11 @@
 package com.dukaan.feature.ocr.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -44,6 +46,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.dukaan.feature.ocr.analyzer.OcrAnalyzer
 import com.dukaan.core.ui.translation.LocalAppStrings
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -52,7 +57,8 @@ import java.util.concurrent.Executors
 fun BillScannerScreen(
     viewModel: OcrViewModel,
     onBackClick: () -> Unit,
-    onBillDetected: () -> Unit
+    onBillDetected: () -> Unit,
+    onScannerCancelled: () -> Unit = onBackClick
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -61,13 +67,139 @@ fun BillScannerScreen(
 
     // Lock to portrait while scanner is active
     DisposableEffect(Unit) {
-        val activity = context as? android.app.Activity
+        val activity = context as? Activity
         val original = activity?.requestedOrientation
         activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onDispose {
             activity?.requestedOrientation = original ?: android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
+
+    // Navigate to result screen when bill is parsed
+    LaunchedEffect(uiState.scannedBill) {
+        if (uiState.scannedBill != null) {
+            onBillDetected()
+        }
+    }
+
+    // --- ML Kit Document Scanner (Primary Path) ---
+    val scannerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+            if (scanResult != null) {
+                val pageUris = scanResult.pages?.map { it.imageUri } ?: emptyList()
+                if (pageUris.isNotEmpty()) {
+                    viewModel.processScannedPages(context, pageUris)
+                } else {
+                    onScannerCancelled()
+                }
+            } else {
+                onScannerCancelled()
+            }
+        } else {
+            // User cancelled the scanner
+            onScannerCancelled()
+        }
+    }
+
+    // Track if document scanner has been launched
+    var docScannerLaunched by remember { mutableStateOf(false) }
+
+    // Launch ML Kit Document Scanner on first composition (if available)
+    LaunchedEffect(uiState.docScannerAvailable) {
+        if (uiState.docScannerAvailable && !docScannerLaunched && !uiState.isScanning) {
+            docScannerLaunched = true
+            try {
+                val activity = context as? Activity ?: return@LaunchedEffect
+                val options = GmsDocumentScannerOptions.Builder()
+                    .setGalleryImportAllowed(true)
+                    .setPageLimit(5)
+                    .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                    .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                    .build()
+                val scanner = GmsDocumentScanning.getClient(options)
+                scanner.getStartScanIntent(activity)
+                    .addOnSuccessListener { intentSender ->
+                        scannerLauncher.launch(
+                            IntentSenderRequest.Builder(intentSender).build()
+                        )
+                    }
+                    .addOnFailureListener {
+                        // Document scanner not available, fall back to camera
+                        viewModel.setDocScannerUnavailable()
+                    }
+            } catch (e: Exception) {
+                viewModel.setDocScannerUnavailable()
+            }
+        }
+    }
+
+    // --- Show scanning animation while processing ---
+    if (uiState.isScanning) {
+        ScanningAnimationScreen(progress = uiState.scanProgress)
+        return
+    }
+
+    // --- If document scanner is available, show a waiting/blank screen ---
+    if (uiState.docScannerAvailable && !uiState.isScanning && uiState.scannedBill == null && uiState.error == null) {
+        // Document scanner is handling the UI — show minimal placeholder
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(strings.scanBill) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Black,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier.padding(padding).fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Opening scanner...",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    // --- Fallback: Original CameraX flow (when Document Scanner unavailable) ---
+    FallbackCameraScreen(
+        viewModel = viewModel,
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onBillDetected = onBillDetected
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FallbackCameraScreen(
+    viewModel: OcrViewModel,
+    uiState: OcrUiState,
+    onBackClick: () -> Unit,
+    onBillDetected: () -> Unit
+) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val strings = LocalAppStrings.current
 
     var isTextStable by remember { mutableStateOf(false) }
     var hasAnyText by remember { mutableStateOf(false) }
@@ -76,13 +208,6 @@ fun BillScannerScreen(
     var cameraRef by remember { mutableStateOf<Camera?>(null) }
     val imageCapture = remember { ImageCapture.Builder().build() }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-
-    // Navigate to result screen when bill is parsed
-    LaunchedEffect(uiState.scannedBill) {
-        if (uiState.scannedBill != null) {
-            onBillDetected()
-        }
-    }
 
     // Haptic when text stabilizes
     LaunchedEffect(isTextStable) {
@@ -131,11 +256,9 @@ fun BillScannerScreen(
             cameraExecutor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    // Send image directly to Gemini vision
                     viewModel.processCapturedImage(photoFile.absolutePath)
                 }
                 override fun onError(exception: ImageCaptureException) {
-                    // Fallback to text-based parsing if image save fails
                     if (latestStableText.isNotBlank()) {
                         viewModel.onTextRecognized(latestStableText)
                     }
@@ -213,22 +336,7 @@ fun BillScannerScreen(
 
                 // Loading overlay
                 if (uiState.isScanning) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.6f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Color.White)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                strings.processingBill,
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
+                    ScanningAnimationScreen(progress = uiState.scanProgress)
                 }
 
                 // Bottom action bar
@@ -254,7 +362,7 @@ fun BillScannerScreen(
                         )
                     }
 
-                    // Capture button — always enabled, Gemini vision handles OCR
+                    // Capture button
                     val canCapture = !uiState.isScanning
                     Surface(
                         onClick = { captureAndProcess() },
@@ -402,7 +510,6 @@ fun CameraPreview(
 
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
-            // Don't bind here — wait for the AndroidView to provide the PreviewView
         }, ContextCompat.getMainExecutor(context))
 
         onDispose {
@@ -417,7 +524,6 @@ fun CameraPreview(
                 scaleType = PreviewView.ScaleType.FILL_CENTER
             }
 
-            // Bind camera once when view is created
             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()

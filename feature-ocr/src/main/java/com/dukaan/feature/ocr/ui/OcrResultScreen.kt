@@ -3,6 +3,7 @@ package com.dukaan.feature.ocr.ui
 import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +63,13 @@ fun OcrResultScreen(
         }
     }
 
+    // Show save error
+    LaunchedEffect(state.saveError) {
+        state.saveError?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,22 +85,12 @@ fun OcrResultScreen(
             if (!state.isSaved) {
                 Box(modifier = Modifier.padding(16.dp)) {
                     LargeActionButton(
-                        icon = Icons.Default.Check,
-                        label = strings.confirmAndSaveBill,
+                        icon = if (state.isSaving) Icons.Default.HourglassTop else Icons.Default.Check,
+                        label = if (state.isSaving) "Saving..." else strings.confirmAndSaveBill,
                         onClick = onSaveClick,
+                        enabled = !state.isSaving && (state.scannedBill?.items?.isNotEmpty() == true),
                         modifier = Modifier.fillMaxWidth()
                     )
-                }
-            }
-        },
-        floatingActionButton = {
-            if (state.scannedBill != null && !state.isSaved) {
-                FloatingActionButton(
-                    onClick = { showAiChat = true },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ) {
-                    Icon(Icons.Default.SmartToy, contentDescription = strings.aiAssistant)
                 }
             }
         }
@@ -111,16 +110,25 @@ fun OcrResultScreen(
                 }
             } else if (state.scannedBill != null) {
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    // Bill photo thumbnail — tap to open fullscreen viewer
+                    // Bill photo thumbnail(s) — tap to open fullscreen viewer
                     item {
-                        BillImageThumbnail(
-                            imagePath = state.capturedImageUri,
-                            onClick = {
-                                if (state.capturedImageUri != null) {
+                        if (state.scannedPageUris.size > 1) {
+                            MultiPageThumbnailStrip(
+                                pageUris = state.scannedPageUris,
+                                onPageClick = { index ->
                                     showImageViewer = true
                                 }
-                            }
-                        )
+                            )
+                        } else {
+                            BillImageThumbnail(
+                                imagePath = state.capturedImageUri,
+                                onClick = {
+                                    if (state.capturedImageUri != null) {
+                                        showImageViewer = true
+                                    }
+                                }
+                            )
+                        }
                     }
 
                     // Seller name field + existing wholesaler suggestions
@@ -273,7 +281,7 @@ fun OcrResultScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
@@ -291,6 +299,25 @@ fun OcrResultScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
+                    }
+                }
+
+                // AI Assistant button (between total and save)
+                if (!state.isSaved) {
+                    OutlinedButton(
+                        onClick = { showAiChat = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(strings.aiAssistant)
                     }
                 }
             } else {
@@ -492,4 +519,66 @@ fun EditItemDialog(
             TextButton(onClick = onDismiss) { Text(strings.cancel) }
         }
     )
+}
+
+@Composable
+private fun MultiPageThumbnailStrip(
+    pageUris: List<String>,
+    onPageClick: (Int) -> Unit
+) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(
+            text = "${pageUris.size} pages scanned",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(pageUris) { index, uri ->
+                val bitmap = remember(uri) {
+                    try {
+                        BitmapFactory.decodeFile(uri)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                Card(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(160.dp)
+                        .clickable { onPageClick(index) },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Page ${index + 1}",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        // Page label at bottom
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Page ${index + 1}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

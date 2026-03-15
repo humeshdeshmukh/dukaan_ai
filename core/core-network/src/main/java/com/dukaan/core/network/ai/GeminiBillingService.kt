@@ -16,6 +16,9 @@ interface GeminiBillingService {
     suspend fun parseBillingSpeech(speechText: String, languageCode: String = "en"): List<BillItem>
     suspend fun parseOcrText(rawText: String): Bill
     suspend fun parseBillImage(image: Bitmap): Bill
+    suspend fun parseBillImageWithOcr(image: Bitmap, ocrText: String): Bill
+    suspend fun parseMultiPageBill(images: List<Bitmap>): Bill
+    suspend fun parseMultiPageBillWithOcr(images: List<Bitmap>, ocrTexts: List<String>): Bill
     suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null, languageCode: String = "en"): String
     suspend fun parseOrderSpeech(speechText: String, languageCode: String = "en"): List<OrderItem>
 }
@@ -112,6 +115,74 @@ class GeminiBillingServiceImpl @Inject constructor(
         }
     }
 
+    private fun extractJsonObject(text: String): String {
+        val cleaned = text
+            .replace("```json", "")
+            .replace("```", "")
+            .trim()
+        val startIndex = cleaned.indexOf('{')
+        if (startIndex < 0) return "{}"
+        var depth = 0
+        for (i in startIndex until cleaned.length) {
+            when (cleaned[i]) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) return cleaned.substring(startIndex, i + 1)
+                }
+            }
+        }
+        return "{}"
+    }
+
+    private fun parseBillJson(rawText: String): Bill {
+        val jsonString = extractJsonObject(rawText)
+        return try {
+            val gson = com.google.gson.Gson()
+            val jsonElement = gson.fromJson(jsonString, com.google.gson.JsonObject::class.java)
+                ?: return Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+
+            val sellerName = jsonElement.get("sellerName")?.asString ?: ""
+            val billNumber = jsonElement.get("billNumber")?.asString ?: ""
+            val totalAmount = jsonElement.get("totalAmount")?.asDouble ?: 0.0
+
+            val itemsArray = jsonElement.getAsJsonArray("items")
+            val items = if (itemsArray != null && itemsArray.size() > 0) {
+                itemsArray.mapNotNull { element ->
+                    try {
+                        val obj = element.asJsonObject
+                        val name = obj.get("name")?.asString ?: return@mapNotNull null
+                        if (name.isBlank()) return@mapNotNull null
+                        val quantity = obj.get("quantity")?.asDouble ?: 1.0
+                        val unit = obj.get("unit")?.asString ?: "pc"
+                        // Try "price" first, then "amount", then "total"
+                        val price = obj.get("price")?.asDouble
+                            ?: obj.get("amount")?.asDouble
+                            ?: obj.get("total")?.asDouble
+                            ?: 0.0
+                        if (price < 0) return@mapNotNull null
+                        BillItem(name = name.trim(), quantity = quantity, unit = unit.trim(), price = price)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            } else {
+                emptyList()
+            }
+
+            val recalcTotal = if (totalAmount <= 0.0 && items.isNotEmpty()) {
+                items.sumOf { it.total }
+            } else {
+                totalAmount
+            }
+
+            Bill(items = items, totalAmount = recalcTotal, sellerName = sellerName.trim(), billNumber = billNumber.trim())
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+        }
+    }
+
     override suspend fun parseOcrText(rawText: String): Bill = withContext(Dispatchers.IO) {
         val prompt = """
             You are an AI for Dukaan AI, a shop management app for Indian shopkeepers.
@@ -132,8 +203,8 @@ class GeminiBillingServiceImpl @Inject constructor(
 
         try {
             val response = generativeModel.generateContent(prompt)
-            val jsonString = response.text?.filterNot { it == '`' }?.removePrefix("json")?.trim() ?: "{}"
-            com.google.gson.Gson().fromJson(jsonString, Bill::class.java)
+            val rawText = response.text ?: "{}"
+            parseBillJson(rawText)
         } catch (e: Exception) {
             e.printStackTrace()
             Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
@@ -141,7 +212,70 @@ class GeminiBillingServiceImpl @Inject constructor(
     }
 
     override suspend fun parseBillImage(image: Bitmap): Bill = withContext(Dispatchers.IO) {
-        val prompt = """
+        val prompt = buildImagePrompt(null)
+
+        try {
+            val inputContent = content {
+                image(image)
+                text(prompt)
+            }
+            val response = generativeModel.generateContent(inputContent)
+            val rawJson = response.text ?: "{}"
+            parseBillJson(rawJson)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+        }
+    }
+
+    override suspend fun parseBillImageWithOcr(image: Bitmap, ocrText: String): Bill = withContext(Dispatchers.IO) {
+        val prompt = buildImagePrompt(ocrText)
+
+        try {
+            val inputContent = content {
+                image(image)
+                text(prompt)
+            }
+            val response = generativeModel.generateContent(inputContent)
+            val rawJson = response.text ?: "{}"
+            val bill = parseBillJson(rawJson)
+
+            // If combined approach returned empty, retry with text-only as fallback
+            if (bill.items.isEmpty() && ocrText.isNotBlank()) {
+                return@withContext parseOcrText(ocrText)
+            }
+            bill
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fallback: try text-only parsing if image+text failed
+            if (ocrText.isNotBlank()) {
+                try { return@withContext parseOcrText(ocrText) } catch (_: Exception) {}
+            }
+            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+        }
+    }
+
+    private fun buildImagePrompt(ocrText: String?): String {
+        val ocrSection = if (!ocrText.isNullOrBlank()) {
+            """
+
+            ADDITIONAL CONTEXT — ML Kit OCR Text (pre-extracted from this image):
+            The following text was extracted by on-device OCR. Use it as a REFERENCE to cross-check
+            what you see in the image. The image is the primary source of truth, but this OCR text
+            can help you identify items, numbers, and text that may be hard to read in the image.
+
+            --- OCR TEXT START ---
+            $ocrText
+            --- OCR TEXT END ---
+
+            IMPORTANT: Cross-reference the OCR text with what you see in the image.
+            If the image is unclear but OCR text shows an item clearly, include it.
+            If OCR text seems garbled but the image is clear, trust the image.
+            Use BOTH sources together for maximum accuracy.
+            """.trimIndent()
+        } else ""
+
+        return """
             You are an expert Indian wholesale bill reader for Dukaan AI app.
             Your job is to digitize this bill image with 100% accuracy.
 
@@ -151,6 +285,12 @@ class GeminiBillingServiceImpl @Inject constructor(
             • Bill info: Bill No., Date, Customer name
             • Item table with columns: Sr.No, Item/Product, Qty, Rate, Amount
             • Footer: Total, Discount, Net Amount, Signature
+
+            BILL FORMAT RECOGNITION:
+            • Cash memo style: columns may be "Particulars | Qty | Rate | Amount"
+            • Computer-generated bills: columns usually "Description | HSN | Qty | Rate | CGST | SGST | Total"
+            • Handwritten bills: items may be in a simple list with amounts on the right side
+            • Carbon copy bills: text may be faint or duplicated — read the clearest copy
 
             STEP 2 — EXTRACT SELLER NAME:
             Find the SHOP/COMPANY name at the TOP of the bill. Look for:
@@ -164,14 +304,21 @@ class GeminiBillingServiceImpl @Inject constructor(
             • "quantity": the quantity number
             • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
             • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
-              - If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 200 (the amount/total column)
-              - If bill shows "Dal 5kg 450" → price = 450 (the total for this line)
-              - If bill shows only per-unit rate → multiply by quantity to get total
+
+            PRICE DISAMBIGUATION:
+            • If column header says "Rate" — that is per-unit rate, MULTIPLY by quantity to get price
+            • If column header says "Amount", "Total", or "Amt" — that IS the line total, use directly as price
+            • If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 200
+            • If bill shows "Dal 5kg 450" → price = 450
+            • If numbers appear without clear columns, the rightmost number is usually the amount
 
             STEP 4 — EXTRACT TOTAL:
             • "totalAmount": the GRAND TOTAL / NET AMOUNT from the bottom of the bill
+            • Look for: "Grand Total", "Net Amount", "Net Amt", "कुल", "Total", "G.Total"
+            • If "Round Off" is present, use the rounded total
             • If multiple totals exist (subtotal, tax, grand total), use the final/net amount
-            • If no total found, calculate: sum of (quantity × price) for all items
+            • If no total found, calculate: sum of all item prices
+            $ocrSection
 
             RETURN ONLY this JSON (no markdown, no explanation):
             {
@@ -185,28 +332,111 @@ class GeminiBillingServiceImpl @Inject constructor(
             }
 
             CRITICAL RULES:
-            - Read EVERY item. Do NOT skip any line item.
+            - Read EVERY item. Do NOT skip any line item. You MUST return at least 1 item if there is any text on the bill.
             - Hindi/Devanagari text: transliterate to English (e.g. "चीनी" → "Cheeni/Sugar")
             - "price" MUST be the total amount for this line item, not per-unit rate
             - Abbreviations: "dz"=dozen, "pkt"=packet, "L"=litre, "pcs"=pieces
-            - If handwritten, try your best to read accurately
+            - If handwritten, try your best to read accurately. Common confusions: 1 vs 7, 0 vs 6, 5 vs 8
             - Do NOT invent items that aren't in the image
+            - If a line has ditto marks (") or "do", it means same item name as above
+            - NEVER return an empty items array if the bill has any items at all
+        """.trimIndent()
+    }
+
+    override suspend fun parseMultiPageBill(images: List<Bitmap>): Bill =
+        parseMultiPageBillWithOcr(images, emptyList())
+
+    override suspend fun parseMultiPageBillWithOcr(images: List<Bitmap>, ocrTexts: List<String>): Bill = withContext(Dispatchers.IO) {
+        val combinedOcr = ocrTexts.filter { it.isNotBlank() }.mapIndexed { i, text ->
+            "--- Page ${i + 1} OCR ---\n$text"
+        }.joinToString("\n\n")
+
+        val ocrSection = if (combinedOcr.isNotBlank()) {
+            """
+
+            ADDITIONAL CONTEXT — ML Kit OCR Text (pre-extracted from all pages):
+            Use this as a REFERENCE to cross-check what you see in the images.
+            The images are the primary source of truth, but this OCR text helps identify
+            items, numbers, and text that may be hard to read.
+
+            --- OCR TEXT START ---
+            $combinedOcr
+            --- OCR TEXT END ---
+            """.trimIndent()
+        } else ""
+
+        val prompt = """
+            You are an expert Indian wholesale bill reader for Dukaan AI app.
+            You are given ${images.size} pages of the SAME bill.
+            Read ALL pages and combine them into ONE complete bill.
+
+            STEP 1 — READ ALL PAGES:
+            These are CONSECUTIVE PAGES of the same bill. Items may continue from one page to the next.
+            The seller name and bill number typically appear on the first page.
+            The grand total typically appears on the last page.
+
+            STEP 2 — EXTRACT SELLER NAME:
+            Find the SHOP/COMPANY name at the TOP of the FIRST page. Look for:
+            • Large text or bold text at the top
+            • Patterns: "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency", "Store"
+
+            STEP 3 — EXTRACT EACH ITEM FROM ALL PAGES:
+            For EVERY item line across ALL pages:
+            • "name": exact product name as written
+            • "quantity": the quantity number
+            • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
+            • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
+
+            PRICE DISAMBIGUATION:
+            • If column header says "Rate" — that is per-unit rate, MULTIPLY by quantity
+            • If column header says "Amount" or "Total" — use directly as price
+
+            STEP 4 — EXTRACT TOTAL:
+            • "totalAmount": the GRAND TOTAL / NET AMOUNT (usually on the last page)
+            • If no total found, calculate: sum of all item prices
+            $ocrSection
+
+            RETURN ONLY this JSON (no markdown, no explanation):
+            {
+              "sellerName": "Shop Name Here",
+              "billNumber": "Bill/Invoice number or empty string",
+              "items": [
+                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0}
+              ],
+              "totalAmount": 210.0
+            }
+
+            CRITICAL RULES:
+            - Combine ALL items from ALL pages into one list — do NOT skip any page
+            - Do NOT duplicate items that appear as carry-forward totals between pages
+            - Hindi/Devanagari text: transliterate to English
+            - "price" MUST be the total amount for this line item, not per-unit rate
+            - Do NOT invent items that aren't in the images
+            - NEVER return an empty items array if the bill has any items at all
         """.trimIndent()
 
         try {
             val inputContent = content {
-                image(image)
+                images.forEachIndexed { index, bitmap ->
+                    image(bitmap)
+                    text("--- Page ${index + 1} of ${images.size} ---")
+                }
                 text(prompt)
             }
             val response = generativeModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
-            val jsonString = rawJson
-                .replace("```json", "")
-                .replace("```", "")
-                .trim()
-            com.google.gson.Gson().fromJson(jsonString, Bill::class.java)
+            val bill = parseBillJson(rawJson)
+
+            // Fallback if empty items
+            if (bill.items.isEmpty() && combinedOcr.isNotBlank()) {
+                return@withContext parseOcrText(combinedOcr)
+            }
+            bill
         } catch (e: Exception) {
             e.printStackTrace()
+            if (combinedOcr.isNotBlank()) {
+                try { return@withContext parseOcrText(combinedOcr) } catch (_: Exception) {}
+            }
             Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
         }
     }

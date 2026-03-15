@@ -262,6 +262,13 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                         navController.navigate(Screen.OcrResult.route) {
                             launchSingleTop = true
                         }
+                    },
+                    onScannerCancelled = {
+                        ocrViewModel.resetScan()
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Dashboard.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
