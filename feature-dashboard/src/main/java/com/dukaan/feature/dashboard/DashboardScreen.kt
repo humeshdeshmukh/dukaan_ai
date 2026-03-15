@@ -2,7 +2,9 @@ package com.dukaan.feature.dashboard
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,20 +24,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    viewModel: DashboardViewModel,
     onScanBillClick: () -> Unit,
     onVoiceBillingClick: () -> Unit,
     onSmartKhataClick: () -> Unit,
     onOrdersClick: () -> Unit,
-    onProfileClick: () -> Unit = {},
     onBillHistoryClick: () -> Unit = {},
-    onPurchaseBillsClick: () -> Unit = {}
+    onPurchaseBillsClick: () -> Unit = {},
+    onBillClick: (Long) -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
     var animated by remember { mutableStateOf(false) }
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")).apply { maximumFractionDigits = 0 } }
 
     LaunchedEffect(Unit) { animated = true }
 
@@ -44,42 +53,23 @@ fun DashboardScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
-                            shape = CircleShape,
+                            shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                modifier = Modifier.padding(8.dp),
+                                modifier = Modifier.padding(7.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "Dukaan AI",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onProfileClick,
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            "Dukaan AI",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -97,41 +87,54 @@ fun DashboardScreen(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Premium Greeting Banner
+            // Compact Greeting
             AnimatedVisibility(
                 visible = animated,
-                enter = fadeIn(tween(600)) + slideInVertically(
-                    initialOffsetY = { -it / 3 },
-                    animationSpec = tween(600)
-                )
+                enter = fadeIn(tween(400))
             ) {
-                GreetingBanner()
+                CompactGreeting(
+                    shopName = uiState.shopName,
+                    ownerName = uiState.ownerName
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Business Stats
+            AnimatedVisibility(
+                visible = animated,
+                enter = fadeIn(tween(400, delayMillis = 100))
+            ) {
+                StatsGrid(
+                    todaySales = currencyFormat.format(uiState.todaySales),
+                    totalBills = "${uiState.totalBills}",
+                    creditDue = currencyFormat.format(uiState.totalReceivable),
+                    customers = "${uiState.customerCount}"
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Quick Actions Section
+            // Quick Actions
             AnimatedVisibility(
                 visible = animated,
-                enter = fadeIn(tween(600, delayMillis = 150))
+                enter = fadeIn(tween(400, delayMillis = 200))
             ) {
                 Column {
                     Text(
                         text = "Quick Actions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+                        modifier = Modifier.padding(start = 2.dp, bottom = 10.dp)
                     )
 
-                    // Row 1: Scan Bill + Voice Billing
+                    // Row 1
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Scan Bill",
                             subtitle = "OCR Scanner",
                             icon = Icons.Default.QrCodeScanner,
@@ -139,7 +142,7 @@ fun DashboardScreen(
                             onClick = onScanBillClick,
                             modifier = Modifier.weight(1f)
                         )
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Voice Bill",
                             subtitle = "Speak Items",
                             icon = Icons.Default.Mic,
@@ -149,14 +152,14 @@ fun DashboardScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Row 2: Smart Khata + Orders
+                    // Row 2
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Smart Khata",
                             subtitle = "Ledger Book",
                             icon = Icons.Default.MenuBook,
@@ -164,7 +167,7 @@ fun DashboardScreen(
                             onClick = onSmartKhataClick,
                             modifier = Modifier.weight(1f)
                         )
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Orders",
                             subtitle = "Wholesale",
                             icon = Icons.Default.ShoppingCart,
@@ -174,14 +177,14 @@ fun DashboardScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Row 3: Bill History + Purchase Bills
+                    // Row 3
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Bill History",
                             subtitle = "Past Bills",
                             icon = Icons.Default.Receipt,
@@ -189,7 +192,7 @@ fun DashboardScreen(
                             onClick = onBillHistoryClick,
                             modifier = Modifier.weight(1f)
                         )
-                        FeatureCard(
+                        CompactFeatureCard(
                             label = "Purchase Bills",
                             subtitle = "By Wholesaler",
                             icon = Icons.Default.LocalShipping,
@@ -201,78 +204,201 @@ fun DashboardScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(20.dp))
 
-@Composable
-private fun GreetingBanner() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 8.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF065F46),
-                            Color(0xFF047857),
-                            Color(0xFF064E3B)
-                        )
-                    )
-                )
-                .padding(24.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "NAMASTE",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFFFDE68A),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Propelling Your\nBusiness Forward",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        lineHeight = 30.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Your AI-powered shop assistant",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
-                }
-                Surface(
-                    modifier = Modifier.size(64.dp),
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.12f)
+            // Recent Bills
+            if (uiState.recentBills.isNotEmpty()) {
+                AnimatedVisibility(
+                    visible = animated,
+                    enter = fadeIn(tween(400, delayMillis = 300))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.padding(16.dp),
-                        tint = Color(0xFFFDE68A)
-                    )
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Recent Bills",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                            TextButton(
+                                onClick = onBillHistoryClick,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    "View All",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        uiState.recentBills.forEach { bill ->
+                            RecentBillRow(
+                                bill = bill,
+                                currencyFormat = currencyFormat,
+                                onClick = { onBillClick(bill.id) }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun FeatureCard(
+private fun CompactGreeting(shopName: String, ownerName: String) {
+    val calendar = remember { Calendar.getInstance() }
+    val greeting = remember {
+        when (calendar.get(Calendar.HOUR_OF_DAY)) {
+            in 0..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            else -> "Good evening"
+        }
+    }
+    val dateFormat = remember { SimpleDateFormat("dd MMM, EEE", Locale.getDefault()) }
+    val todayDate = remember { dateFormat.format(calendar.time) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (ownerName.isNotBlank()) "$greeting, $ownerName" else greeting,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (shopName.isNotBlank()) {
+                Text(
+                    text = shopName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Text(
+                text = todayDate,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsGrid(
+    todaySales: String,
+    totalBills: String,
+    creditDue: String,
+    customers: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard(
+                title = "Today's Sales",
+                value = todaySales,
+                icon = Icons.Outlined.TrendingUp,
+                accentColor = Color(0xFF00B37E),
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                title = "Total Bills",
+                value = totalBills,
+                icon = Icons.Outlined.Receipt,
+                accentColor = Color(0xFF3B82F6),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard(
+                title = "Credit Due",
+                value = creditDue,
+                icon = Icons.Outlined.AccountBalanceWallet,
+                accentColor = Color(0xFFF59E0B),
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                title = "Customers",
+                value = customers,
+                icon = Icons.Outlined.People,
+                accentColor = Color(0xFF7C3AED),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Surface(
+                modifier = Modifier.size(30.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = accentColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(6.dp),
+                    tint = accentColor
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactFeatureCard(
     label: String,
     subtitle: String,
     icon: ImageVector,
@@ -282,45 +408,43 @@ fun FeatureCard(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(140.dp),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.height(72.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            accentColor.copy(alpha = 0.12f)
-        )
+        shadowElevation = 1.dp,
+        border = BorderStroke(0.5.dp, accentColor.copy(alpha = 0.08f))
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = accentColor.copy(alpha = 0.1f)
+                modifier = Modifier.size(38.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = accentColor.copy(alpha = 0.08f)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(8.dp),
                     tint = accentColor
                 )
             }
             Column {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
@@ -329,3 +453,63 @@ fun FeatureCard(
     }
 }
 
+@Composable
+private fun RecentBillRow(
+    bill: RecentBillItem,
+    currencyFormat: NumberFormat,
+    onClick: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
+    val isOcr = bill.source == "OCR"
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.5.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = if (isOcr)
+                    Color(0xFF065F46).copy(alpha = 0.1f)
+                else
+                    Color(0xFFD97706).copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    imageVector = if (isOcr) Icons.Default.QrCodeScanner else Icons.Default.Mic,
+                    contentDescription = null,
+                    modifier = Modifier.padding(8.dp),
+                    tint = if (isOcr) Color(0xFF065F46) else Color(0xFFD97706)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${bill.itemCount} items",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = dateFormat.format(Date(bill.timestamp)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = currencyFormat.format(bill.totalAmount),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}

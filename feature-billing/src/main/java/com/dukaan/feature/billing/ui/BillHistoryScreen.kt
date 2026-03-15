@@ -25,7 +25,7 @@ import java.util.*
 fun BillHistoryScreen(
     viewModel: BillingViewModel,
     onBillClick: (Long) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: (() -> Unit)? = null
 ) {
     val bills by viewModel.allBills.collectAsState()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
@@ -37,8 +37,10 @@ fun BillHistoryScreen(
             TopAppBar(
                 title = { Text("Bill History", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    onBackClick?.let { click ->
+                        IconButton(onClick = click) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )

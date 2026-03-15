@@ -1,0 +1,48 @@
+package com.dukaan.ai.navigation
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed class BottomNavItem(
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+    val route: String
+) {
+    object Home : BottomNavItem(
+        label = "Home",
+        selectedIcon = Icons.Filled.Home,
+        unselectedIcon = Icons.Outlined.Home,
+        route = Screen.Dashboard.route
+    )
+
+    object Scan : BottomNavItem(
+        label = "Scan",
+        selectedIcon = Icons.Filled.QrCodeScanner,
+        unselectedIcon = Icons.Outlined.QrCodeScanner,
+        route = Screen.OcrFlow.route
+    )
+
+    object Bills : BottomNavItem(
+        label = "Bills",
+        selectedIcon = Icons.Filled.Receipt,
+        unselectedIcon = Icons.Outlined.Receipt,
+        route = Screen.BillHistory.route
+    )
+
+    object Khata : BottomNavItem(
+        label = "Khata",
+        selectedIcon = Icons.Filled.MenuBook,
+        unselectedIcon = Icons.Outlined.MenuBook,
+        route = Screen.SmartKhata.route
+    )
+
+    object Settings : BottomNavItem(
+        label = "Settings",
+        selectedIcon = Icons.Filled.Settings,
+        unselectedIcon = Icons.Outlined.Settings,
+        route = Screen.Settings.route
+    )
+}

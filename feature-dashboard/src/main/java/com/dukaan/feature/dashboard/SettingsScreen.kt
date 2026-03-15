@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     isDarkTheme: Boolean = false,
     onToggleDarkTheme: (Boolean) -> Unit = {},
     shopName: String = "",
@@ -40,8 +40,10 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    onBackClick?.let { click ->
+                        IconButton(onClick = click) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )

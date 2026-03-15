@@ -28,7 +28,7 @@ import java.util.*
 fun CustomerListScreen(
     viewModel: KhataViewModel,
     onCustomerClick: (Long) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: (() -> Unit)? = null
 ) {
     val customers by viewModel.filteredCustomers.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -41,8 +41,10 @@ fun CustomerListScreen(
             TopAppBar(
                 title = { Text("Smart Khata", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    onBackClick?.let { click ->
+                        IconButton(onClick = click) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )

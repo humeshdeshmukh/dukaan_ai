@@ -3,6 +3,7 @@ package com.dukaan.ai.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -15,6 +16,7 @@ import com.dukaan.feature.billing.ui.VoiceBillingScreen
 import com.dukaan.feature.billing.ui.BillHistoryScreen
 import com.dukaan.feature.billing.ui.BillDetailScreen
 import com.dukaan.feature.dashboard.DashboardScreen
+import com.dukaan.feature.dashboard.DashboardViewModel
 import com.dukaan.feature.dashboard.SettingsScreen
 import com.dukaan.feature.dashboard.SettingsViewModel
 import com.dukaan.feature.khata.ui.CustomerListScreen
@@ -58,12 +60,13 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController) {
+fun AppNavigation(navController: NavHostController, modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route
+        startDestination = Screen.Splash.route,
+        modifier = modifier
     ) {
         composable(Screen.Splash.route) {
             com.dukaan.feature.dashboard.SplashScreen(
@@ -75,25 +78,40 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
 
+        // Home tab
         composable(Screen.Dashboard.route) {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
             DashboardScreen(
+                viewModel = dashboardViewModel,
                 onScanBillClick = { navController.navigate(Screen.OcrFlow.route) },
                 onVoiceBillingClick = { navController.navigate(Screen.VoiceBilling.route) },
-                onSmartKhataClick = { navController.navigate(Screen.SmartKhata.route) },
+                onSmartKhataClick = {
+                    navController.navigate(Screen.SmartKhata.route) {
+                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onOrdersClick = { navController.navigate(Screen.WholesaleOrder.route) },
-                onProfileClick = { navController.navigate(Screen.Settings.route) },
-                onBillHistoryClick = { navController.navigate(Screen.BillHistory.route) },
-                onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) }
+                onBillHistoryClick = {
+                    navController.navigate(Screen.BillHistory.route) {
+                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) },
+                onBillClick = { billId -> navController.navigate(Screen.BillDetail.createRoute(billId)) }
             )
         }
 
-        // Smart Khata Flow
+        // Khata tab
         composable(Screen.SmartKhata.route) {
             val viewModel: KhataViewModel = hiltViewModel()
             CustomerListScreen(
                 viewModel = viewModel,
                 onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
-                onBackClick = { navController.popBackStack() }
+                onBackClick = null
             )
         }
 
@@ -125,7 +143,7 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
 
-        // OCR Flow - nested navigation so both screens share the same OcrViewModel
+        // OCR Flow (Scan tab) - nested navigation so both screens share the same OcrViewModel
         navigation(
             startDestination = Screen.ScanBill.route,
             route = Screen.OcrFlow.route
@@ -137,7 +155,10 @@ fun AppNavigation(navController: NavHostController) {
                     viewModel = ocrViewModel,
                     onBackClick = {
                         ocrViewModel.resetScan()
-                        navController.popBackStack()
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Dashboard.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     },
                     onBillDetected = { navController.navigate(Screen.OcrResult.route) }
                 )
@@ -195,7 +216,7 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
 
-        // Bill History
+        // Bills tab
         composable(Screen.BillHistory.route) {
             val billingViewModel: BillingViewModel = hiltViewModel()
             BillHistoryScreen(
@@ -203,7 +224,7 @@ fun AppNavigation(navController: NavHostController) {
                 onBillClick = { billId ->
                     navController.navigate(Screen.BillDetail.createRoute(billId))
                 },
-                onBackClick = { navController.popBackStack() }
+                onBackClick = null
             )
         }
 
@@ -221,12 +242,12 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
 
-        // Settings
+        // Settings tab
         composable(Screen.Settings.route) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsState()
             SettingsScreen(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = null,
                 isDarkTheme = settingsState.isDarkTheme,
                 onToggleDarkTheme = { settingsViewModel.toggleDarkTheme(it) },
                 shopName = settingsState.shopName,
