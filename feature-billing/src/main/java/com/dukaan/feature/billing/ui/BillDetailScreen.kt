@@ -114,7 +114,7 @@ fun BillDetailScreen(
                 }
             }
             bill != null -> {
-                val b = bill!!
+                val b = bill ?: return@Scaffold
                 LazyColumn(
                     modifier = Modifier.padding(padding).fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
@@ -283,9 +283,11 @@ fun BillDetailScreen(
     }
 
     // Fullscreen zoomable image viewer
-    if (showImageViewer && bill?.imagePath != null) {
+    val currentBill = bill
+    val imagePath = currentBill?.imagePath
+    if (showImageViewer && imagePath != null) {
         BillImageViewerDialog(
-            imagePath = bill!!.imagePath!!,
+            imagePath = imagePath,
             onDismiss = { showImageViewer = false }
         )
     }
@@ -301,7 +303,7 @@ private fun BillImageViewerDialog(
     }
 
     if (bitmap == null) {
-        onDismiss()
+        LaunchedEffect(Unit) { onDismiss() }
         return
     }
 

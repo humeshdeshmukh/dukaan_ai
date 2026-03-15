@@ -2,7 +2,9 @@ package com.dukaan.feature.billing.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dukaan.core.db.SupportedLanguages
 import com.dukaan.core.db.dao.KhataDao
+import com.dukaan.core.db.dao.ShopProfileDao
 import com.dukaan.core.db.entity.CustomerEntity
 import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.core.network.model.Bill
@@ -17,8 +19,10 @@ import javax.inject.Inject
 data class BillingUiState(
     val items: List<BillItem> = emptyList(),
     val isRecording: Boolean = false,
+    val isContinuousListening: Boolean = false,
     val recognizedText: String = "",
     val isParsing: Boolean = false,
+    val audioLevel: Float = 0f,
     val error: String? = null,
     val isSaved: Boolean = false,
     // Calculation
@@ -51,11 +55,17 @@ class BillingViewModel @Inject constructor(
     private val repository: BillingRepository,
     private val geminiService: GeminiBillingService,
     private val speechManager: SpeechManager,
-    private val khataDao: KhataDao
+    private val khataDao: KhataDao,
+    private val shopProfileDao: ShopProfileDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BillingUiState())
     val uiState: StateFlow<BillingUiState> = _uiState.asStateFlow()
+
+    // Language code from user's settings — used for AI parsing
+    private val languageCode: StateFlow<String> = shopProfileDao.getProfile()
+        .map { it?.languageCode ?: "en" }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "en")
 
     val allBills: StateFlow<List<Bill>> = repository.getAllBills()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -73,6 +83,18 @@ class BillingViewModel @Inject constructor(
                 _uiState.update { it.copy(isRecording = listening) }
             }
         }
+        // Collect continuous mode state
+        viewModelScope.launch {
+            speechManager.isContinuousMode.collect { continuous ->
+                _uiState.update { it.copy(isContinuousListening = continuous) }
+            }
+        }
+        // Collect audio level for UI indicator
+        viewModelScope.launch {
+            speechManager.audioLevel.collect { level ->
+                _uiState.update { it.copy(audioLevel = level) }
+            }
+        }
         // Collect final result and auto-process it
         viewModelScope.launch {
             speechManager.finalResult.collect { text ->
@@ -81,7 +103,7 @@ class BillingViewModel @Inject constructor(
                 }
             }
         }
-        // Collect speech errors
+        // Collect speech errors - suppress transient errors during continuous mode
         viewModelScope.launch {
             speechManager.error.collect { errorCode ->
                 val msg = when (errorCode) {
@@ -92,8 +114,10 @@ class BillingViewModel @Inject constructor(
                     android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Internet not available."
                     android.speech.SpeechRecognizer.ERROR_AUDIO -> "Mic error. Try again."
                     android.speech.SpeechRecognizer.ERROR_CLIENT -> "Speech not available on this device."
-                    android.speech.SpeechRecognizer.ERROR_SERVER -> "Server error. Try again."
+                    android.speech.SpeechRecognizer.ERROR_SERVER -> "Server error. Retrying..."
                     android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy. Wait and try again."
+                    11 -> "Server disconnected. Retrying..." // ERROR_SERVER_DISCONNECTED
+                    10 -> "Too many requests. Retrying..." // ERROR_TOO_MANY_REQUESTS
                     else -> "Voice error ($errorCode). Try again."
                 }
                 _uiState.update { it.copy(error = msg) }
@@ -103,10 +127,14 @@ class BillingViewModel @Inject constructor(
     }
 
     fun toggleRecording() {
-        if (_uiState.value.isRecording) {
+        if (_uiState.value.isRecording || _uiState.value.isContinuousListening) {
             speechManager.stopListening()
         } else {
-            speechManager.startListening()
+            // Start in continuous mode — auto-restarts after each result
+            speechManager.startListening(
+                continuous = true,
+                speechCode = SupportedLanguages.getSpeechCode(languageCode.value)
+            )
         }
     }
 
@@ -116,11 +144,11 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isParsing = true, error = null) }
             try {
-                val parsedItems = geminiService.parseBillingSpeech(text)
+                val parsedItems = geminiService.parseBillingSpeech(text, languageCode.value)
                 _uiState.update { state ->
-                    val newItems = state.items + parsedItems
+                    val mergedItems = mergeItems(state.items, parsedItems)
                     state.copy(
-                        items = newItems,
+                        items = mergedItems,
                         isParsing = false,
                         recognizedText = ""
                     )
@@ -135,6 +163,31 @@ class BillingViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Smart merge: if a new item has the same name (case-insensitive) and unit as an existing item,
+     * combine quantities and sum prices. Otherwise append as a new item.
+     */
+    private fun mergeItems(existing: List<BillItem>, incoming: List<BillItem>): List<BillItem> {
+        val result = existing.toMutableList()
+        for (newItem in incoming) {
+            val matchIndex = result.indexOfFirst {
+                it.name.equals(newItem.name, ignoreCase = true) && it.unit.equals(newItem.unit, ignoreCase = true)
+            }
+            if (matchIndex >= 0) {
+                val old = result[matchIndex]
+                result[matchIndex] = BillItem(
+                    name = old.name,
+                    quantity = old.quantity + newItem.quantity,
+                    unit = old.unit,
+                    price = old.price + newItem.price
+                )
+            } else {
+                result.add(newItem)
+            }
+        }
+        return result
     }
 
     fun removeItem(item: BillItem) {
@@ -250,6 +303,8 @@ class BillingViewModel @Inject constructor(
             )
             repository.saveBill(bill, "VOICE")
             val msg = if (asDraft) "Draft saved!" else "Bill saved!"
+            // Stop listening if still active
+            speechManager.stopListening()
             // Clear the bill and show message
             _uiState.value = BillingUiState(
                 customers = state.customers,
@@ -278,6 +333,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun clearBill() {
+        speechManager.stopListening()
         _uiState.value = BillingUiState(customers = _uiState.value.customers)
     }
 
@@ -321,19 +377,19 @@ class BillingViewModel @Inject constructor(
         if (state.selectedCustomerName.isNotEmpty()) {
             sb.append("Customer: ${state.selectedCustomerName}\n")
         }
-        sb.append("━━━━━━━━━━━━━━━━━━\n")
+        sb.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         state.items.forEach { item ->
-            sb.append("${item.name}: ${item.quantity} ${item.unit} — ₹${String.format("%.2f", item.total)}\n")
+            sb.append("${item.name}: ${item.quantity} ${item.unit} \u2014 \u20B9${String.format("%.2f", item.total)}\n")
         }
-        sb.append("━━━━━━━━━━━━━━━━━━\n")
-        sb.append("Subtotal: ₹${String.format("%.2f", state.subtotal)}\n")
+        sb.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
+        sb.append("Subtotal: \u20B9${String.format("%.2f", state.subtotal)}\n")
         if (state.discountPercent > 0) {
-            sb.append("Discount (${state.discountPercent}%): -₹${String.format("%.2f", state.discountAmount)}\n")
+            sb.append("Discount (${state.discountPercent}%): -\u20B9${String.format("%.2f", state.discountAmount)}\n")
         }
         if (state.taxPercent > 0) {
-            sb.append("Tax/GST (${state.taxPercent}%): +₹${String.format("%.2f", state.taxAmount)}\n")
+            sb.append("Tax/GST (${state.taxPercent}%): +\u20B9${String.format("%.2f", state.taxAmount)}\n")
         }
-        sb.append("*Total: ₹${String.format("%.2f", state.grandTotal)}*\n")
+        sb.append("*Total: \u20B9${String.format("%.2f", state.grandTotal)}*\n")
         sb.append("Payment: ${state.paymentMode}\n")
         if (state.notes.isNotEmpty()) {
             sb.append("Note: ${state.notes}\n")

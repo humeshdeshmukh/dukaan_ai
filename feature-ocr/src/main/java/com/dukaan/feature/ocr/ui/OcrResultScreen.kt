@@ -48,14 +48,15 @@ fun OcrResultScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var showImageViewer by remember { mutableStateOf(false) }
     var showAiChat by remember { mutableStateOf(false) }
+    var hasNavigatedAfterSave by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val strings = LocalAppStrings.current
 
-    // Show save success feedback then navigate
+    // Show save success feedback then navigate (with guard against double-fire)
     LaunchedEffect(state.isSaved) {
-        if (state.isSaved) {
-            val sellerName = state.scannedBill?.sellerName?.takeIf { it.isNotBlank() } ?: "Unknown"
-            Toast.makeText(context, "Bill saved for $sellerName!", Toast.LENGTH_SHORT).show()
+        if (state.isSaved && !hasNavigatedAfterSave) {
+            hasNavigatedAfterSave = true
+            Toast.makeText(context, "Bill saved!", Toast.LENGTH_SHORT).show()
             onNavigateAfterSave()
         }
     }

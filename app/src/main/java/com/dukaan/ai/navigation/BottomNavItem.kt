@@ -26,9 +26,9 @@ sealed class BottomNavItem(
     )
 
     object VoiceBill : BottomNavItem(
-        label = "Voice Bill",
-        selectedIcon = Icons.Filled.Mic,
-        unselectedIcon = Icons.Outlined.Mic,
+        label = "Billing",
+        selectedIcon = Icons.Filled.Receipt,
+        unselectedIcon = Icons.Outlined.Receipt,
         route = Screen.VoiceBilling.route
     )
 

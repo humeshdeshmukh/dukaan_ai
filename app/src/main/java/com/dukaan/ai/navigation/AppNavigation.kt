@@ -139,9 +139,21 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                         restoreState = true
                     }
                 },
-                onPurchaseBillsClick = { navController.navigate(Screen.ScannedBillHistory.route) },
-                onBillClick = { billId -> navController.navigate(Screen.BillDetail.createRoute(billId)) },
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                onPurchaseBillsClick = {
+                    navController.navigate(Screen.ScannedBillHistory.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onBillClick = { billId ->
+                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                        launchSingleTop = true
+                    }
+                },
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
@@ -194,7 +206,7 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             composable(Screen.AddTransaction.route) { backStackEntry ->
                 val customerId = backStackEntry.arguments?.getString("customerId")?.toLongOrNull() ?: return@composable
                 val typeStr = backStackEntry.arguments?.getString("type") ?: return@composable
-                val type = TransactionType.valueOf(typeStr)
+                val type = try { TransactionType.valueOf(typeStr) } catch (_: Exception) { TransactionType.JAMA }
                 val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.KhataFlow.route) }
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
 
@@ -243,7 +255,11 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                             launchSingleTop = true
                         }
                     },
-                    onBillDetected = { navController.navigate(Screen.OcrResult.route) }
+                    onBillDetected = {
+                        navController.navigate(Screen.OcrResult.route) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 
@@ -302,7 +318,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     shareViaWhatsAppToPhone(context, message, phone)
                 },
                 onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId))
+                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                        launchSingleTop = true
+                    }
                 },
                 onGeneratePdf = { bill ->
                     val shopInfo = settingsState.toShopInfo()
@@ -342,7 +360,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     shareViaWhatsAppToPhone(context, message, phone)
                 },
                 onBillClick = { id ->
-                    navController.navigate(Screen.BillDetail.createRoute(id))
+                    navController.navigate(Screen.BillDetail.createRoute(id)) {
+                        launchSingleTop = true
+                    }
                 },
                 onGeneratePdf = { bill ->
                     val shopInfo = settingsState.toShopInfo()
@@ -367,7 +387,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             BillHistoryScreen(
                 viewModel = billingViewModel,
                 onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId))
+                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                        launchSingleTop = true
+                    }
                 },
                 onBackClick = null
             )
@@ -398,7 +420,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     }
                 },
                 onEditBill = { editBillId ->
-                    navController.navigate(Screen.EditBill.createRoute(editBillId))
+                    navController.navigate(Screen.EditBill.createRoute(editBillId)) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -478,7 +502,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 sellerName = sellerName,
                 viewModel = historyViewModel,
                 onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId))
+                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                        launchSingleTop = true
+                    }
                 },
                 onBackClick = { navController.popBackStack() }
             )

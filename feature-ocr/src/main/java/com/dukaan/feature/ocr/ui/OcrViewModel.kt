@@ -215,7 +215,10 @@ class OcrViewModel @Inject constructor(
         val imagePath = _uiState.value.capturedImageUri
         viewModelScope.launch {
             billingRepository.saveBill(bill, "OCR", imagePath)
-            _uiState.update { it.copy(isSaved = true) }
+            // Set isSaved to trigger navigation, then clear scannedBill
+            // to prevent re-navigation loop when returning to BillScannerScreen
+            _uiState.update { it.copy(isSaved = true, scannedBill = null) }
+            cachedBillBitmap = null
         }
     }
 

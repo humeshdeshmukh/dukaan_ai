@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -264,8 +265,10 @@ private fun NewBillTab(
         item {
             CompactVoiceInput(
                 isRecording = uiState.isRecording,
+                isContinuousListening = uiState.isContinuousListening,
                 isParsing = uiState.isParsing,
                 recognizedText = uiState.recognizedText,
+                audioLevel = uiState.audioLevel,
                 onToggleRecording = onMicClick
             )
         }
@@ -355,14 +358,19 @@ private fun NewBillTab(
                 }
             }
         } else {
-            itemsIndexed(uiState.items) { index, item ->
-                BillItemCard(
-                    item = item,
-                    currencyFormat = currencyFormat,
-                    onEdit = { viewModel.setEditingItem(index) },
-                    onDelete = { viewModel.removeItem(item) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
+            itemsIndexed(uiState.items, key = { index, item -> "${item.name}_${item.unit}_$index" }) { index, item ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(300))
+                ) {
+                    BillItemCard(
+                        item = item,
+                        currencyFormat = currencyFormat,
+                        onEdit = { viewModel.setEditingItem(index) },
+                        onDelete = { viewModel.removeItem(item) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
 
@@ -745,17 +753,20 @@ private fun CustomerPickerRow(selectedName: String, selectedPhone: String, onCli
 @Composable
 private fun CompactVoiceInput(
     isRecording: Boolean,
+    isContinuousListening: Boolean,
     isParsing: Boolean,
     recognizedText: String,
+    audioLevel: Float,
     onToggleRecording: () -> Unit
 ) {
     val strings = LocalAppStrings.current
+    val isActive = isRecording || isContinuousListening
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        color = if (isRecording) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        color = if (isActive) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
         else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
     ) {
         Row(
@@ -764,33 +775,85 @@ private fun CompactVoiceInput(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isParsing) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp), strokeWidth = 3.dp)
-                Spacer(Modifier.width(16.dp))
-                Text(strings.aiIsParsing, style = MaterialTheme.typography.bodyLarge)
-            } else {
-                RecordingButton(isRecording = isRecording, onClick = onToggleRecording)
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
+            RecordingButton(isRecording = isActive, onClick = onToggleRecording)
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (isRecording) strings.listening else strings.tapToSpeakItems,
+                        text = when {
+                            isActive -> strings.listening
+                            else -> strings.tapToSpeakItems
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (isRecording) MaterialTheme.colorScheme.error
+                        color = if (isActive) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.primary
                     )
-                    if (recognizedText.isNotEmpty()) {
+                    if (isParsing) {
+                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text = "\"$recognizedText\"",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
+                            strings.aiIsParsing,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+                // Audio level indicator when listening
+                if (isActive) {
+                    Spacer(Modifier.height(6.dp))
+                    AudioLevelIndicator(audioLevel = audioLevel)
+                }
+                if (recognizedText.isNotEmpty()) {
+                    Text(
+                        text = "\"$recognizedText\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AudioLevelIndicator(audioLevel: Float) {
+    val animatedLevel by animateFloatAsState(
+        targetValue = audioLevel,
+        animationSpec = tween(100),
+        label = "audioLevel"
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier.height(16.dp)
+    ) {
+        val barCount = 5
+        for (i in 0 until barCount) {
+            val threshold = i.toFloat() / barCount
+            val barHeight = if (animatedLevel > threshold) {
+                (8 + (animatedLevel - threshold) * 16).coerceAtMost(16f)
+            } else {
+                4f
+            }
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(barHeight.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        if (animatedLevel > threshold) MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                    )
+            )
         }
     }
 }
@@ -807,27 +870,57 @@ private fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
         ),
         label = "scale"
     )
+    val ringScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ringScale"
+    )
+    val ringAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ringAlpha"
+    )
     val color by animateColorAsState(
         targetValue = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
         label = "color"
     )
 
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = color,
-        modifier = Modifier
-            .size(56.dp)
-            .scale(if (isRecording) scale else 1f),
-        shadowElevation = 4.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
-            )
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(64.dp)) {
+        // Pulsing ring behind button when recording
+        if (isRecording) {
+            Surface(
+                shape = CircleShape,
+                color = color.copy(alpha = ringAlpha),
+                modifier = Modifier
+                    .size(56.dp)
+                    .scale(ringScale)
+            ) {}
+        }
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = color,
+            modifier = Modifier
+                .size(56.dp)
+                .scale(if (isRecording) scale else 1f),
+            shadowElevation = 4.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }

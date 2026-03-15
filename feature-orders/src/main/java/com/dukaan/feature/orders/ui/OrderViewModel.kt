@@ -2,6 +2,8 @@ package com.dukaan.feature.orders.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dukaan.core.db.SupportedLanguages
+import com.dukaan.core.db.dao.ShopProfileDao
 import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.core.voice.SpeechManager
 import com.dukaan.core.network.model.Order
@@ -25,11 +27,16 @@ data class OrderUiState(
 class OrderViewModel @Inject constructor(
     private val geminiService: GeminiBillingService,
     private val speechManager: SpeechManager,
-    private val repository: OrderRepository
+    private val repository: OrderRepository,
+    private val shopProfileDao: ShopProfileDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OrderUiState())
     val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
+
+    private val languageCode: StateFlow<String> = shopProfileDao.getProfile()
+        .map { it?.languageCode ?: "en" }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "en")
 
     val allOrders: StateFlow<List<Order>> = repository.getAllOrders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -48,7 +55,9 @@ class OrderViewModel @Inject constructor(
             speechManager.stopListening()
             processOrderSpeech(_uiState.value.recognizedText)
         } else {
-            speechManager.startListening()
+            speechManager.startListening(
+                speechCode = SupportedLanguages.getSpeechCode(languageCode.value)
+            )
         }
         _uiState.update { it.copy(isRecording = !currentlyRecording) }
     }
@@ -59,7 +68,7 @@ class OrderViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isProcessing = true, error = null) }
             try {
-                val newItems = geminiService.parseOrderSpeech(text)
+                val newItems = geminiService.parseOrderSpeech(text, languageCode.value)
                 _uiState.update {
                     it.copy(
                         items = it.items + newItems,

@@ -13,11 +13,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface GeminiBillingService {
-    suspend fun parseBillingSpeech(speechText: String): List<BillItem>
+    suspend fun parseBillingSpeech(speechText: String, languageCode: String = "en"): List<BillItem>
     suspend fun parseOcrText(rawText: String): Bill
     suspend fun parseBillImage(image: Bitmap): Bill
     suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null, languageCode: String = "en"): String
-    suspend fun parseOrderSpeech(speechText: String): List<OrderItem>
+    suspend fun parseOrderSpeech(speechText: String, languageCode: String = "en"): List<OrderItem>
 }
 
 @Singleton
@@ -25,39 +25,90 @@ class GeminiBillingServiceImpl @Inject constructor(
     private val generativeModel: GenerativeModel
 ) : GeminiBillingService {
 
-    override suspend fun parseBillingSpeech(speechText: String): List<BillItem> = withContext(Dispatchers.IO) {
+    override suspend fun parseBillingSpeech(speechText: String, languageCode: String): List<BillItem> = withContext(Dispatchers.IO) {
+        val nameInstruction = when (languageCode) {
+            "en" -> "Use English item names. For Hindi terms, use their common English name (cheeni→Sugar, atta→Wheat Flour)."
+            "hi" -> "Use Hindi item names in Devanagari script (e.g. चीनी, आटा, चावल, दाल, नमक). Do NOT translate to English."
+            "hi-en" -> "Use Hinglish item names in Roman script as the shopkeeper says them (e.g. Cheeni, Atta, Chawal, Daal, Namak). Do NOT translate to English."
+            else -> "Keep item names exactly as spoken by the shopkeeper. Do NOT translate to English."
+        }
+
         val prompt = """
-            You are an AI for Dukaan AI, an Indian shop billing app.
+            You are an AI for Dukaan AI, an Indian shop billing app used by kirana/grocery shopkeepers.
             Extract items from this shopkeeper's speech: "$speechText"
 
             Return ONLY a JSON array with: name, quantity, unit, price
             - "price" = TOTAL price for that item (the final amount the customer pays for that line)
             - The shopkeeper may say per-unit rate or total — always compute the TOTAL.
 
-            EXAMPLES:
-            - "500 gram sugar 60 rupees per kg" → quantity=500, unit="g", price=30 (500g at 60/kg = 30)
-            - "500 gram sugar 30 rupees" → quantity=500, unit="g", price=30 (30 is already the total)
-            - "2 kg rice 80 rupees per kg" → quantity=2, unit="kg", price=160 (2×80)
-            - "2 kg rice 160 rupees" → quantity=2, unit="kg", price=160 (already total)
+            ITEM NAMES: $nameInstruction
+            Brand names should always stay as-is (Tata Salt, Parle-G, Surf Excel, Amul, etc.)
+
+            PRICING EXAMPLES:
+            - "500 gram cheeni 60 rupees per kg" → quantity=500, unit="g", price=30 (500g at 60/kg = 30)
+            - "2 kg chawal 80 rupees per kg" → quantity=2, unit="kg", price=160 (2×80)
             - "Soap 3 piece 30 rupees each" → quantity=3, unit="pc", price=90 (3×30)
-            - "Soap 3 piece 90 rupees" → quantity=3, unit="pc", price=90 (already total)
             - "Milk 500ml 30 rupees per litre" → quantity=500, unit="ml", price=15 (500/1000×30)
             - "1 dozen banana 60 rupees" → quantity=12, unit="pc", price=60 (already total)
             - "Oil 1 litre 180 rupees" → quantity=1, unit="L", price=180
-
             CRITICAL: "price" must always be the TOTAL amount for that item, NOT per-unit.
-            Hindi: kilo=kg, gram=g, piece=pc, litre=L, packet=pkt, dozen=12 pc
 
-            Example: [{"name":"Sugar","quantity":500,"unit":"g","price":30},{"name":"Soap","quantity":3,"unit":"pc","price":90}]
+            RECOGNIZE THESE TERMS (but use the name according to the language instruction above):
+            cheeni/chini, atta/aata, maida, chawal/chaawal, daal/dal, namak/nimak,
+            tel/tail, doodh/dudh, ghee, sabun/saabun, chai patti, haldi, mirch/mirchi,
+            jeera/zeera, dhaniya, hing, besan, suji/sooji/rawa, poha, gur/gud,
+            saunf, ajwain, dalchini, elaichi, laung, rai/sarson, methi, kali mirch,
+            tamatar, pyaaz, aloo, adrak, lehsun, palak, gobhi, bhindi, baigan, gajar, matar,
+            anda/ande, bread/double roti, biscuit/biskut, maggi, chips/wafer
+
+            BRAND NAMES (fix mispronunciations, keep brand name as-is):
+            Tata namak/nimak = Tata Salt, Parle G/Parle ji = Parle-G, Surf/Surf Excel,
+            Vim, Lifebuoy/Laibuoy, Colgate/Kolgate, Amul/Amool, Britannia/Britania,
+            Fortune/Farchun, Aashirvaad/Ashirwad, Patanjali/Patanjli, Haldiram/Haldirams
+
+            LOCAL QUANTITY TERMS:
+            pav/paav = 250g, adha/aadha kilo = 500g, savaa/sawa kilo = 1.25kg,
+            dedh/deedh kilo = 1.5kg, dhai/dhaai kilo = 2.5kg, paune/paunai = 0.75x,
+            dozen/darjan = 12pc, dabba/dibba = box, peti = crate/case,
+            packet/packit = packet, bottle/botal = bottle, tin/dabba = tin/can
+            kilo=kg, gram/garam=g, piece/pees=pc, litre/liter=L, packet=pkt
+
+            NOISY ENVIRONMENT HANDLING:
+            The speech text may contain recognition errors from a noisy Indian shop environment.
+            - Fix obvious misspellings from speech recognition
+            - Recognize garbled brand names from context
+            - Ignore filler words: "aur", "phir", "hmm", "ok", "haan", "toh", "woh", "ye", "yeh"
+            - Ignore conversational fragments that aren't item entries
+            - If speech contains "bas" or "done" or "ho gaya", ignore those (means "that's all")
+
+            MULTIPLE ITEMS: The shopkeeper may dictate many items in one go. Extract ALL of them.
+            If no valid items found, return an empty array [].
         """.trimIndent()
 
         try {
             val response = generativeModel.generateContent(prompt)
-            val jsonString = response.text?.filterNot { it == '`' }?.removePrefix("json")?.trim() ?: "[]"
+            val rawText = response.text ?: "[]"
+            // Robust JSON extraction: find the JSON array in the response
+            val jsonString = extractJsonArray(rawText)
             com.google.gson.Gson().fromJson(jsonString, Array<BillItem>::class.java).toList()
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
+        }
+    }
+
+    private fun extractJsonArray(text: String): String {
+        // Try to find a JSON array in the response
+        val cleaned = text
+            .replace("```json", "")
+            .replace("```", "")
+            .trim()
+        val startIndex = cleaned.indexOf('[')
+        val endIndex = cleaned.lastIndexOf(']')
+        return if (startIndex >= 0 && endIndex > startIndex) {
+            cleaned.substring(startIndex, endIndex + 1)
+        } else {
+            "[]"
         }
     }
 
@@ -167,8 +218,9 @@ class GeminiBillingServiceImpl @Inject constructor(
         languageCode: String
     ): String = withContext(Dispatchers.IO) {
         val langInstruction = when (languageCode) {
-            "en" -> "Respond in simple Hinglish (Hindi-English mix)."
+            "en" -> "Respond in simple English."
             "hi" -> "Respond in simple Hindi."
+            "hi-en" -> "Respond in simple Hinglish (Hindi-English mix)."
             else -> "Respond in simple, easy language the user understands."
         }
         val prompt = """
@@ -205,9 +257,17 @@ class GeminiBillingServiceImpl @Inject constructor(
         }
     }
 
-    override suspend fun parseOrderSpeech(speechText: String): List<OrderItem> = withContext(Dispatchers.IO) {
+    override suspend fun parseOrderSpeech(speechText: String, languageCode: String): List<OrderItem> = withContext(Dispatchers.IO) {
+        val nameInstruction = when (languageCode) {
+            "en" -> "Use English item names."
+            "hi" -> "Use Hindi item names in Devanagari script. Do NOT translate to English."
+            "hi-en" -> "Use Hinglish item names in Roman script as spoken. Do NOT translate to English."
+            else -> "Keep item names exactly as spoken. Do NOT translate to English."
+        }
         val prompt = """
             You are an AI for Dukaan AI. Extract wholesale order list from this speech: "$speechText"
+            $nameInstruction
+            Brand names should always stay as-is.
             Return ONLY a JSON array of objects with: name (string), quantity (number), unit (string).
             Example input: "Sugar 50 kilo, Lux soap 2 carton"
             Example output: [{"name": "Sugar", "quantity": 50, "unit": "kg"}, {"name": "Lux soap", "quantity": 2, "unit": "carton"}]

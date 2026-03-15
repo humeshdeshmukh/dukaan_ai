@@ -41,10 +41,10 @@ class MainActivity : ComponentActivity() {
             val isDark = profile?.isDarkTheme ?: false
             val appStrings by translationManager.currentStrings.collectAsState()
 
-            // Load cached translation on startup
+            // Load translation on startup — uses cache if fresh, re-translates if stale
             LaunchedEffect(profile?.languageCode) {
                 val code = profile?.languageCode ?: "en"
-                translationManager.loadCachedTranslation(code)
+                translationManager.loadOrTranslate(code)
             }
 
             DukaanTheme(darkTheme = isDark) {

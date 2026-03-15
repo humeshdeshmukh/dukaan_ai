@@ -29,8 +29,9 @@ class GeminiKhataServiceImpl @Inject constructor(
 
     private fun languageInstruction(languageCode: String): String {
         return when (languageCode) {
-            "en" -> "Respond in simple, easy-to-understand Hinglish (Hindi-English mix)."
+            "en" -> "Respond in simple, easy-to-understand English."
             "hi" -> "Respond in simple Hindi. Use easy words."
+            "hi-en" -> "Respond in simple Hinglish (Hindi-English mix). Use easy words."
             else -> {
                 val langName = when (languageCode) {
                     "bn" -> "Bengali"; "te" -> "Telugu"; "mr" -> "Marathi"; "ta" -> "Tamil"

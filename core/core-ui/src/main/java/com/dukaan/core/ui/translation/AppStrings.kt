@@ -23,7 +23,7 @@ class AppStrings {
     var navHome: String = "Home"
     var navScan: String = "Scan"
     var navBills: String = "Bills"
-    var navVoiceBill: String = "Voice Bill"
+    var navVoiceBill: String = "Billing"
     var navKhata: String = "Khata"
     var navOrders: String = "Orders"
 
@@ -38,8 +38,8 @@ class AppStrings {
     var quickActions: String = "Quick Actions"
     var scanBill: String = "Scan Bill"
     var ocrScanner: String = "OCR Scanner"
-    var voiceBill: String = "Voice Bill"
-    var speakItems: String = "Speak Items"
+    var voiceBill: String = "Billing"
+    var speakItems: String = "Create Bills"
     var smartKhata: String = "Smart Khata"
     var ledgerBook: String = "Ledger Book"
     var orders: String = "Orders"
@@ -192,7 +192,7 @@ class AppStrings {
     var askAboutThisKhata: String = "Ask about this khata..."
 
     // === VOICE BILLING ===
-    var voiceBilling: String = "Voice Billing"
+    var voiceBilling: String = "Billing"
     var aiIsParsing: String = "AI is parsing..."
     var listening: String = "Listening..."
     var tapToSpeakItems: String = "Tap to Speak Items"
@@ -226,7 +226,7 @@ class AppStrings {
 
     // === BILL HISTORY ===
     var noBillsYet: String = "No Bills Yet"
-    var billsAppearHere: String = "Bills created via Voice Billing or Scan will appear here"
+    var billsAppearHere: String = "Bills created via Billing or Scan will appear here"
     var deleteBill: String = "Delete Bill"
     var deleteBillMessage: String = "This bill will be permanently deleted."
 
