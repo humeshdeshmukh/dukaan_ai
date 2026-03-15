@@ -22,6 +22,20 @@ fun shareViaWhatsApp(context: Context, message: String) {
     }
 }
 
+fun shareViaWhatsAppToPhone(context: Context, message: String, phone: String) {
+    val cleanPhone = phone.replace(Regex("[^0-9+]"), "")
+    val formattedPhone = if (cleanPhone.startsWith("+")) cleanPhone
+        else if (cleanPhone.length == 10) "+91$cleanPhone"
+        else cleanPhone
+    val url = "https://wa.me/${formattedPhone.removePrefix("+")}?text=${android.net.Uri.encode(message)}"
+    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        shareViaWhatsApp(context, message)
+    }
+}
+
 fun shareText(context: Context, message: String, title: String = "Share") {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

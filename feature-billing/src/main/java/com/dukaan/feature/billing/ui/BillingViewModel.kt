@@ -31,6 +31,7 @@ data class BillingUiState(
     // Customer
     val selectedCustomerName: String = "",
     val selectedCustomerId: Long? = null,
+    val selectedCustomerPhone: String = "",
     // Payment
     val paymentMode: String = "CASH",
     val notes: String = "",
@@ -38,7 +39,9 @@ data class BillingUiState(
     val editingItemIndex: Int = -1,
     val snackbarMessage: String? = null,
     // Data
-    val customers: List<CustomerEntity> = emptyList()
+    val customers: List<CustomerEntity> = emptyList(),
+    // Tab
+    val selectedTab: Int = 0
 )
 
 @HiltViewModel
@@ -56,23 +59,53 @@ class BillingViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        // Collect partial speech results for live display
         viewModelScope.launch {
             speechManager.speechText.collect { text ->
                 _uiState.update { it.copy(recognizedText = text) }
+            }
+        }
+        // Collect actual listening state from SpeechManager
+        viewModelScope.launch {
+            speechManager.isListening.collect { listening ->
+                _uiState.update { it.copy(isRecording = listening) }
+            }
+        }
+        // Collect final result and auto-process it
+        viewModelScope.launch {
+            speechManager.finalResult.collect { text ->
+                if (text.isNotBlank()) {
+                    speechManager.clearFinalResult()
+                    processSpeech(text)
+                }
+            }
+        }
+        // Collect speech errors
+        viewModelScope.launch {
+            speechManager.error.collect { errorCode ->
+                if (errorCode != null) {
+                    val msg = when (errorCode) {
+                        android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected. Try again."
+                        android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected. Try again."
+                        android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required."
+                        android.speech.SpeechRecognizer.ERROR_NETWORK,
+                        android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network error. Check internet connection."
+                        android.speech.SpeechRecognizer.ERROR_AUDIO -> "Audio recording error."
+                        else -> null
+                    }
+                    msg?.let { _uiState.update { state -> state.copy(error = msg) } }
+                }
             }
         }
         loadCustomers()
     }
 
     fun toggleRecording() {
-        val currentlyRecording = _uiState.value.isRecording
-        if (currentlyRecording) {
+        if (_uiState.value.isRecording) {
             speechManager.stopListening()
-            processSpeech(_uiState.value.recognizedText)
         } else {
             speechManager.startListening()
         }
-        _uiState.update { it.copy(isRecording = !currentlyRecording) }
     }
 
     private fun processSpeech(text: String) {
@@ -142,12 +175,12 @@ class BillingViewModel @Inject constructor(
         _uiState.update { it.copy(paymentMode = mode) }
     }
 
-    fun selectCustomer(id: Long?, name: String) {
-        _uiState.update { it.copy(selectedCustomerId = id, selectedCustomerName = name) }
+    fun selectCustomer(id: Long?, name: String, phone: String = "") {
+        _uiState.update { it.copy(selectedCustomerId = id, selectedCustomerName = name, selectedCustomerPhone = phone) }
     }
 
     fun clearCustomer() {
-        _uiState.update { it.copy(selectedCustomerId = null, selectedCustomerName = "") }
+        _uiState.update { it.copy(selectedCustomerId = null, selectedCustomerName = "", selectedCustomerPhone = "") }
     }
 
     fun setNotes(notes: String) {
@@ -156,6 +189,10 @@ class BillingViewModel @Inject constructor(
 
     fun setEditingItem(index: Int) {
         _uiState.update { it.copy(editingItemIndex = index) }
+    }
+
+    fun setSelectedTab(tab: Int) {
+        _uiState.update { it.copy(selectedTab = tab) }
     }
 
     fun dismissSnackbar() {
@@ -189,6 +226,7 @@ class BillingViewModel @Inject constructor(
     fun saveBill(asDraft: Boolean = false) {
         viewModelScope.launch {
             val state = _uiState.value
+            if (state.items.isEmpty()) return@launch
             val bill = Bill(
                 items = state.items,
                 totalAmount = state.grandTotal,
@@ -204,11 +242,13 @@ class BillingViewModel @Inject constructor(
                 isDraft = asDraft
             )
             repository.saveBill(bill, "VOICE")
-            if (asDraft) {
-                _uiState.update { it.copy(snackbarMessage = "Draft saved!") }
-            } else {
-                _uiState.update { it.copy(isSaved = true, snackbarMessage = "Bill saved!") }
-            }
+            val msg = if (asDraft) "Draft saved!" else "Bill saved!"
+            // Clear the bill and show message
+            _uiState.value = BillingUiState(
+                customers = state.customers,
+                snackbarMessage = msg,
+                isSaved = !asDraft
+            )
         }
     }
 

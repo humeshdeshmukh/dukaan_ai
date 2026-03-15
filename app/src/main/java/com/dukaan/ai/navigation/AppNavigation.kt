@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dukaan.ai.util.shareViaWhatsApp
+import com.dukaan.ai.util.shareViaWhatsAppToPhone
 import com.dukaan.ai.util.sharePdfFile
 import com.dukaan.ai.util.PdfGenerator
 import com.dukaan.ai.util.PdfPreviewDialog
@@ -295,6 +296,9 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 onBackClick = null,
                 onShareClick = { message ->
                     shareViaWhatsApp(context, message)
+                },
+                onShareToPhone = { message, phone ->
+                    shareViaWhatsAppToPhone(context, message, phone)
                 },
                 onBillClick = { billId ->
                     navController.navigate(Screen.BillDetail.createRoute(billId))

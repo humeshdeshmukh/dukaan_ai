@@ -58,7 +58,9 @@ class MainActivity : ComponentActivity() {
                         Screen.VoiceBilling.route,
                         Screen.SmartKhata.route,
                         Screen.WholesaleOrder.route,
-                        Screen.ScanBill.route
+                        Screen.ScanBill.route,
+                        Screen.BillHistory.route,
+                        Screen.BillDetail.route
                     )
                     val showBottomBar = currentRoute in topLevelRoutes
 

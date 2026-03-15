@@ -1,5 +1,9 @@
 package com.dukaan.feature.billing.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -22,12 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.dukaan.core.db.entity.CustomerEntity
 import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
@@ -42,6 +48,7 @@ fun VoiceBillingScreen(
     viewModel: BillingViewModel,
     onBackClick: (() -> Unit)?,
     onShareClick: (String) -> Unit,
+    onShareToPhone: (String, String) -> Unit,
     onBillClick: (Long) -> Unit,
     onGeneratePdf: (Bill) -> Unit
 ) {
@@ -50,11 +57,35 @@ fun VoiceBillingScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val strings = LocalAppStrings.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    var showHistorySheet by remember { mutableStateOf(false) }
     var showCustomerPicker by remember { mutableStateOf(false) }
     var showAddItemDialog by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
+
+    // Runtime permission for RECORD_AUDIO
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.toggleRecording()
+        }
+    }
+
+    val onMicClick: () -> Unit = {
+        if (uiState.isRecording) {
+            viewModel.toggleRecording()
+        } else {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (hasPermission) {
+                viewModel.toggleRecording()
+            } else {
+                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
@@ -65,165 +96,81 @@ fun VoiceBillingScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(strings.voiceBilling, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    onBackClick?.let { click ->
-                        IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
-                        }
-                    } ?: run {}
-                },
-                actions = {
-                    IconButton(onClick = { showHistorySheet = true }) {
-                        Icon(Icons.Outlined.History, contentDescription = strings.recentBills)
+            Column {
+                TopAppBar(
+                    title = { Text(strings.navVoiceBill, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        onBackClick?.let { click ->
+                            IconButton(onClick = click) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
+                            }
+                        } ?: run {}
                     }
+                )
+                // Tabs - New Bill / History
+                TabRow(
+                    selectedTabIndex = uiState.selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Tab(
+                        selected = uiState.selectedTab == 0,
+                        onClick = { viewModel.setSelectedTab(0) },
+                        text = { Text(strings.newBill, fontWeight = FontWeight.SemiBold) },
+                        icon = { Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    )
+                    Tab(
+                        selected = uiState.selectedTab == 1,
+                        onClick = { viewModel.setSelectedTab(1) },
+                        text = { Text(strings.billHistory, fontWeight = FontWeight.SemiBold) },
+                        icon = { Icon(Icons.Outlined.Receipt, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    )
                 }
-            )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            ActionButtonsRow(
-                hasItems = uiState.items.isNotEmpty(),
-                onSaveDraft = { viewModel.saveBill(asDraft = true) },
-                onWhatsApp = {
-                    onShareClick(viewModel.formatWhatsAppMessage())
-                    viewModel.saveBill()
-                },
-                onSavePdf = {
-                    viewModel.saveBill()
-                    onGeneratePdf(viewModel.buildBillForPdf())
-                }
-            )
+            if (uiState.selectedTab == 0) {
+                ActionButtonsRow(
+                    hasItems = uiState.items.isNotEmpty(),
+                    onSaveDraft = { viewModel.saveBill(asDraft = true) },
+                    onWhatsApp = {
+                        val msg = viewModel.formatWhatsAppMessage()
+                        val phone = uiState.selectedCustomerPhone
+                        viewModel.saveBill()
+                        if (phone.isNotBlank()) {
+                            onShareToPhone(msg, phone)
+                        } else {
+                            onShareClick(msg)
+                        }
+                    },
+                    onSavePdf = {
+                        val bill = viewModel.buildBillForPdf()
+                        viewModel.saveBill()
+                        onGeneratePdf(bill)
+                    }
+                )
+            }
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // Customer Picker Row
-            item {
-                CustomerPickerRow(
-                    selectedName = uiState.selectedCustomerName,
-                    onClick = { showCustomerPicker = true }
-                )
-            }
-
-            // Compact Voice Input
-            item {
-                CompactVoiceInput(
-                    isRecording = uiState.isRecording,
-                    isParsing = uiState.isParsing,
-                    recognizedText = uiState.recognizedText,
-                    onToggleRecording = viewModel::toggleRecording
-                )
-            }
-
-            // Items Header
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${strings.billItems} (${uiState.items.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = { showAddItemDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(strings.addItem)
-                        }
-                        if (uiState.items.isNotEmpty()) {
-                            TextButton(
-                                onClick = { showClearConfirm = true },
-                                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
-                            ) {
-                                Text(strings.clearAll)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Items or Empty
-            if (uiState.items.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            strings.noItemsAddedHint,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center,
-                            lineHeight = 22.sp
-                        )
-                    }
-                }
-            } else {
-                itemsIndexed(uiState.items) { index, item ->
-                    BillItemCard(
-                        item = item,
-                        currencyFormat = currencyFormat,
-                        onEdit = { viewModel.setEditingItem(index) },
-                        onDelete = { viewModel.removeItem(item) },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            // Bill Summary
-            if (uiState.items.isNotEmpty()) {
-                item {
-                    BillSummaryCard(
-                        subtotal = uiState.subtotal,
-                        discountPercent = uiState.discountPercent,
-                        discountAmount = uiState.discountAmount,
-                        taxPercent = uiState.taxPercent,
-                        taxAmount = uiState.taxAmount,
-                        grandTotal = uiState.grandTotal,
-                        currencyFormat = currencyFormat,
-                        onDiscountChange = { viewModel.setDiscount(it) },
-                        onTaxChange = { viewModel.setTax(it) }
-                    )
-                }
-
-                // Payment Mode
-                item {
-                    PaymentModeChips(
-                        selected = uiState.paymentMode,
-                        onSelect = viewModel::setPaymentMode
-                    )
-                }
-
-                // Notes Field
-                item {
-                    OutlinedTextField(
-                        value = uiState.notes,
-                        onValueChange = viewModel::setNotes,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        placeholder = { Text(strings.addNote) },
-                        leadingIcon = { Icon(Icons.Outlined.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true
-                    )
-                }
-            }
-
-            // Bottom spacer for action buttons
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+        when (uiState.selectedTab) {
+            0 -> NewBillTab(
+                uiState = uiState,
+                currencyFormat = currencyFormat,
+                viewModel = viewModel,
+                onMicClick = onMicClick,
+                onShowCustomerPicker = { showCustomerPicker = true },
+                onShowAddItem = { showAddItemDialog = true },
+                onShowClearConfirm = { showClearConfirm = true },
+                modifier = Modifier.padding(padding)
+            )
+            1 -> HistoryTab(
+                bills = allBills,
+                currencyFormat = currencyFormat,
+                onBillClick = onBillClick,
+                onDeleteBill = viewModel::deleteBill,
+                modifier = Modifier.padding(padding)
+            )
         }
     }
 
@@ -253,7 +200,7 @@ fun VoiceBillingScreen(
         CustomerPickerDialog(
             customers = uiState.customers,
             onSelect = { customer ->
-                viewModel.selectCustomer(customer.id, customer.name)
+                viewModel.selectCustomer(customer.id, customer.name, customer.phone)
                 showCustomerPicker = false
             },
             onClear = {
@@ -282,25 +229,458 @@ fun VoiceBillingScreen(
             dismissButton = { TextButton(onClick = { showClearConfirm = false }) { Text(strings.cancel) } }
         )
     }
+}
 
-    // Recent Bills Sheet
-    if (showHistorySheet) {
-        RecentBillsSheet(
-            bills = allBills.take(10),
-            currencyFormat = currencyFormat,
-            onBillClick = { id ->
-                showHistorySheet = false
-                onBillClick(id)
+// ─── New Bill Tab ────────────────────────────────────────────────────────────
+
+@Composable
+private fun NewBillTab(
+    uiState: BillingUiState,
+    currencyFormat: NumberFormat,
+    viewModel: BillingViewModel,
+    onMicClick: () -> Unit,
+    onShowCustomerPicker: () -> Unit,
+    onShowAddItem: () -> Unit,
+    onShowClearConfirm: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalAppStrings.current
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        // Customer Picker Row
+        item {
+            CustomerPickerRow(
+                selectedName = uiState.selectedCustomerName,
+                selectedPhone = uiState.selectedCustomerPhone,
+                onClick = onShowCustomerPicker
+            )
+        }
+
+        // Compact Voice Input
+        item {
+            CompactVoiceInput(
+                isRecording = uiState.isRecording,
+                isParsing = uiState.isParsing,
+                recognizedText = uiState.recognizedText,
+                onToggleRecording = onMicClick
+            )
+        }
+
+        // Error message
+        if (uiState.error != null) {
+            item {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            uiState.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { viewModel.dismissError() }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Items Header
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${strings.billItems} (${uiState.items.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onShowAddItem) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(strings.addItem)
+                    }
+                    if (uiState.items.isNotEmpty()) {
+                        TextButton(
+                            onClick = onShowClearConfirm,
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
+                        ) {
+                            Text(strings.clearAll)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Items or Empty
+        if (uiState.items.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        strings.noItemsAddedHint,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+                }
+            }
+        } else {
+            itemsIndexed(uiState.items) { index, item ->
+                BillItemCard(
+                    item = item,
+                    currencyFormat = currencyFormat,
+                    onEdit = { viewModel.setEditingItem(index) },
+                    onDelete = { viewModel.removeItem(item) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Bill Summary
+        if (uiState.items.isNotEmpty()) {
+            item {
+                BillSummaryCard(
+                    subtotal = uiState.subtotal,
+                    discountPercent = uiState.discountPercent,
+                    discountAmount = uiState.discountAmount,
+                    taxPercent = uiState.taxPercent,
+                    taxAmount = uiState.taxAmount,
+                    grandTotal = uiState.grandTotal,
+                    currencyFormat = currencyFormat,
+                    onDiscountChange = { viewModel.setDiscount(it) },
+                    onTaxChange = { viewModel.setTax(it) }
+                )
+            }
+
+            // Payment Mode
+            item {
+                PaymentModeChips(
+                    selected = uiState.paymentMode,
+                    onSelect = viewModel::setPaymentMode
+                )
+            }
+
+            // Notes Field
+            item {
+                OutlinedTextField(
+                    value = uiState.notes,
+                    onValueChange = viewModel::setNotes,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    placeholder = { Text(strings.addNote) },
+                    leadingIcon = { Icon(Icons.Outlined.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+            }
+        }
+
+        // Bottom spacer
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+// ─── History Tab ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun HistoryTab(
+    bills: List<Bill>,
+    currencyFormat: NumberFormat,
+    onBillClick: (Long) -> Unit,
+    onDeleteBill: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalAppStrings.current
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
+    val todayFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+    val calendar = remember { Calendar.getInstance() }
+    var deleteConfirmBillId by remember { mutableStateOf<Long?>(null) }
+
+    // Group bills by date
+    val todayStart = remember {
+        calendar.apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+
+    val todayBills = remember(bills) { bills.filter { it.timestamp >= todayStart } }
+    val olderBills = remember(bills) { bills.filter { it.timestamp < todayStart } }
+    val todayTotal = remember(todayBills) { todayBills.sumOf { it.totalAmount } }
+
+    if (bills.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Outlined.Receipt,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    strings.noBillsYet,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            // Today's Summary Card
+            if (todayBills.isNotEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Today, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(strings.todayBills, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "${todayBills.size} ${strings.items}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                currencyFormat.format(todayTotal),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Today's Bills
+            if (todayBills.isNotEmpty()) {
+                item {
+                    Text(
+                        strings.todayBills,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                }
+                items(todayBills, key = { it.id }) { bill ->
+                    BillHistoryItem(
+                        bill = bill,
+                        currencyFormat = currencyFormat,
+                        timeFormat = todayFormat,
+                        showDate = false,
+                        onClick = { onBillClick(bill.id) },
+                        onDelete = { deleteConfirmBillId = bill.id }
+                    )
+                }
+            }
+
+            // Older Bills
+            if (olderBills.isNotEmpty()) {
+                item {
+                    Text(
+                        strings.allBills,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                }
+                items(olderBills, key = { it.id }) { bill ->
+                    BillHistoryItem(
+                        bill = bill,
+                        currencyFormat = currencyFormat,
+                        timeFormat = dateFormat,
+                        showDate = true,
+                        onClick = { onBillClick(bill.id) },
+                        onDelete = { deleteConfirmBillId = bill.id }
+                    )
+                }
+            }
+        }
+    }
+
+    // Delete Confirmation
+    deleteConfirmBillId?.let { billId ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmBillId = null },
+            title = { Text(strings.deleteBill) },
+            text = { Text(strings.deleteBillMessage) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteBill(billId)
+                        deleteConfirmBillId = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) { Text(strings.delete) }
             },
-            onDismiss = { showHistorySheet = false }
+            dismissButton = { TextButton(onClick = { deleteConfirmBillId = null }) { Text(strings.cancel) } }
         )
+    }
+}
+
+@Composable
+private fun BillHistoryItem(
+    bill: Bill,
+    currencyFormat: NumberFormat,
+    timeFormat: SimpleDateFormat,
+    showDate: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(14.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = if (bill.isDraft) MaterialTheme.colorScheme.tertiaryContainer
+                else MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (bill.isDraft) Icons.Outlined.Edit else Icons.Outlined.Receipt,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (bill.isDraft) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (bill.customerName.isNotEmpty()) bill.customerName
+                        else "${bill.items.size} ${strings.items}",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (bill.isDraft) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
+                        ) {
+                            Text(
+                                strings.saveDraft,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        timeFormat.format(Date(bill.timestamp)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (bill.paymentMode.isNotEmpty()) {
+                        Text(
+                            " · ${bill.paymentMode}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    currencyFormat.format(bill.totalAmount),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 
 // ─── Customer Picker Row ────────────────────────────────────────────────────
 
 @Composable
-private fun CustomerPickerRow(selectedName: String, onClick: () -> Unit) {
+private fun CustomerPickerRow(selectedName: String, selectedPhone: String, onClick: () -> Unit) {
     val strings = LocalAppStrings.current
     Surface(
         modifier = Modifier
@@ -321,14 +701,22 @@ private fun CustomerPickerRow(selectedName: String, onClick: () -> Unit) {
                 modifier = Modifier.size(22.dp)
             )
             Spacer(Modifier.width(10.dp))
-            Text(
-                text = selectedName.ifEmpty { strings.selectCustomer },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (selectedName.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selectedName.isNotEmpty()) FontWeight.Medium else FontWeight.Normal,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = selectedName.ifEmpty { strings.selectCustomer },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (selectedName.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (selectedName.isNotEmpty()) FontWeight.Medium else FontWeight.Normal
+                )
+                if (selectedPhone.isNotBlank()) {
+                    Text(
+                        text = selectedPhone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -574,12 +962,8 @@ private fun BillSummaryCard(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Subtotal
             SummaryRow(label = strings.subtotal, value = currencyFormat.format(subtotal))
-
             Spacer(Modifier.height(8.dp))
-
-            // Discount
             SummaryRowWithInput(
                 label = strings.discount,
                 percent = discountPercent,
@@ -587,10 +971,7 @@ private fun BillSummaryCard(
                 onPercentChange = onDiscountChange,
                 amountColor = Color(0xFF00B37E)
             )
-
             Spacer(Modifier.height(8.dp))
-
-            // Tax
             SummaryRowWithInput(
                 label = strings.taxGst,
                 percent = taxPercent,
@@ -598,10 +979,7 @@ private fun BillSummaryCard(
                 onPercentChange = onTaxChange,
                 amountColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Divider(modifier = Modifier.padding(vertical = 10.dp))
-
-            // Grand Total
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -771,102 +1149,6 @@ private fun ActionButtonsRow(
                 Icon(Icons.Outlined.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(strings.savePdf, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-// ─── Recent Bills Sheet ─────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RecentBillsSheet(
-    bills: List<Bill>,
-    currencyFormat: NumberFormat,
-    onBillClick: (Long) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val strings = LocalAppStrings.current
-    val dateFormat = remember { SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()) }
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(bottom = 32.dp)) {
-            Text(
-                strings.recentBills,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-
-            if (bills.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        strings.noBillsYet,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 400.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(bills) { bill ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onBillClick(bill.id) },
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(14.dp)
-                                    .fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    modifier = Modifier.size(40.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Outlined.Receipt,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        if (bill.customerName.isNotEmpty()) bill.customerName
-                                        else "${bill.items.size} ${strings.items}",
-                                        fontWeight = FontWeight.Medium,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        dateFormat.format(Date(bill.timestamp)),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Text(
-                                    currencyFormat.format(bill.totalAmount),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
     }
