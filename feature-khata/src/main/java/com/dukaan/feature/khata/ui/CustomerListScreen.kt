@@ -88,7 +88,7 @@ fun CustomerListScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Outlined.TrendingDown, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Outlined.TrendingUp, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = currencyFormat.format(Math.abs(uiState.totalReceivable)),
@@ -99,7 +99,7 @@ fun CustomerListScreen(
                             Text(strings.toCollect, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Outlined.TrendingUp, contentDescription = null, tint = Color(0xFF00B37E), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Outlined.TrendingDown, contentDescription = null, tint = Color(0xFF00B37E), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = currencyFormat.format(Math.abs(uiState.totalPayable)),

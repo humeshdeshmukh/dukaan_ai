@@ -148,7 +148,7 @@ fun CustomerDetailScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(20.dp),
-                    color = if (c.balance >= 0) Color(0xFF00B37E).copy(alpha = 0.1f) else Color(0xFFEF4444).copy(alpha = 0.1f)
+                    color = if (c.balance >= 0) Color(0xFFEF4444).copy(alpha = 0.1f) else Color(0xFF00B37E).copy(alpha = 0.1f)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -164,7 +164,7 @@ fun CustomerDetailScreen(
                             text = currencyFormat.format(Math.abs(c.balance)),
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (c.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
+                            color = if (c.balance >= 0) Color(0xFFEF4444) else Color(0xFF00B37E)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -174,7 +174,7 @@ fun CustomerDetailScreen(
                         )
 
                         // Send Reminder button for customers who owe money
-                        if (c.balance < 0) {
+                        if (c.balance > 0) {
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
                                 onClick = {
@@ -531,7 +531,7 @@ fun TransactionItem(
                 }
             }
             Text(
-                text = "${if (isJama) "-" else "+"}${currencyFormat.format(transaction.amount)}",
+                text = "${if (isJama) "+" else "-"}${currencyFormat.format(transaction.amount)}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = tint

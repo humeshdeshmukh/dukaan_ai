@@ -204,7 +204,7 @@ class KhataViewModel @Inject constructor(
 
             val context = buildString {
                 appendLine("Customer: $customerName")
-                appendLine("Balance: ₹$balance (${if (balance < 0) "they owe you" else "you owe them"})")
+                appendLine("Balance: ₹$balance (${if (balance > 0) "they owe you" else "you owe them"})")
                 appendLine("Recent transactions:")
                 transactions.take(15).forEach { txn ->
                     val type = if (txn.type.name == "JAMA") "Received" else "Credit"

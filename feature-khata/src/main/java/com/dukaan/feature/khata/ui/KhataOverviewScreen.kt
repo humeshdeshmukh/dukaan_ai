@@ -34,14 +34,14 @@ fun KhataOverviewScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
     val topDebtors = remember(customers) {
-        customers.filter { it.balance < 0 }
-            .sortedBy { it.balance }
+        customers.filter { it.balance > 0 }
+            .sortedByDescending { it.balance }
             .take(5)
     }
 
     val topCreditors = remember(customers) {
-        customers.filter { it.balance > 0 }
-            .sortedByDescending { it.balance }
+        customers.filter { it.balance < 0 }
+            .sortedBy { it.balance }
             .take(5)
     }
 
@@ -78,14 +78,14 @@ fun KhataOverviewScreen(
                 ) {
                     OverviewStatCard(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Outlined.TrendingDown,
+                        icon = Icons.Outlined.TrendingUp,
                         iconTint = Color(0xFFEF4444),
                         label = strings.toCollect,
                         value = currencyFormat.format(Math.abs(uiState.totalReceivable))
                     )
                     OverviewStatCard(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Outlined.TrendingUp,
+                        icon = Icons.Outlined.TrendingDown,
                         iconTint = Color(0xFF00B37E),
                         label = strings.toPay,
                         value = currencyFormat.format(Math.abs(uiState.totalPayable))
@@ -222,7 +222,7 @@ private fun OverviewCustomerRow(
     showLastActivity: Boolean = false,
     onClick: () -> Unit
 ) {
-    val balanceColor = if (customer.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
+    val balanceColor = if (customer.balance >= 0) Color(0xFFEF4444) else Color(0xFF00B37E)
     val dateFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
 
     Card(

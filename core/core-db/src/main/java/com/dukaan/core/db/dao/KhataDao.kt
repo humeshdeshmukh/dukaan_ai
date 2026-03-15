@@ -34,10 +34,12 @@ interface KhataDao {
     suspend fun deleteTransactionsByCustomer(customerId: Long)
 
     // Summary queries
-    @Query("SELECT COALESCE(SUM(balance), 0.0) FROM customers WHERE balance < 0")
+    // Positive balance = customer owes you = receivable
+    @Query("SELECT COALESCE(SUM(balance), 0.0) FROM customers WHERE balance > 0")
     fun getTotalReceivable(): Flow<Double>
 
-    @Query("SELECT COALESCE(SUM(balance), 0.0) FROM customers WHERE balance > 0")
+    // Negative balance = you owe customer = payable
+    @Query("SELECT COALESCE(SUM(balance), 0.0) FROM customers WHERE balance < 0")
     fun getTotalPayable(): Flow<Double>
 
     @Query("SELECT COUNT(*) FROM customers")

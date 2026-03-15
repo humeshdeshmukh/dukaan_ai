@@ -332,7 +332,7 @@ private fun StatementTransactionRow(
             }
         }
         Text(
-            text = "${if (isJama) "-" else "+"}${currencyFormat.format(transaction.amount)}",
+            text = "${if (isJama) "+" else "-"}${currencyFormat.format(transaction.amount)}",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = tint

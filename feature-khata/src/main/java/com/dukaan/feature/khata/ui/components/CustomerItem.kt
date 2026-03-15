@@ -26,7 +26,7 @@ fun CustomerItem(
 ) {
     val strings = LocalAppStrings.current
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
-    val balanceColor = if (customer.balance >= 0) Color(0xFF00B37E) else Color(0xFFEF4444)
+    val balanceColor = if (customer.balance >= 0) Color(0xFFEF4444) else Color(0xFF00B37E)
 
     Card(
         modifier = modifier
