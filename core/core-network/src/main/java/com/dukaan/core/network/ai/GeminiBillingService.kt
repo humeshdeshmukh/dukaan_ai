@@ -275,7 +275,8 @@ class GeminiBillingServiceImpl @Inject constructor(
 
         try {
             val response = generativeModel.generateContent(prompt)
-            val jsonString = response.text?.filterNot { it == '`' }?.removePrefix("json")?.trim() ?: "[]"
+            val rawText = response.text ?: "[]"
+            val jsonString = extractJsonArray(rawText)
             com.google.gson.Gson().fromJson(jsonString, Array<OrderItem>::class.java).toList()
         } catch (e: Exception) {
             e.printStackTrace()

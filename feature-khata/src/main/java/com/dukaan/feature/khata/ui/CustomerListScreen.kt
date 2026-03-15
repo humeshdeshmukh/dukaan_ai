@@ -40,6 +40,7 @@ fun CustomerListScreen(
     val sortOption by viewModel.sortOption.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var customerToDelete by remember { mutableStateOf<Long?>(null) }
+    var showFinalDeleteConfirm by remember { mutableStateOf<Long?>(null) }
     var showAiChat by remember { mutableStateOf(false) }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
@@ -287,10 +288,23 @@ fun CustomerListScreen(
                 message = strings.deleteCustomerMessage,
                 confirmText = strings.delete,
                 onConfirm = {
-                    viewModel.deleteCustomer(customerId)
+                    showFinalDeleteConfirm = customerId
                     customerToDelete = null
                 },
                 onDismiss = { customerToDelete = null }
+            )
+        }
+
+        showFinalDeleteConfirm?.let { customerId ->
+            ConfirmationDialog(
+                title = strings.finalDeleteConfirmTitle,
+                message = strings.finalDeleteConfirmMessage,
+                confirmText = strings.deletePermanently,
+                onConfirm = {
+                    viewModel.deleteCustomer(customerId)
+                    showFinalDeleteConfirm = null
+                },
+                onDismiss = { showFinalDeleteConfirm = null }
             )
         }
     }
