@@ -179,8 +179,12 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     onStatementClick = {
                         navController.navigate(Screen.CustomerStatement.createRoute(customerId))
                     },
-                    onShareReminder = { message ->
-                        shareViaWhatsApp(context, message)
+                    onShareReminder = { message, phone ->
+                        if (phone.isNotBlank()) {
+                            shareViaWhatsAppToPhone(context, message, phone)
+                        } else {
+                            shareViaWhatsApp(context, message)
+                        }
                     },
                     onBackClick = { navController.popBackStack() }
                 )

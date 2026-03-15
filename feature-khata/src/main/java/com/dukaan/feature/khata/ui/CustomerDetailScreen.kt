@@ -36,7 +36,7 @@ fun CustomerDetailScreen(
     languageCode: String = "en",
     onAddTransaction: (TransactionType) -> Unit,
     onStatementClick: () -> Unit = {},
-    onShareReminder: (String) -> Unit = {},
+    onShareReminder: (String, String) -> Unit = { _, _ -> },
     onBackClick: () -> Unit
 ) {
     val strings = LocalAppStrings.current
@@ -60,12 +60,73 @@ fun CustomerDetailScreen(
     val reminderMessage by viewModel.reminderMessage.collectAsState()
     var showInsight by remember { mutableStateOf(false) }
 
-    // Handle reminder message
+    // Editable reminder dialog state
+    var showReminderDialog by remember { mutableStateOf(false) }
+    var editableReminderText by remember { mutableStateOf("") }
+    var reminderCustomerPhone by remember { mutableStateOf("") }
+
+    // When AI generates reminder, show editable dialog
     LaunchedEffect(reminderMessage) {
         reminderMessage?.let {
-            onShareReminder(it)
+            editableReminderText = it
+            reminderCustomerPhone = customer?.phone ?: ""
+            showReminderDialog = true
             viewModel.clearReminder()
         }
+    }
+
+    // Reminder Edit Dialog
+    if (showReminderDialog) {
+        AlertDialog(
+            onDismissRequest = { showReminderDialog = false },
+            title = { Text(strings.sendReminder) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (reminderCustomerPhone.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Phone,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                reminderCustomerPhone,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = editableReminderText,
+                        onValueChange = { editableReminderText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 150.dp),
+                        maxLines = 10
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onShareReminder(editableReminderText, reminderCustomerPhone)
+                        showReminderDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366))
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("WhatsApp")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReminderDialog = false }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
     }
 
     // Filter transactions by date
