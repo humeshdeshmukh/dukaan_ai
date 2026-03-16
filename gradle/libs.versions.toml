@@ -16,6 +16,7 @@ okhttp = "4.12.0"
 coroutines = "1.7.3"
 navigationCompose = "2.7.7"
 generativeai = "0.4.0"
+playServicesAds = "22.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,6 +57,7 @@ mlkit-text-recognition-devanagari = { group = "com.google.mlkit", name = "text-r
 mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version = "16.0.0-beta1" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 google-generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 
 androidx-ui-text-googlefonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts" }
 

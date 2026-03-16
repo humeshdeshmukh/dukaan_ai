@@ -15,6 +15,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dukaan.ai.ads.AdConfig
+import com.dukaan.ai.ads.AdManager
+import com.dukaan.ai.ads.composables.AdScaffold
+import com.dukaan.ai.ads.composables.AppResumeInterstitialEffect
+import com.dukaan.ai.ads.composables.InterstitialTrigger
+import com.dukaan.ai.ads.composables.ShowInterstitialOnEnter
 import com.dukaan.ai.util.shareViaWhatsApp
 import com.dukaan.ai.util.shareViaWhatsAppToPhone
 import com.dukaan.ai.util.sharePdfFile
@@ -95,11 +101,19 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController, translationManager: TranslationManager, modifier: Modifier = Modifier) {
+fun AppNavigation(
+    navController: NavHostController,
+    translationManager: TranslationManager,
+    adManager: AdManager,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val isTranslating by translationManager.isTranslating.collectAsState()
     var pdfPreviewFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    // Handle interstitial ads on app resume
+    AppResumeInterstitialEffect(adManager = adManager)
 
     NavHost(
         navController = navController,
@@ -116,51 +130,53 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             )
         }
 
-        // Home tab
+        // Home tab - with banner ad
         composable(Screen.Dashboard.route) {
             val dashboardViewModel: DashboardViewModel = hiltViewModel()
-            DashboardScreen(
-                viewModel = dashboardViewModel,
-                onScanBillClick = { navController.navigate(Screen.OcrFlow.route) },
-                onVoiceBillingClick = {
-                    navController.navigate(Screen.VoiceBilling.route) {
-                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+            AdScaffold(adUnitId = AdConfig.BANNER_DASHBOARD) {
+                DashboardScreen(
+                    viewModel = dashboardViewModel,
+                    onScanBillClick = { navController.navigate(Screen.OcrFlow.route) },
+                    onVoiceBillingClick = {
+                        navController.navigate(Screen.VoiceBilling.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onSmartKhataClick = {
+                        navController.navigate(Screen.KhataFlow.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onOrdersClick = {
+                        navController.navigate(Screen.OrdersFlow.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onBillHistoryClick = {
+                        navController.navigate(Screen.BillHistory.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onPurchaseBillsClick = {
+                        navController.navigate(Screen.ScannedBillHistory.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route) {
+                            launchSingleTop = true
+                        }
                     }
-                },
-                onSmartKhataClick = {
-                    navController.navigate(Screen.KhataFlow.route) {
-                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onOrdersClick = {
-                    navController.navigate(Screen.OrdersFlow.route) {
-                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onBillHistoryClick = {
-                    navController.navigate(Screen.BillHistory.route) {
-                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onPurchaseBillsClick = {
-                    navController.navigate(Screen.ScannedBillHistory.route) {
-                        launchSingleTop = true
-                    }
-                },
-                onSettingsClick = {
-                    navController.navigate(Screen.Settings.route) {
-                        launchSingleTop = true
-                    }
-                }
-            )
+                )
+            }
         }
 
         // Khata tab - nested navigation so all screens share KhataViewModel
@@ -173,12 +189,14 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 val viewModel: KhataViewModel = hiltViewModel(parentEntry)
                 val settingsVm: SettingsViewModel = hiltViewModel()
                 val settingsState by settingsVm.uiState.collectAsState()
-                CustomerListScreen(
-                    viewModel = viewModel,
-                    onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
-                    onBackClick = null,
-                    languageCode = settingsState.languageCode
-                )
+                AdScaffold(adUnitId = AdConfig.BANNER_KHATA_LIST) {
+                    CustomerListScreen(
+                        viewModel = viewModel,
+                        onCustomerClick = { id -> navController.navigate(Screen.CustomerDetail.createRoute(id)) },
+                        onBackClick = null,
+                        languageCode = settingsState.languageCode
+                    )
+                }
             }
 
             composable(Screen.CustomerDetail.route) { backStackEntry ->
@@ -489,18 +507,20 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             )
         }
 
-        // Bills tab
+        // Bills tab - with banner ad
         composable(Screen.BillHistory.route) {
             val billingViewModel: BillingViewModel = hiltViewModel()
-            BillHistoryScreen(
-                viewModel = billingViewModel,
-                onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
-                        launchSingleTop = true
-                    }
-                },
-                onBackClick = null
-            )
+            AdScaffold(adUnitId = AdConfig.BANNER_BILL_LIST) {
+                BillHistoryScreen(
+                    viewModel = billingViewModel,
+                    onBillClick = { billId ->
+                        navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onBackClick = null
+                )
+            }
         }
 
         // Bill Detail
@@ -571,87 +591,93 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             )
         }
 
-        // Settings (sub-screen, accessed from dashboard header)
+        // Settings (sub-screen, accessed from dashboard header) - with banner ad
         composable(Screen.Settings.route) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsState()
-            SettingsScreen(
-                onBackClick = { navController.popBackStack() },
-                isDarkTheme = settingsState.isDarkTheme,
-                onToggleDarkTheme = { settingsViewModel.toggleDarkTheme(it) },
-                shopName = settingsState.shopName,
-                ownerName = settingsState.ownerName,
-                phone = settingsState.phone,
-                address = settingsState.address,
-                gstNumber = settingsState.gstNumber,
-                email = settingsState.email,
-                upiId = settingsState.upiId,
-                tagline = settingsState.tagline,
-                bankName = settingsState.bankName,
-                bankAccountNumber = settingsState.bankAccountNumber,
-                bankIfscCode = settingsState.bankIfscCode,
-                onSaveProfile = { sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic ->
-                    settingsViewModel.saveProfile(sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic)
-                },
-                languageCode = settingsState.languageCode,
-                onLanguageChange = { settingsViewModel.updateLanguage(it) },
-                onApplyLanguage = { code ->
-                    coroutineScope.launch {
-                        settingsViewModel.updateLanguage(code)
-                        val langName = SupportedLanguages.getByCode(code).englishName
-                        translationManager.translateAndApply(code, langName)
+            AdScaffold(adUnitId = AdConfig.BANNER_SETTINGS) {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    isDarkTheme = settingsState.isDarkTheme,
+                    onToggleDarkTheme = { settingsViewModel.toggleDarkTheme(it) },
+                    shopName = settingsState.shopName,
+                    ownerName = settingsState.ownerName,
+                    phone = settingsState.phone,
+                    address = settingsState.address,
+                    gstNumber = settingsState.gstNumber,
+                    email = settingsState.email,
+                    upiId = settingsState.upiId,
+                    tagline = settingsState.tagline,
+                    bankName = settingsState.bankName,
+                    bankAccountNumber = settingsState.bankAccountNumber,
+                    bankIfscCode = settingsState.bankIfscCode,
+                    onSaveProfile = { sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic ->
+                        settingsViewModel.saveProfile(sn, on, ph, addr, gst, em, upi, tag, bn, ban, bic)
+                    },
+                    languageCode = settingsState.languageCode,
+                    onLanguageChange = { settingsViewModel.updateLanguage(it) },
+                    onApplyLanguage = { code ->
+                        coroutineScope.launch {
+                            settingsViewModel.updateLanguage(code)
+                            val langName = SupportedLanguages.getByCode(code).englishName
+                            translationManager.translateAndApply(code, langName)
+                        }
+                    },
+                    isTranslating = isTranslating,
+                    onPreviewPdf = {
+                        val shopInfo = settingsState.toShopInfo()
+                        val sampleBill = com.dukaan.core.network.model.Bill(
+                            id = 0,
+                            items = listOf(
+                                com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
+                                com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
+                                com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
+                            ),
+                            totalAmount = 310.0,
+                            sellerName = "",
+                            billNumber = "SAMPLE-001",
+                            timestamp = System.currentTimeMillis()
+                        )
+                        val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
+                        pdfPreviewFile = file
                     }
-                },
-                isTranslating = isTranslating,
-                onPreviewPdf = {
-                    val shopInfo = settingsState.toShopInfo()
-                    val sampleBill = com.dukaan.core.network.model.Bill(
-                        id = 0,
-                        items = listOf(
-                            com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
-                            com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
-                            com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
-                        ),
-                        totalAmount = 310.0,
-                        sellerName = "",
-                        billNumber = "SAMPLE-001",
-                        timestamp = System.currentTimeMillis()
-                    )
-                    val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
-                    pdfPreviewFile = file
-                }
-            )
+                )
+            }
         }
 
-        // Scanned Bill History (Purchase Bills by Wholesaler)
+        // Scanned Bill History (Purchase Bills by Wholesaler) - with banner ad
         composable(Screen.ScannedBillHistory.route) {
             val historyViewModel: ScannedBillHistoryViewModel = hiltViewModel()
-            ScannedBillHistoryScreen(
-                viewModel = historyViewModel,
-                onWholesalerClick = { sellerName ->
-                    navController.navigate(Screen.WholesalerBills.createRoute(sellerName))
-                },
-                onBackClick = { navController.popBackStack() }
-            )
+            AdScaffold(adUnitId = AdConfig.BANNER_TRANSACTION_HISTORY) {
+                ScannedBillHistoryScreen(
+                    viewModel = historyViewModel,
+                    onWholesalerClick = { sellerName ->
+                        navController.navigate(Screen.WholesalerBills.createRoute(sellerName))
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
 
-        // Wholesaler Bills
+        // Wholesaler Bills - with banner ad
         composable(Screen.WholesalerBills.route) { backStackEntry ->
             val sellerName = java.net.URLDecoder.decode(
                 backStackEntry.arguments?.getString("sellerName") ?: "",
                 "UTF-8"
             )
             val historyViewModel: ScannedBillHistoryViewModel = hiltViewModel()
-            WholesalerBillsScreen(
-                sellerName = sellerName,
-                viewModel = historyViewModel,
-                onBillClick = { billId ->
-                    navController.navigate(Screen.BillDetail.createRoute(billId)) {
-                        launchSingleTop = true
-                    }
-                },
-                onBackClick = { navController.popBackStack() }
-            )
+            AdScaffold(adUnitId = AdConfig.BANNER_TRANSACTION_HISTORY) {
+                WholesalerBillsScreen(
+                    sellerName = sellerName,
+                    viewModel = historyViewModel,
+                    onBillClick = { billId ->
+                        navController.navigate(Screen.BillDetail.createRoute(billId)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
     }
 

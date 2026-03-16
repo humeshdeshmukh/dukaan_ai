@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.dukaan.ai.ads.AdManager
 import com.dukaan.ai.navigation.AppNavigation
 import com.dukaan.ai.navigation.DukaanBottomBar
 import com.dukaan.ai.navigation.Screen
@@ -33,6 +34,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var translationManager: TranslationManager
+
+    @Inject
+    lateinit var adManager: AdManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +86,7 @@ class MainActivity : ComponentActivity() {
                         AppNavigation(
                             navController = navController,
                             translationManager = translationManager,
+                            adManager = adManager,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(innerPadding)
