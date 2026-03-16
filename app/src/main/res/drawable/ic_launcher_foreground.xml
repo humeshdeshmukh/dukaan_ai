@@ -5,102 +5,168 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Safe zone: 24-84 (60x60 centered content) -->
+    <!-- ===== BUILDING DROP SHADOW (depth) ===== -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.18"
+        android:pathData="M33,79 L75,79 Q77,79 77,81 Q77,83 75,83 L33,83 Q31,83 31,81 Q31,79 33,79 Z" />
 
-    <!-- ===== SHOP BUILDING ===== -->
-
-    <!-- Awning top bar -->
+    <!-- ===== AWNING HEADER BAR ===== -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M30,38 L78,38 L78,35 Q78,33 76,33 L32,33 Q30,33 30,35 Z" />
+        android:pathData="M26,35 L82,35 L82,30 Q82,28 80,28 L28,28 Q26,28 26,30 Z" />
 
-    <!-- Shop awning with scalloped edge -->
+    <!-- ===== AWNING BODY WITH SCALLOPED EDGE ===== -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M30,38 L78,38 L78,43
-            Q75,47 72,43
-            Q69,47 66,43
-            Q63,47 60,43
-            Q57,47 54,43
-            Q51,47 48,43
-            Q45,47 42,43
-            Q39,47 36,43
-            Q33,47 30,43 Z" />
+        android:pathData="M26,35 L82,35 L82,43
+            Q78,47.5 74,43
+            Q70,47.5 66,43
+            Q62,47.5 58,43
+            Q54,47.5 50,43
+            Q46,47.5 42,43
+            Q38,47.5 34,43
+            Q30,47.5 26,43 Z" />
 
-    <!-- Shop body -->
+    <!-- Awning subtle inner shadow (depth stripe) -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.08"
+        android:pathData="M26,40 L82,40 L82,43
+            Q78,47.5 74,43
+            Q70,47.5 66,43
+            Q62,47.5 58,43
+            Q54,47.5 50,43
+            Q46,47.5 42,43
+            Q38,47.5 34,43
+            Q30,47.5 26,43 Z" />
+
+    <!-- ===== MAIN BUILDING BODY ===== -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M33,43 L75,43 L75,74 Q75,76 73,76 L35,76 Q33,76 33,74 Z" />
+        android:pathData="M29,43 L79,43 L79,79 Q79,81 77,81 L31,81 Q29,81 29,79 Z" />
 
-    <!-- Left window -->
+    <!-- ===== LEFT WINDOW — teal glass ===== -->
+    <!-- Glass fill -->
     <path
-        android:fillColor="#10B981"
-        android:fillAlpha="0.3"
-        android:pathData="M36,47 L46,47 L46,56 Q46,57 45,57 L37,57 Q36,57 36,56 Z" />
-
-    <!-- Left window cross -->
+        android:fillColor="#6EE7B7"
+        android:fillAlpha="0.45"
+        android:pathData="M32,48 L46,48 L46,63 Q46,64 45,64 L33,64 Q32,64 32,63 Z" />
+    <!-- Glass highlight — diagonal shine triangle (premium glass effect) -->
     <path
-        android:pathData="M41,47 L41,57"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.50"
+        android:pathData="M32,48 L40,48 L32,56 Z" />
+    <!-- Window pane dividers -->
+    <path
+        android:fillColor="#00000000"
         android:strokeColor="#065F46"
-        android:strokeAlpha="0.2"
-        android:strokeWidth="0.5" />
+        android:strokeWidth="0.7"
+        android:strokeAlpha="0.25"
+        android:pathData="M39,48 L39,64" />
     <path
-        android:pathData="M36,52 L46,52"
+        android:fillColor="#00000000"
         android:strokeColor="#065F46"
-        android:strokeAlpha="0.2"
-        android:strokeWidth="0.5" />
-
-    <!-- Right window -->
+        android:strokeWidth="0.7"
+        android:strokeAlpha="0.25"
+        android:pathData="M32,56 L46,56" />
+    <!-- Window outer border (subtle) -->
     <path
-        android:fillColor="#10B981"
-        android:fillAlpha="0.3"
-        android:pathData="M62,47 L72,47 L72,56 Q72,57 71,57 L63,57 Q62,57 62,56 Z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#D1FAE5"
+        android:strokeWidth="0.5"
+        android:strokeAlpha="0.6"
+        android:pathData="M32,48 L46,48 L46,64 Q46,64.8 45.2,64.8 L32.8,64.8 Q32,64.8 32,64 Z" />
 
-    <!-- Right window cross -->
+    <!-- ===== RIGHT WINDOW — teal glass ===== -->
+    <!-- Glass fill -->
     <path
-        android:pathData="M67,47 L67,57"
+        android:fillColor="#6EE7B7"
+        android:fillAlpha="0.45"
+        android:pathData="M62,48 L76,48 L76,63 Q76,64 75,64 L63,64 Q62,64 62,63 Z" />
+    <!-- Glass highlight — diagonal shine triangle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.50"
+        android:pathData="M62,48 L70,48 L62,56 Z" />
+    <!-- Window pane dividers -->
+    <path
+        android:fillColor="#00000000"
         android:strokeColor="#065F46"
-        android:strokeAlpha="0.2"
-        android:strokeWidth="0.5" />
+        android:strokeWidth="0.7"
+        android:strokeAlpha="0.25"
+        android:pathData="M69,48 L69,64" />
     <path
-        android:pathData="M62,52 L72,52"
+        android:fillColor="#00000000"
         android:strokeColor="#065F46"
-        android:strokeAlpha="0.2"
-        android:strokeWidth="0.5" />
+        android:strokeWidth="0.7"
+        android:strokeAlpha="0.25"
+        android:pathData="M62,56 L76,56" />
+    <!-- Window outer border -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D1FAE5"
+        android:strokeWidth="0.5"
+        android:strokeAlpha="0.6"
+        android:pathData="M62,48 L76,48 L76,64 Q76,64.8 75.2,64.8 L62.8,64.8 Q62,64.8 62,64 Z" />
 
-    <!-- Door -->
+    <!-- ===== ARCHED DOOR ===== -->
+    <!-- Door fill — deep emerald -->
+    <path
+        android:fillColor="#033520"
+        android:fillAlpha="0.85"
+        android:pathData="M46,56 A8,8 0 0,1 62,56 L62,81 L46,81 Z" />
+    <!-- Door interior glow (subtle warm light from inside) -->
     <path
         android:fillColor="#065F46"
-        android:fillAlpha="0.25"
-        android:pathData="M48,58 L60,58 Q60,58 60,58 L60,76 L48,76 Z" />
-
-    <!-- Door arch top -->
+        android:fillAlpha="0.30"
+        android:pathData="M46,56 A8,8 0 0,1 62,56 L62,81 L46,81 Z" />
+    <!-- Door left-side light reflection (glass door effect) -->
     <path
-        android:fillColor="#065F46"
-        android:fillAlpha="0.25"
-        android:pathData="M48,58 Q54,52 60,58 Z" />
-
-    <!-- Door handle -->
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.08"
+        android:pathData="M46,56 A8,8 0 0,1 54,48 L54,81 L46,81 Z" />
+    <!-- Door frame highlight (arch outline) -->
     <path
-        android:fillColor="#D97706"
-        android:pathData="M57,67 A1.2,1.2 0 1,1 57,66.98 Z" />
-
-    <!-- ===== AI SPARKLE (Gold) ===== -->
-
-    <!-- Main sparkle star - top right -->
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0.8"
+        android:strokeAlpha="0.25"
+        android:pathData="M46,56 A8,8 0 0,1 62,56" />
+    <!-- Door handle — premium gold -->
     <path
-        android:fillColor="#D97706"
-        android:pathData="M71,31 L72.8,26.5 L74.6,31 L79,32.8 L74.6,34.6 L72.8,39 L71,34.6 L66.5,32.8 Z" />
-
-    <!-- Small sparkle - accent -->
-    <path
-        android:fillColor="#FDE68A"
-        android:pathData="M64,26.5 L65,24.5 L66,26.5 L68,27.5 L66,28.5 L65,30.5 L64,28.5 L62,27.5 Z" />
-
-    <!-- Tiny sparkle dot -->
+        android:fillColor="#F59E0B"
+        android:pathData="M59,67.2 A1.8,1.8 0 1,1 59,67.19 Z" />
+    <!-- Handle shine -->
     <path
         android:fillColor="#FDE68A"
         android:fillAlpha="0.7"
-        android:pathData="M78,27 A1,1 0 1,1 78,26.99 Z" />
+        android:pathData="M59.6,66.2 A0.7,0.7 0 1,1 59.6,66.19 Z" />
+
+    <!-- ===== AI SPARKLE CLUSTER — Top Right (Gold) ===== -->
+
+    <!-- Main large 4-point diamond star -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M72.5,31 L75,25.5 L77.5,31 L83,33.5 L77.5,36 L75,41.5 L72.5,36 L67,33.5 Z" />
+    <!-- Main star inner highlight -->
+    <path
+        android:fillColor="#FDE68A"
+        android:fillAlpha="0.5"
+        android:pathData="M73.5,31 L75,27.5 L76.5,31 L80,33.5 L76.5,36 L75,39.5 L73.5,36 L70,33.5 Z" />
+    <!-- Medium companion star (upper-left of main) -->
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M64,25.5 L65.5,22.2 L67,25.5 L70.3,27 L67,28.5 L65.5,31.8 L64,28.5 L60.7,27 Z" />
+    <!-- Tiny sparkle dot — upper right -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90"
+        android:pathData="M81,24 A1.8,1.8 0 1,1 81,23.99 Z" />
+    <!-- Extra micro dot -->
+    <path
+        android:fillColor="#FDE68A"
+        android:fillAlpha="0.75"
+        android:pathData="M68.5,20.5 A1.0,1.0 0 1,1 68.5,20.49 Z" />
 
 </vector>

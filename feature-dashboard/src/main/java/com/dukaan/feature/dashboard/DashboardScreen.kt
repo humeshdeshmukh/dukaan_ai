@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.dukaan.core.ui.R as CoreUiR
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -55,24 +61,41 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(34.dp)
+                        // Brand icon: emerald gradient box with shop icon
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Color(0xFF059669), Color(0xFF021B12)),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(110f, 110f)
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AutoAwesome,
+                                painter = painterResource(CoreUiR.drawable.ic_dukaan_brand),
                                 contentDescription = null,
-                                modifier = Modifier.padding(7.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                modifier = Modifier.size(34.dp),
+                                tint = Color.Unspecified
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
+                        // Premium bi-color brand name
                         Text(
-                            strings.appName,
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                                    append("Dukaan")
+                                }
+                                withStyle(SpanStyle(color = Color(0xFFD97706))) {
+                                    append(" AI")
+                                }
+                            },
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
                         )
                     }
                 },

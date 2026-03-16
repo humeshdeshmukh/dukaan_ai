@@ -5,8 +5,16 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.dukaan.core.ui.R as CoreUiR
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,31 +90,53 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.alpha(alpha)
         ) {
-            Surface(
+            Box(
                 modifier = Modifier
                     .size(130.dp)
                     .scale(scale),
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.12f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = null,
+                // Outer soft glow ring
+                Surface(
+                    modifier = Modifier.size(130.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    color = Color.White.copy(alpha = 0.10f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
+                ) {}
+                // Inner brand icon box with premium emerald gradient
+                Box(
                     modifier = Modifier
-                        .padding(32.dp)
-                        .size(64.dp),
-                    tint = Color(0xFFFDE68A) // GoldSoft
-                )
+                        .size(96.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF059669), Color(0xFF021B12)),
+                                start = Offset(0f, 0f),
+                                end = Offset(270f, 270f)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(CoreUiR.drawable.ic_dukaan_brand),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp),
+                        tint = Color.Unspecified
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = strings.appName,
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color.White)) { append("Dukaan") }
+                    withStyle(SpanStyle(color = Color(0xFFFDE68A))) { append(" AI") }
+                },
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
                 letterSpacing = 4.sp
             )
             

@@ -5,21 +5,41 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Deep emerald base -->
+    <!-- ===== PREMIUM DEEP EMERALD BACKGROUND ===== -->
+
+    <!-- Rich near-black emerald base -->
     <path
-        android:fillColor="#065F46"
+        android:fillColor="#021B12"
         android:pathData="M0,0h108v108h-108z" />
 
-    <!-- Darker bottom for depth -->
+    <!-- Upper-left diagonal warm light sweep (simulates lighting from top-left) -->
     <path
-        android:fillColor="#064E3B"
-        android:fillAlpha="0.5"
-        android:pathData="M0,50 L108,50 L108,108 L0,108 Z" />
+        android:fillColor="#065F46"
+        android:fillAlpha="0.75"
+        android:pathData="M0,0 L90,0 L0,90 Z" />
 
-    <!-- Lighter emerald top-left glow -->
+    <!-- Center radial glow — top band -->
     <path
-        android:fillColor="#10B981"
-        android:fillAlpha="0.25"
-        android:pathData="M0,0 L60,0 L0,60 Z" />
+        android:fillColor="#059669"
+        android:fillAlpha="0.22"
+        android:pathData="M0,0 L108,0 L108,50 Q54,18 0,50 Z" />
+
+    <!-- Mid warm accent — subtle teal shimmer in center -->
+    <path
+        android:fillColor="#0D9488"
+        android:fillAlpha="0.10"
+        android:pathData="M22,22 L86,22 L86,86 L22,86 Z" />
+
+    <!-- Bottom-right vignette for depth and contrast -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.40"
+        android:pathData="M40,68 L108,68 L108,108 L40,108 Z" />
+
+    <!-- Corner vignette — bottom-left -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.20"
+        android:pathData="M0,75 L33,108 L0,108 Z" />
 
 </vector>
