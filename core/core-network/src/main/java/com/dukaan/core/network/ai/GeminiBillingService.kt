@@ -23,6 +23,7 @@ interface GeminiBillingService {
     suspend fun parseMultiPageBillWithOcr(images: List<Bitmap>, ocrTexts: List<String>): Bill
     suspend fun chatAboutBill(billJson: String, userMessage: String, image: Bitmap? = null, languageCode: String = "en"): String
     suspend fun parseOrderSpeech(speechText: String, languageCode: String = "en"): List<OrderItem>
+    suspend fun parseCustomerListImage(image: Bitmap, ocrText: String = ""): List<BillItem>
 }
 
 @Singleton
@@ -611,6 +612,66 @@ class GeminiBillingServiceImpl @Inject constructor(
                         quantity = item.quantity,
                         unit = item.unit as? String ?: "",
                         notes = item.notes as? String ?: ""
+                    )
+                }
+                .filter { it.name.isNotBlank() }
+                .toList()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    override suspend fun parseCustomerListImage(image: Bitmap, ocrText: String): List<BillItem> = withContext(Dispatchers.IO) {
+        val ocrSection = if (ocrText.isNotBlank())
+            "\n\nON-DEVICE OCR TEXT (cross-reference with image):\n\"\"\"$ocrText\"\"\""
+        else ""
+
+        val prompt = """
+            You are an AI for Dukaan AI, an Indian kirana shop billing app.
+            This is a photo of a customer's HANDWRITTEN SHOPPING LIST with items and prices.$ocrSection
+
+            Extract ALL items from this handwritten list. Return ONLY a JSON array.
+            Each item: {"name": string, "quantity": number, "unit": string, "price": number}
+
+            RULES:
+            - Extract "price" if written on the list (as TOTAL price for that line item)
+            - If price is not written, set "price" = 0
+            - If price is per-unit (e.g. "₹50/kg"), calculate total: quantity × per-unit-rate
+            - Keep item names as written — do NOT translate Hindi/Hinglish to English
+            - Fix obvious spelling mistakes but keep the language
+            - Default quantity = 1 if not written
+            - Default unit = "pc" if not clear; use "kg", "g", "L", "ml", "pkt", "box", "dozen" where obvious
+
+            PRICE EXAMPLES:
+            - "Sugar 2kg ₹80" → price = 80 (total written)
+            - "Rice 5kg @₹60/kg" → price = 300 (5 × 60)
+            - "Soap 3pc 30rs each" → price = 90 (3 × 30)
+            - "Milk 1L" (no price) → price = 0
+
+            LOCAL TERMS:
+            pav/paav = 250g, adha kilo = 500g, dedh = 1.5, darjan/dozen = 12 pc
+            ek = 1, do/dono = 2, teen = 3, chaar = 4, paanch = 5
+
+            Return [] if no items found.
+        """.trimIndent()
+
+        try {
+            val response = flashModel.generateContent(
+                content {
+                    image(image)
+                    text(prompt)
+                }
+            )
+            val rawText = response.text ?: "[]"
+            val jsonString = extractJsonArray(rawText)
+            com.google.gson.Gson().fromJson(jsonString, Array<BillItem>::class.java)
+                .map { item ->
+                    BillItem(
+                        name = item.name as? String ?: "",
+                        quantity = item.quantity,
+                        unit = item.unit as? String ?: "pc",
+                        price = item.price.coerceAtLeast(0.0)
                     )
                 }
                 .filter { it.name.isNotBlank() }

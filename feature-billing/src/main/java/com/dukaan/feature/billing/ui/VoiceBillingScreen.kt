@@ -1,8 +1,11 @@
 package com.dukaan.feature.billing.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -40,6 +43,9 @@ import com.dukaan.core.db.entity.CustomerEntity
 import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
 import com.dukaan.core.ui.translation.LocalAppStrings
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -65,6 +71,39 @@ fun VoiceBillingScreen(
     var showCustomerPicker by remember { mutableStateOf(false) }
     var showAddItemDialog by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
+
+    // --- Scan List via GmsDocumentScanning (like Scan Bill) ---
+    val scanListLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+            val pageUris = scanResult?.pages?.map { it.imageUri } ?: emptyList()
+            if (pageUris.isNotEmpty()) {
+                viewModel.processScannedCustomerListPages(context, pageUris)
+            }
+        }
+    }
+
+    val onScanListClick: () -> Unit = {
+        try {
+            val activity = context as? Activity
+            if (activity != null) {
+                val options = GmsDocumentScannerOptions.Builder()
+                    .setGalleryImportAllowed(true)
+                    .setPageLimit(5)
+                    .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+                    .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                    .build()
+                GmsDocumentScanning.getClient(options)
+                    .getStartScanIntent(activity)
+                    .addOnSuccessListener { intentSender ->
+                        scanListLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+                    }
+                    .addOnFailureListener { /* Scanner not available */ }
+            }
+        } catch (_: Exception) { }
+    }
 
     // Runtime permission for RECORD_AUDIO
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -200,6 +239,7 @@ fun VoiceBillingScreen(
                 currencyFormat = currencyFormat,
                 viewModel = viewModel,
                 onMicClick = onMicClick,
+                onScanListClick = onScanListClick,
                 onShowCustomerPicker = { showCustomerPicker = true },
                 onShowAddItem = { showAddItemDialog = true },
                 onShowClearConfirm = { showClearConfirm = true },
@@ -275,6 +315,31 @@ fun VoiceBillingScreen(
             dismissButton = { TextButton(onClick = { showClearConfirm = false }) { Text(strings.cancel) } }
         )
     }
+
+    // Scanning progress dialog (shown while ML Kit + Gemini process the list)
+    if (uiState.isScanningList) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(strings.scanningList) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
+                    Text(
+                        when (uiState.scanListProgress) {
+                            ScanListProgress.READING_TEXT -> strings.scanningList
+                            ScanListProgress.PARSING_ITEMS -> strings.aiIsParsing
+                            else -> strings.aiIsParsing
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
 }
 
 // ─── New Bill Tab ────────────────────────────────────────────────────────────
@@ -285,6 +350,7 @@ private fun NewBillTab(
     currencyFormat: NumberFormat,
     viewModel: BillingViewModel,
     onMicClick: () -> Unit,
+    onScanListClick: () -> Unit,
     onShowCustomerPicker: () -> Unit,
     onShowAddItem: () -> Unit,
     onShowClearConfirm: () -> Unit,
@@ -305,7 +371,7 @@ private fun NewBillTab(
             )
         }
 
-        // Compact Voice Input
+        // Compact Voice Input (with Scan List button)
         item {
             CompactVoiceInput(
                 isRecording = uiState.isRecording,
@@ -313,7 +379,8 @@ private fun NewBillTab(
                 isParsing = uiState.isParsing,
                 recognizedText = uiState.recognizedText,
                 audioLevel = uiState.audioLevel,
-                onToggleRecording = onMicClick
+                onToggleRecording = onMicClick,
+                onScanListClick = onScanListClick
             )
         }
 
@@ -1042,7 +1109,8 @@ private fun CompactVoiceInput(
     isParsing: Boolean,
     recognizedText: String,
     audioLevel: Float,
-    onToggleRecording: () -> Unit
+    onToggleRecording: () -> Unit,
+    onScanListClick: () -> Unit
 ) {
     val strings = LocalAppStrings.current
     val isActive = isRecording || isContinuousListening
@@ -1060,8 +1128,11 @@ private fun CompactVoiceInput(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Mic button
             RecordingButton(isRecording = isActive, onClick = onToggleRecording)
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
+
+            // Text content
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -1102,6 +1173,24 @@ private fun CompactVoiceInput(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // Scan List button (horizontal with mic)
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                onClick = onScanListClick,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.DocumentScanner,
+                        contentDescription = strings.scanList,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

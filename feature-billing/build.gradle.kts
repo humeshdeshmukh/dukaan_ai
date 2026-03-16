@@ -57,6 +57,11 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // ML Kit — document scanner + OCR for Scan List feature
+    implementation(libs.mlkit.document.scanner)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.text.recognition.devanagari)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
 }

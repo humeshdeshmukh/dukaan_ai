@@ -2,6 +2,10 @@ package com.dukaan.feature.billing.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import com.dukaan.core.db.SupportedLanguages
 import com.dukaan.core.db.dao.KhataDao
 import com.dukaan.core.db.dao.ShopProfileDao
@@ -11,10 +15,19 @@ import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
 import com.dukaan.feature.billing.domain.repository.BillingRepository
 import com.dukaan.core.voice.SpeechManager
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlin.coroutines.resume
+
+enum class ScanListProgress { IDLE, READING_TEXT, PARSING_ITEMS, DONE }
 
 data class BillingUiState(
     val items: List<BillItem> = emptyList(),
@@ -47,7 +60,11 @@ data class BillingUiState(
     // Tab
     val selectedTab: Int = 0,
     // Editing existing bill
-    val editingBillId: Long? = null
+    val editingBillId: Long? = null,
+    // Scan List
+    val isScanningList: Boolean = false,
+    val scanListProgress: ScanListProgress = ScanListProgress.IDLE,
+    val scanListPreviewItems: List<BillItem>? = null
 )
 
 @HiltViewModel
@@ -61,6 +78,11 @@ class BillingViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(BillingUiState())
     val uiState: StateFlow<BillingUiState> = _uiState.asStateFlow()
+
+    // ML Kit text recognizer — Devanagari model covers Hindi + English scripts
+    private val textRecognizer = TextRecognition.getClient(
+        DevanagariTextRecognizerOptions.Builder().build()
+    )
 
     // Language code from user's settings — used for AI parsing
     private val languageCode: StateFlow<String> = shopProfileDao.getProfile()
@@ -376,6 +398,167 @@ class BillingViewModel @Inject constructor(
         }
     }
 
+    /** Extract text from a bitmap using ML Kit on-device OCR */
+    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String {
+        return suspendCancellableCoroutine { cont ->
+            val inputImage = InputImage.fromBitmap(bitmap, 0)
+            textRecognizer.process(inputImage)
+                .addOnSuccessListener { cont.resume(it.text) }
+                .addOnFailureListener { cont.resume("") }
+        }
+    }
+
+    /** Process pages from GmsDocumentScanning: ML Kit OCR + Gemini dual extraction */
+    fun processScannedCustomerListPages(context: Context, pageUris: List<Uri>) {
+        if (_uiState.value.isScanningList) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanningList = true, error = null, scanListProgress = ScanListProgress.READING_TEXT) }
+            try {
+                val bitmaps = withContext(Dispatchers.IO) {
+                    pageUris.mapNotNull { uri ->
+                        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+                    }
+                }
+                if (bitmaps.isEmpty()) {
+                    _uiState.update { it.copy(isScanningList = false, error = "Failed to load scanned pages.", scanListProgress = ScanListProgress.IDLE) }
+                    return@launch
+                }
+
+                // Step 1: ML Kit OCR on all pages (on-device, fast)
+                val ocrTexts = bitmaps.map { extractTextFromBitmap(it) }
+                _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
+
+                // Step 2: Gemini + OCR dual extraction for each page, combine results
+                val allItems = mutableListOf<BillItem>()
+                bitmaps.forEachIndexed { i, bitmap ->
+                    val ocrText = ocrTexts.getOrElse(i) { "" }
+                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    allItems.addAll(items)
+                }
+
+                // Merge duplicate items (same name + unit → sum quantities & prices)
+                val merged = allItems
+                    .groupBy { "${it.name.lowercase().trim()}_${it.unit.lowercase().trim()}" }
+                    .map { (_, group) ->
+                        group.first().copy(
+                            quantity = group.sumOf { it.quantity },
+                            price = group.sumOf { it.price }
+                        )
+                    }
+
+                // Directly add items to bill (skip preview screen)
+                val validItems = merged.filter { it.name.isNotBlank() }
+                _uiState.update { state ->
+                    val mergedWithExisting = mergeItems(state.items, validItems)
+                    state.copy(
+                        items = mergedWithExisting,
+                        isScanningList = false,
+                        scanListProgress = ScanListProgress.DONE,
+                        scanListPreviewItems = null,
+                        snackbarMessage = "${validItems.size} ${if (validItems.size == 1) "item" else "items"} added from scanned list!"
+                    )
+                }
+                recalculate()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isScanningList = false, error = "Could not read the list. Try again.", scanListProgress = ScanListProgress.IDLE) }
+            }
+        }
+    }
+
+    fun processCustomerListFromUri(context: Context, uri: Uri) {
+        if (_uiState.value.isScanningList) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanningList = true, error = null, scanListProgress = ScanListProgress.READING_TEXT) }
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    val stream = context.contentResolver.openInputStream(uri)
+                    val bmp = BitmapFactory.decodeStream(stream)
+                    stream?.close()
+                    bmp
+                }
+                if (bitmap != null) {
+                    // ML Kit OCR first
+                    val ocrText = extractTextFromBitmap(bitmap)
+                    _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
+
+                    // Gemini + OCR dual extraction
+                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    val validItems = items.filter { it.name.isNotBlank() }
+
+                    // Directly add items to bill
+                    _uiState.update { state ->
+                        val mergedWithExisting = mergeItems(state.items, validItems)
+                        state.copy(
+                            items = mergedWithExisting,
+                            isScanningList = false,
+                            scanListProgress = ScanListProgress.DONE,
+                            scanListPreviewItems = null,
+                            snackbarMessage = "${validItems.size} ${if (validItems.size == 1) "item" else "items"} added from scanned list!"
+                        )
+                    }
+                    recalculate()
+                } else {
+                    _uiState.update { it.copy(isScanningList = false, error = "Failed to load image.", scanListProgress = ScanListProgress.IDLE) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isScanningList = false, error = "Could not read the list. Try again.", scanListProgress = ScanListProgress.IDLE) }
+            }
+        }
+    }
+
+    fun processCustomerListFromPath(imagePath: String) {
+        if (_uiState.value.isScanningList) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isScanningList = true, error = null, scanListProgress = ScanListProgress.READING_TEXT) }
+            try {
+                val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(imagePath) }
+                if (bitmap != null) {
+                    // ML Kit OCR first
+                    val ocrText = extractTextFromBitmap(bitmap)
+                    _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
+
+                    // Gemini + OCR dual extraction
+                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    val validItems = items.filter { it.name.isNotBlank() }
+
+                    // Directly add items to bill
+                    _uiState.update { state ->
+                        val mergedWithExisting = mergeItems(state.items, validItems)
+                        state.copy(
+                            items = mergedWithExisting,
+                            isScanningList = false,
+                            scanListProgress = ScanListProgress.DONE,
+                            scanListPreviewItems = null,
+                            snackbarMessage = "${validItems.size} ${if (validItems.size == 1) "item" else "items"} added from scanned list!"
+                        )
+                    }
+                    recalculate()
+                } else {
+                    _uiState.update { it.copy(isScanningList = false, error = "Failed to load image.", scanListProgress = ScanListProgress.IDLE) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isScanningList = false, error = "Could not read the list. Try again.", scanListProgress = ScanListProgress.IDLE) }
+            }
+        }
+    }
+
+    fun confirmScannedListItems(items: List<BillItem>) {
+        val valid = items.filter { it.name.isNotBlank() }
+        _uiState.update { state ->
+            val merged = mergeItems(state.items, valid)
+            state.copy(
+                items = merged,
+                scanListPreviewItems = null,
+                snackbarMessage = "${valid.size} ${if (valid.size == 1) "item" else "items"} added to bill!"
+            )
+        }
+        recalculate()
+    }
+
+    fun dismissScanListPreview() {
+        _uiState.update { it.copy(scanListPreviewItems = null) }
+    }
+
     fun formatWhatsAppMessage(): String {
         val state = _uiState.value
         val sb = StringBuilder()
@@ -402,5 +585,10 @@ class BillingViewModel @Inject constructor(
         }
         sb.append("\n_Sent via Dukaan AI_")
         return sb.toString()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        textRecognizer.close()
     }
 }
