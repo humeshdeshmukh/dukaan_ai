@@ -128,7 +128,8 @@ fun DashboardScreen(
             ) {
                 CompactGreeting(
                     shopName = uiState.shopName,
-                    ownerName = uiState.ownerName
+                    ownerName = uiState.ownerName,
+                    languageCode = uiState.languageCode
                 )
             }
 
@@ -246,7 +247,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun CompactGreeting(shopName: String, ownerName: String) {
+private fun CompactGreeting(shopName: String, ownerName: String, languageCode: String = "en") {
     val strings = LocalAppStrings.current
     val calendar = remember { Calendar.getInstance() }
     val greeting = when (calendar.get(Calendar.HOUR_OF_DAY)) {
@@ -254,8 +255,12 @@ private fun CompactGreeting(shopName: String, ownerName: String) {
         in 12..16 -> strings.goodAfternoon
         else -> strings.goodEvening
     }
-    val dateFormat = remember { SimpleDateFormat("dd MMM, EEE", Locale("mr", "IN")) }
-    val todayDate = remember { dateFormat.format(calendar.time) }
+    val dateLocale = remember(languageCode) {
+        val langCode = if (languageCode == "hi-en") "hi" else languageCode
+        Locale(langCode, "IN")
+    }
+    val dateFormat = remember(dateLocale) { SimpleDateFormat("dd MMM, EEE", dateLocale) }
+    val todayDate = remember(dateLocale) { dateFormat.format(calendar.time) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
