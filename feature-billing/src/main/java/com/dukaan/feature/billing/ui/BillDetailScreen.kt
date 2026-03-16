@@ -41,7 +41,8 @@ fun BillDetailScreen(
     onBackClick: () -> Unit,
     onShareClick: (Bill) -> Unit,
     onSendPdfToWhatsApp: (Bill) -> Unit,
-    onEditBill: (Long) -> Unit
+    onEditBill: (Long) -> Unit,
+    onEditPurchaseBill: (Long) -> Unit = onEditBill
 ) {
     var bill by remember { mutableStateOf<Bill?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -67,7 +68,9 @@ fun BillDetailScreen(
                 },
                 actions = {
                     bill?.let { b ->
-                        IconButton(onClick = { onEditBill(b.id) }) {
+                        IconButton(onClick = {
+                            if (b.source == "OCR") onEditPurchaseBill(b.id) else onEditBill(b.id)
+                        }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                         }
                         IconButton(onClick = { onSendPdfToWhatsApp(b) }) {

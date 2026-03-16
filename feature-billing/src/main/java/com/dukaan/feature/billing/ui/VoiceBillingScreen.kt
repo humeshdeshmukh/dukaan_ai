@@ -55,7 +55,7 @@ fun VoiceBillingScreen(
     onSendPdfToWhatsApp: (Bill) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val allBills by viewModel.allBills.collectAsState()
+    val allBills by viewModel.voiceBills.collectAsState()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val strings = LocalAppStrings.current
     val snackbarHostState = remember { SnackbarHostState() }

@@ -48,7 +48,8 @@ class TranslationManager @Inject constructor(
         if (cached != null && cached.timestamp == stringsVersion.toLong()) {
             // Cache is fresh — use it directly
             try {
-                _currentStrings.value = gson.fromJson(cached.translationsJson, AppStrings::class.java)
+                val loaded = gson.fromJson(cached.translationsJson, AppStrings::class.java)
+                _currentStrings.value = fillNullsWithDefaults(loaded)
                 Log.d(TAG, "loadOrTranslate: loaded from fresh cache")
                 return
             } catch (e: Exception) {
@@ -59,7 +60,8 @@ class TranslationManager @Inject constructor(
             // Cache is stale — load it as best-effort (partially translated > all English),
             // then re-translate below
             try {
-                _currentStrings.value = gson.fromJson(cached.translationsJson, AppStrings::class.java)
+                val loaded = gson.fromJson(cached.translationsJson, AppStrings::class.java)
+                _currentStrings.value = fillNullsWithDefaults(loaded)
                 Log.d(TAG, "loadOrTranslate: loaded stale cache as best-effort, will re-translate")
             } catch (e: Exception) {
                 Log.e(TAG, "loadOrTranslate: stale cache also corrupted", e)
@@ -110,10 +112,13 @@ class TranslationManager @Inject constructor(
                 return
             }
 
-            // Quick sanity check — if a known field is still English, log a warning
-            Log.d(TAG, "doTranslate: sample field 'save' = '${translated.save}', 'settings' = '${translated.settings}'")
+            // Fill any null fields (Gson may leave new fields null if not in response)
+            val safeTranslated = fillNullsWithDefaults(translated)
 
-            _currentStrings.value = translated
+            // Quick sanity check — if a known field is still English, log a warning
+            Log.d(TAG, "doTranslate: sample field 'save' = '${safeTranslated.save}', 'settings' = '${safeTranslated.settings}'")
+
+            _currentStrings.value = safeTranslated
             Log.d(TAG, "doTranslate: _currentStrings updated")
 
             // Cache it with current strings version as timestamp
@@ -134,5 +139,22 @@ class TranslationManager @Inject constructor(
         } finally {
             _isTranslating.value = false
         }
+    }
+
+    /**
+     * Gson bypasses Kotlin default constructors, so fields missing from cached/translated JSON
+     * become null instead of their English defaults. This fills any null String fields with
+     * the English default from a fresh AppStrings() instance.
+     */
+    private fun fillNullsWithDefaults(loaded: AppStrings): AppStrings {
+        val defaults = AppStrings()
+        for (field in AppStrings::class.java.declaredFields) {
+            if (field.type != String::class.java) continue
+            field.isAccessible = true
+            if (field.get(loaded) == null) {
+                field.set(loaded, field.get(defaults))
+            }
+        }
+        return loaded
     }
 }

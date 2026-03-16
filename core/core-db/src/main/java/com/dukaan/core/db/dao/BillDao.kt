@@ -45,10 +45,10 @@ interface BillDao {
     @Query("DELETE FROM bills WHERE id = :billId")
     suspend fun deleteBill(billId: Long)
 
-    @Query("SELECT COUNT(*) FROM bills")
+    @Query("SELECT COUNT(*) FROM bills WHERE source = 'VOICE'")
     fun getBillCount(): Flow<Int>
 
-    @Query("SELECT COALESCE(SUM(totalAmount), 0.0) FROM bills WHERE timestamp >= :since")
+    @Query("SELECT COALESCE(SUM(totalAmount), 0.0) FROM bills WHERE timestamp >= :since AND source = 'VOICE'")
     fun getTotalSalesSince(since: Long): Flow<Double>
 
     @Query("SELECT DISTINCT sellerName FROM bills WHERE sellerName != '' ORDER BY sellerName ASC")
@@ -57,6 +57,10 @@ interface BillDao {
     @androidx.room.Transaction
     @Query("SELECT * FROM bills WHERE sellerName = :sellerName ORDER BY timestamp DESC")
     fun getBillsBySellerName(sellerName: String): Flow<List<BillWithItems>>
+
+    @androidx.room.Transaction
+    @Query("SELECT * FROM bills WHERE source = 'VOICE' ORDER BY timestamp DESC")
+    fun getVoiceBills(): Flow<List<BillWithItems>>
 
     @androidx.room.Transaction
     @Query("SELECT * FROM bills WHERE source = 'OCR' ORDER BY timestamp DESC")

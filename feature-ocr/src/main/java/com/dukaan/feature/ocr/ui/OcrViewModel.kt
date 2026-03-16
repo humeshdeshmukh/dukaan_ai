@@ -47,7 +47,8 @@ data class OcrUiState(
     val scanProgress: ScanProgress = ScanProgress.IDLE,
     val docScannerAvailable: Boolean = true,
     val chatMessages: List<ChatMessage> = emptyList(),
-    val isAiTyping: Boolean = false
+    val isAiTyping: Boolean = false,
+    val editingBillId: Long? = null
 )
 
 @HiltViewModel
@@ -279,6 +280,12 @@ class OcrViewModel @Inject constructor(
         val bill = _uiState.value.scannedBill ?: return
         if (_uiState.value.isSaving) return
 
+        // If editing, delegate to saveEditedBill
+        if (_uiState.value.editingBillId != null) {
+            saveEditedBill()
+            return
+        }
+
         val validItems = bill.items.filter { it.name.isNotBlank() }
         if (validItems.isEmpty()) {
             _uiState.update { it.copy(saveError = "Cannot save bill with no items.") }
@@ -380,6 +387,66 @@ class OcrViewModel @Inject constructor(
                     error = "Failed to process scanned pages: ${e.localizedMessage}",
                     isScanning = false,
                     scanProgress = ScanProgress.IDLE
+                ) }
+            }
+        }
+    }
+
+    /** Load an existing purchase bill for editing */
+    fun loadBillForEditing(billId: Long) {
+        viewModelScope.launch {
+            val bill = billingRepository.getBillById(billId) ?: return@launch
+            _uiState.update {
+                it.copy(
+                    scannedBill = bill,
+                    capturedImageUri = bill.imagePath,
+                    scannedPageUris = if (bill.imagePath != null) listOf(bill.imagePath!!) else emptyList(),
+                    isSaved = false,
+                    editingBillId = billId
+                )
+            }
+            // Try to load cached bitmap from the image path
+            if (bill.imagePath != null) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        cachedBillBitmap = BitmapFactory.decodeFile(bill.imagePath)
+                    } catch (_: Exception) { }
+                }
+            }
+        }
+    }
+
+    /** Save an edited purchase bill (delete old + insert new) */
+    fun saveEditedBill() {
+        val bill = _uiState.value.scannedBill ?: return
+        val editingId = _uiState.value.editingBillId ?: return
+        if (_uiState.value.isSaving) return
+
+        val validItems = bill.items.filter { it.name.isNotBlank() }
+        if (validItems.isEmpty()) {
+            _uiState.update { it.copy(saveError = "Cannot save bill with no items.") }
+            return
+        }
+
+        val imagePath = _uiState.value.capturedImageUri
+        _uiState.update { it.copy(isSaving = true, saveError = null) }
+
+        viewModelScope.launch {
+            try {
+                // Delete the old bill first
+                billingRepository.deleteBill(editingId)
+                // Save as new
+                val billToSave = bill.copy(
+                    items = validItems,
+                    totalAmount = validItems.sumOf { it.total }
+                )
+                billingRepository.saveBill(billToSave, "OCR", imagePath)
+                _uiState.update { it.copy(isSaved = true, isSaving = false, scannedBill = null, editingBillId = null) }
+                cachedBillBitmap = null
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isSaving = false,
+                    saveError = "Failed to save bill: ${e.localizedMessage ?: "Unknown error"}"
                 ) }
             }
         }

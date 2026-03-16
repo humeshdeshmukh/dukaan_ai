@@ -70,6 +70,12 @@ class BillingViewModel @Inject constructor(
     val allBills: StateFlow<List<Bill>> = repository.getAllBills()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val voiceBills: StateFlow<List<Bill>> = repository.getVoiceBills()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val purchaseBills: StateFlow<List<Bill>> = repository.getScannedBills()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         // Collect partial speech results for live display
         viewModelScope.launch {

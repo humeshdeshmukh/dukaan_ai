@@ -55,6 +55,12 @@ class BillingRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getVoiceBills(): Flow<List<Bill>> {
+        return billDao.getVoiceBills().map { billsWithItems ->
+            billsWithItems.map { it.toBill() }
+        }
+    }
+
     override suspend fun getBillById(id: Long): Bill? {
         return billDao.getBillWithItems(id)?.toBill()
     }
@@ -105,7 +111,8 @@ class BillingRepositoryImpl @Inject constructor(
             subtotal = bill.subtotal,
             paymentMode = bill.paymentMode,
             notes = bill.notes,
-            isDraft = bill.isDraft
+            isDraft = bill.isDraft,
+            source = bill.source.name
         )
     }
 }

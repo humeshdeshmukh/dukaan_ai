@@ -228,6 +228,9 @@ class AppStrings {
     var itemName: String = "Item Name"
 
     // === BILL HISTORY ===
+    var myBills: String = "My Bills"
+    var noPurchaseBillsYet: String = "No Purchase Bills Yet"
+    var purchaseBillsAppearHere: String = "Scanned purchase bills will appear here"
     var noBillsYet: String = "No Bills Yet"
     var billsAppearHere: String = "Bills created via Billing or Scan will appear here"
     var deleteBill: String = "Delete Bill"
@@ -252,7 +255,10 @@ class AppStrings {
 
     // === OCR RESULT ===
     var verifyScannedBill: String = "Verify Scanned Bill"
+    var editPurchaseBill: String = "Edit Purchase Bill"
     var confirmAndSaveBill: String = "Confirm & Save Bill"
+    var updateBill: String = "Update Bill"
+    var saving: String = "Saving..."
     var aiIsReadingBill: String = "AI is reading your bill..."
     var wholesalerSellerName: String = "Wholesaler / Seller Name"
     var selectExistingWholesaler: String = "Select existing wholesaler:"

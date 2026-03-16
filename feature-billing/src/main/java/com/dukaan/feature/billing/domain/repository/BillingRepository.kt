@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface BillingRepository {
     suspend fun saveBill(bill: Bill, source: String = "VOICE", imagePath: String? = null): Long
     fun getAllBills(): Flow<List<Bill>>
+    fun getVoiceBills(): Flow<List<Bill>>
     suspend fun getBillById(id: Long): Bill?
     suspend fun deleteBill(id: Long)
     fun getAllSellerNames(): Flow<List<String>>

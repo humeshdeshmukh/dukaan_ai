@@ -20,7 +20,8 @@ data class Bill(
     val subtotal: Double = 0.0,
     val paymentMode: String = "CASH",
     val notes: String = "",
-    val isDraft: Boolean = false
+    val isDraft: Boolean = false,
+    val source: String = "VOICE"
 )
 
 data class BillItem(

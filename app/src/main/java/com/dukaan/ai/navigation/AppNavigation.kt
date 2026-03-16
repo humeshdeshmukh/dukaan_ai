@@ -89,6 +89,9 @@ sealed class Screen(val route: String) {
     object WholesalerBills : Screen("wholesaler_bills/{sellerName}") {
         fun createRoute(sellerName: String) = "wholesaler_bills/${java.net.URLEncoder.encode(sellerName, "UTF-8")}"
     }
+    object EditPurchaseBill : Screen("edit_purchase_bill/{billId}") {
+        fun createRoute(billId: Long) = "edit_purchase_bill/$billId"
+    }
 }
 
 @Composable
@@ -486,7 +489,43 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                     navController.navigate(Screen.EditBill.createRoute(editBillId)) {
                         launchSingleTop = true
                     }
+                },
+                onEditPurchaseBill = { editBillId ->
+                    navController.navigate(Screen.EditPurchaseBill.createRoute(editBillId)) {
+                        launchSingleTop = true
+                    }
                 }
+            )
+        }
+
+        // Edit Purchase Bill (loads into OcrResultScreen for editing)
+        composable(Screen.EditPurchaseBill.route) { backStackEntry ->
+            val billId = backStackEntry.arguments?.getString("billId")?.toLongOrNull() ?: return@composable
+            val ocrViewModel: OcrViewModel = hiltViewModel()
+            val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
+
+            LaunchedEffect(billId) {
+                ocrViewModel.loadBillForEditing(billId)
+            }
+
+            OcrResultScreen(
+                state = ocrViewModel.uiState.collectAsState().value,
+                existingSellerNames = existingSellerNames,
+                onBackClick = {
+                    ocrViewModel.resetScan()
+                    navController.popBackStack()
+                },
+                onSaveClick = {
+                    ocrViewModel.saveBill()
+                },
+                onNavigateAfterSave = {
+                    navController.popBackStack()
+                },
+                onDeleteItem = { item -> ocrViewModel.deleteItem(item) },
+                onEditItem = { index, item -> ocrViewModel.editItem(index, item) },
+                onAddItem = { item -> ocrViewModel.addItem(item) },
+                onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
+                onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) }
             )
         }
 

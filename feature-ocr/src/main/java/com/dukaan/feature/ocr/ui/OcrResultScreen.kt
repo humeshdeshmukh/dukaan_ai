@@ -73,7 +73,9 @@ fun OcrResultScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(strings.verifyScannedBill) },
+                title = {
+                    Text(if (state.editingBillId != null) strings.editPurchaseBill else strings.verifyScannedBill)
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
@@ -86,7 +88,7 @@ fun OcrResultScreen(
                 Box(modifier = Modifier.padding(16.dp)) {
                     LargeActionButton(
                         icon = if (state.isSaving) Icons.Default.HourglassTop else Icons.Default.Check,
-                        label = if (state.isSaving) "Saving..." else strings.confirmAndSaveBill,
+                        label = if (state.isSaving) strings.saving else if (state.editingBillId != null) strings.updateBill else strings.confirmAndSaveBill,
                         onClick = onSaveClick,
                         enabled = !state.isSaving && (state.scannedBill?.items?.isNotEmpty() == true),
                         modifier = Modifier.fillMaxWidth()
