@@ -624,40 +624,67 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     override suspend fun parseCustomerListImage(image: Bitmap, ocrText: String): List<BillItem> = withContext(Dispatchers.IO) {
         val ocrSection = if (ocrText.isNotBlank())
-            "\n\nON-DEVICE OCR TEXT (cross-reference with image):\n\"\"\"$ocrText\"\"\""
+            "\n\nPRINTED TEXT FROM OCR (item names may be here):\n\"\"\"$ocrText\"\"\""
         else ""
 
         val prompt = """
-            You are an AI for Dukaan AI, an Indian kirana shop billing app.
-            This is a photo of a customer's HANDWRITTEN SHOPPING LIST with items and prices.$ocrSection
+            You are an expert at reading HANDWRITTEN text on documents.
+            This image shows a PRINTED SHOPPING LIST or FORM with HANDWRITTEN annotations written by pen/pencil.$ocrSection
 
-            Extract ALL items from this handwritten list. Return ONLY a JSON array.
+            YOUR TASK: Find ALL handwritten numbers (quantities, prices) written BY HAND on this document.
+
+            DOCUMENT LAYOUT - The document likely has:
+            - PRINTED item names (typed/computer text) in one column
+            - HANDWRITTEN numbers written by pen in columns for:
+              * Quantity (e.g., 1, 2, 5, 10) - often BEFORE the item name or in a QTY column
+              * Price/Amount (e.g., 50, 100, 250) - often AFTER the item name or in a PRICE/AMOUNT column
+              * Rate per unit (e.g., ₹60/kg) - sometimes written next to quantity
+
+            HOW TO IDENTIFY HANDWRITTEN vs PRINTED TEXT:
+            - Handwriting is UNEVEN, SLANTED, varying line thickness
+            - Printed text is UNIFORM, perfectly aligned, consistent font
+            - Handwriting may be in BLUE or BLACK ink (pen) or GREY (pencil)
+            - Numbers written by hand look different from typed numbers
+            - Look for ANY marks that are NOT part of the printed template
+
+            SCAN EVERY PART OF THE IMAGE CAREFULLY:
+            - Left margin (quantities often written here BEFORE item names)
+            - Right side (prices/totals often written here AFTER item names)
+            - Blank spaces next to each printed item name
+            - In empty boxes or columns of the form
+            - At the bottom (may have subtotals, totals)
+            - Any circled, underlined, or ticked (✓) numbers
+
+            OUTPUT FORMAT: Return ONLY a JSON array.
             Each item: {"name": string, "quantity": number, "unit": string, "price": number}
 
-            RULES:
-            - Extract "price" if written on the list (as TOTAL price for that line item)
-            - If price is not written, set "price" = 0
-            - If price is per-unit (e.g. "₹50/kg"), calculate total: quantity × per-unit-rate
-            - Keep item names as written — do NOT translate Hindi/Hinglish to English
-            - Fix obvious spelling mistakes but keep the language
-            - Default quantity = 1 if not written
-            - Default unit = "pc" if not clear; use "kg", "g", "L", "ml", "pkt", "box", "dozen" where obvious
+            EXTRACTION RULES:
+            - "name" = the PRINTED item name from the form
+            - "quantity" = HANDWRITTEN number for quantity (default 1 if not visible)
+            - "price" = HANDWRITTEN number for total price (0 if not written)
+            - "unit" = infer from context: kg, g, L, ml, pc, pkt, box, dozen (default "pc")
+            - If rate like "₹60/kg" and qty "2", calculate: price = 2 × 60 = 120
+            - INCLUDE items that have ANY handwritten annotation (qty OR price OR checkmark)
 
-            PRICE EXAMPLES:
-            - "Sugar 2kg ₹80" → price = 80 (total written)
-            - "Rice 5kg @₹60/kg" → price = 300 (5 × 60)
-            - "Soap 3pc 30rs each" → price = 90 (3 × 30)
-            - "Milk 1L" (no price) → price = 0
+            HANDWRITTEN NUMBER PATTERNS:
+            - "1" may look like vertical line "l" or "I"
+            - "2" may have a loop at bottom or be angular "Z"
+            - "5" may look like "S"
+            - "7" may have horizontal cross stroke
+            - "0" may be oval, round, or have a slash
+            - Numbers may be written quickly/messily - use context to interpret
 
-            LOCAL TERMS:
-            pav/paav = 250g, adha kilo = 500g, dedh = 1.5, darjan/dozen = 12 pc
-            ek = 1, do/dono = 2, teen = 3, chaar = 4, paanch = 5
+            EXAMPLE LAYOUTS:
+            - "[handwritten: 2] [printed: Sugar] [handwritten: 80]" → qty=2, name=Sugar, price=80
+            - "[printed: Rice 1kg] [handwritten: 60]" → name=Rice, qty=1, unit=kg, price=60
+            - "[printed: Soap] [handwritten: ✓] [handwritten: 3] [handwritten: 90]" → qty=3, price=90
 
-            Return [] if no items found.
+            Return [] if no handwritten annotations found.
         """.trimIndent()
 
         try {
-            val response = flashModel.generateContent(
+            // Use generativeModel (more capable) for better handwriting recognition
+            val response = generativeModel.generateContent(
                 content {
                     image(image)
                     text(prompt)

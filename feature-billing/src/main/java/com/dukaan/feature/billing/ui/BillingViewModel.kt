@@ -5,6 +5,10 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.net.Uri
 import com.dukaan.core.db.SupportedLanguages
 import com.dukaan.core.db.dao.KhataDao
@@ -398,6 +402,27 @@ class BillingViewModel @Inject constructor(
         }
     }
 
+    /** Enhance image contrast to make handwritten text more visible */
+    private fun enhanceImageForHandwriting(bitmap: Bitmap): Bitmap {
+        val enhancedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(enhancedBitmap)
+        val paint = Paint()
+
+        // Increase contrast and slightly increase saturation to make pen marks stand out
+        val colorMatrix = ColorMatrix().apply {
+            // Contrast: 1.3x, Brightness: slight boost
+            set(floatArrayOf(
+                1.4f, 0f, 0f, 0f, -30f,  // Red
+                0f, 1.4f, 0f, 0f, -30f,  // Green
+                0f, 0f, 1.4f, 0f, -30f,  // Blue
+                0f, 0f, 0f, 1f, 0f       // Alpha
+            ))
+        }
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        return enhancedBitmap
+    }
+
     /** Extract text from a bitmap using ML Kit on-device OCR */
     private suspend fun extractTextFromBitmap(bitmap: Bitmap): String {
         return suspendCancellableCoroutine { cont ->
@@ -424,16 +449,20 @@ class BillingViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Step 1: ML Kit OCR on all pages (on-device, fast)
+                // Step 1: ML Kit OCR on original images (better for printed text)
                 val ocrTexts = bitmaps.map { extractTextFromBitmap(it) }
                 _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                // Step 2: Gemini + OCR dual extraction for each page, combine results
+                // Step 2: Enhance images for better handwriting detection, then send to Gemini
                 val allItems = mutableListOf<BillItem>()
                 bitmaps.forEachIndexed { i, bitmap ->
                     val ocrText = ocrTexts.getOrElse(i) { "" }
-                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    // Use contrast-enhanced image for Gemini to better detect handwritten text
+                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
+                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
                     allItems.addAll(items)
+                    // Clean up enhanced bitmap
+                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
                 }
 
                 // Merge duplicate items (same name + unit → sum quantities & prices)
@@ -477,12 +506,15 @@ class BillingViewModel @Inject constructor(
                     bmp
                 }
                 if (bitmap != null) {
-                    // ML Kit OCR first
+                    // ML Kit OCR first (on original image)
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Gemini + OCR dual extraction
-                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    // Enhance image for better handwriting detection
+                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
+                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
+                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+
                     val validItems = items.filter { it.name.isNotBlank() }
 
                     // Directly add items to bill
@@ -513,12 +545,15 @@ class BillingViewModel @Inject constructor(
             try {
                 val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(imagePath) }
                 if (bitmap != null) {
-                    // ML Kit OCR first
+                    // ML Kit OCR first (on original image)
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Gemini + OCR dual extraction
-                    val items = geminiService.parseCustomerListImage(bitmap, ocrText)
+                    // Enhance image for better handwriting detection
+                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
+                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
+                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+
                     val validItems = items.filter { it.name.isNotBlank() }
 
                     // Directly add items to bill
