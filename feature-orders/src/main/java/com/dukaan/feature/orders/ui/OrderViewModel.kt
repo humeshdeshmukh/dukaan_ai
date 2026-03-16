@@ -71,6 +71,9 @@ class OrderViewModel @Inject constructor(
         .map { it?.languageCode ?: "en" }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "en")
 
+    private val shopProfile = shopProfileDao.getProfile()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _statusFilter = MutableStateFlow("ALL")
     private val _searchQuery = MutableStateFlow("")
 
@@ -465,17 +468,32 @@ class OrderViewModel @Inject constructor(
     // --- WhatsApp message ---
     fun getWhatsAppMessage(): String {
         val state = _uiState.value
-        return buildOrderMessage(state.items, state.supplierName, state.notes, System.currentTimeMillis())
+        return buildOrderMessage(state.items, state.supplierName, state.notes, System.currentTimeMillis(), shopProfile.value)
     }
 
     fun getWhatsAppMessageForOrder(order: Order): String {
-        return buildOrderMessage(order.items, order.supplierName ?: "", order.notes ?: "", order.timestamp)
+        return buildOrderMessage(order.items, order.supplierName ?: "", order.notes ?: "", order.timestamp, shopProfile.value)
     }
 
-    private fun buildOrderMessage(items: List<OrderItem>, supplier: String, notes: String, timestamp: Long): String {
+    private fun buildOrderMessage(
+        items: List<OrderItem>, 
+        supplier: String, 
+        notes: String, 
+        timestamp: Long,
+        shop: com.dukaan.core.db.entity.ShopProfileEntity? = null
+    ): String {
         val dateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(timestamp))
-        val builder = StringBuilder("*Purchase Order*\n")
+        val builder = StringBuilder("Purchase Order\n")
         builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
+        
+        if (shop != null) {
+            builder.append("From: ${shop.shopName.ifBlank { "My Shop" }}\n")
+            if (shop.ownerName.isNotBlank()) builder.append("Owner: ${shop.ownerName}\n")
+            if (shop.phone.isNotBlank()) builder.append("Ph: ${shop.phone}\n")
+            if (shop.address.isNotBlank()) builder.append("Address: ${shop.address}\n")
+            builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
+        }
+
         if (supplier.isNotBlank()) {
             builder.append("Supplier: $supplier\n")
         }
@@ -494,7 +512,7 @@ class OrderViewModel @Inject constructor(
         if (notes.isNotBlank()) {
             builder.append("Notes: $notes\n")
         }
-        builder.append("\n_Sent via Dukaan AI_")
+        builder.append("\nSent via Dukaan AI")
         return builder.toString()
     }
 }
