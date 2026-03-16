@@ -242,6 +242,15 @@ class AppStrings {
     var sortHighestAmount: String = "Highest Amount"
     var sortLowestAmount: String = "Lowest Amount"
     var paymentType: String = "Payment"
+    var dateRange: String = "Date Range"
+    var dateAll: String = "All"
+    var dateToday: String = "Today"
+    var dateThisWeek: String = "This Week"
+    var dateThisMonth: String = "This Month"
+    var dateThisYear: String = "This Year"
+    var weekTotal: String = "This Week's Total"
+    var monthTotal: String = "This Month's Total"
+    var yearTotal: String = "This Year's Total"
 
     // === BILL DETAIL ===
     var billDetails: String = "Bill Details"

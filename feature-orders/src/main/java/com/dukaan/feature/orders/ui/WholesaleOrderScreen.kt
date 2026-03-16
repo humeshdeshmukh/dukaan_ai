@@ -86,16 +86,26 @@ fun WholesaleOrderScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(strings.orders, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    onBackClick?.let { click ->
-                        IconButton(onClick = click) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
-                        }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .background(MaterialTheme.colorScheme.surface),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                onBackClick?.let { click ->
+                    IconButton(onClick = click) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                     }
                 }
-            )
+                Text(
+                    text = strings.orders,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = if (onBackClick != null) 4.dp else 16.dp)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
@@ -159,19 +169,30 @@ fun WholesaleOrderScreen(
             // Tab Row
             TabRow(
                 selectedTabIndex = uiState.selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.height(44.dp)
             ) {
                 Tab(
                     selected = uiState.selectedTab == 0,
                     onClick = { viewModel.setSelectedTab(0) },
-                    text = { Text(strings.newOrder, fontWeight = FontWeight.SemiBold) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    text = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(strings.newOrder, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 )
                 Tab(
                     selected = uiState.selectedTab == 1,
                     onClick = { viewModel.setSelectedTab(1) },
-                    text = { Text(strings.orderHistory, fontWeight = FontWeight.SemiBold) },
-                    icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    text = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(strings.orderHistory, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 )
             }
 
@@ -439,7 +460,7 @@ private fun SupplierPickerRow(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -499,7 +520,7 @@ private fun CompactVoiceInput(
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {

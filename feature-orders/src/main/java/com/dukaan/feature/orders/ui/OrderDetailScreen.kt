@@ -2,6 +2,7 @@ package com.dukaan.feature.orders.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -52,26 +53,33 @@ fun OrderDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(strings.orderDetail, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .background(MaterialTheme.colorScheme.surface),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
+                }
+                Text(
+                    text = strings.orderDetail,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+                Spacer(Modifier.weight(1f))
+                order?.let { o ->
+                    IconButton(onClick = { onEditClick(orderId) }) {
+                        Icon(Icons.Outlined.Edit, contentDescription = strings.editOrder)
                     }
-                },
-                actions = {
-                    order?.let { o ->
-                        IconButton(onClick = { onEditClick(orderId) }) {
-                            Icon(Icons.Outlined.Edit, contentDescription = strings.editOrder)
-                        }
-                        IconButton(onClick = {
-                            onShareClick(viewModel.getWhatsAppMessageForOrder(o))
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = strings.share)
-                        }
+                    IconButton(onClick = { onShareClick(viewModel.getWhatsAppMessageForOrder(o)) }) {
+                        Icon(Icons.Default.Share, contentDescription = strings.share)
                     }
                 }
-            )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {

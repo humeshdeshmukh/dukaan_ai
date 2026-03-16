@@ -1,6 +1,7 @@
 package com.dukaan.feature.billing.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,6 +25,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private enum class BillSortOption { NEWEST, OLDEST, HIGHEST, LOWEST }
+private enum class BillDateRange { ALL, TODAY, WEEK, MONTH, YEAR }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +47,7 @@ fun BillHistoryScreen(
     var showFilters by remember { mutableStateOf(false) }
     var sortOption by remember { mutableStateOf(BillSortOption.NEWEST) }
     var paymentFilter by remember { mutableStateOf("All") }
+    var dateRange by remember { mutableStateOf(BillDateRange.ALL) }
 
     val baseBills = if (selectedTab == 0) voiceBills else purchaseBills
 
@@ -68,69 +71,131 @@ fun BillHistoryScreen(
         else searchedBills.filter { it.paymentMode.equals(paymentFilter, ignoreCase = true) }
     }
 
+    // Apply date range filter
+    val dateFilteredBills = remember(filteredBills, dateRange) {
+        if (dateRange == BillDateRange.ALL) filteredBills
+        else {
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            when (dateRange) {
+                BillDateRange.TODAY -> { /* already at start of today */ }
+                BillDateRange.WEEK -> cal.add(Calendar.DAY_OF_YEAR, -7)
+                BillDateRange.MONTH -> cal.add(Calendar.MONTH, -1)
+                BillDateRange.YEAR -> cal.add(Calendar.YEAR, -1)
+                else -> {}
+            }
+            val rangeStart = cal.timeInMillis
+            filteredBills.filter { it.timestamp >= rangeStart }
+        }
+    }
+
     // Apply sort
-    val currentBills = remember(filteredBills, sortOption) {
+    val currentBills = remember(dateFilteredBills, sortOption) {
         when (sortOption) {
-            BillSortOption.NEWEST -> filteredBills.sortedByDescending { it.timestamp }
-            BillSortOption.OLDEST -> filteredBills.sortedBy { it.timestamp }
-            BillSortOption.HIGHEST -> filteredBills.sortedByDescending { it.totalAmount }
-            BillSortOption.LOWEST -> filteredBills.sortedBy { it.totalAmount }
+            BillSortOption.NEWEST -> dateFilteredBills.sortedByDescending { it.timestamp }
+            BillSortOption.OLDEST -> dateFilteredBills.sortedBy { it.timestamp }
+            BillSortOption.HIGHEST -> dateFilteredBills.sortedByDescending { it.totalAmount }
+            BillSortOption.LOWEST -> dateFilteredBills.sortedBy { it.totalAmount }
+        }
+    }
+
+    val groupedByDate = remember(currentBills) {
+        currentBills.groupBy { bill ->
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = bill.timestamp
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            cal.timeInMillis
+        }
+    }
+
+    val dateTotals = remember(groupedByDate) {
+        groupedByDate.mapValues { (_, bills) ->
+            bills.sumOf { it.totalAmount }
         }
     }
 
     val activeFilterCount = (if (sortOption != BillSortOption.NEWEST) 1 else 0) +
-        (if (paymentFilter != "All") 1 else 0)
+        (if (paymentFilter != "All") 1 else 0) +
+        (if (dateRange != BillDateRange.ALL) 1 else 0)
 
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = { Text(strings.billHistory, fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        onBackClick?.let { click ->
-                            IconButton(onClick = click) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
-                            }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .background(MaterialTheme.colorScheme.surface),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    onBackClick?.let { click ->
+                        IconButton(onClick = click) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = strings.back)
                         }
                     }
-                )
+                    Text(
+                        text = strings.billHistory,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = if (onBackClick != null) 4.dp else 16.dp)
+                    )
+                }
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.height(44.dp)
                 ) {
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
                         text = {
-                            Text(
-                                strings.myBills,
-                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        icon = {
-                            Icon(
-                                Icons.Default.Receipt,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Receipt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    strings.myBills,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
                         }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
                         text = {
-                            Text(
-                                strings.purchaseBills,
-                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        icon = {
-                            Icon(
-                                Icons.Default.LocalShipping,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.LocalShipping,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    strings.purchaseBills,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
                         }
                     )
                 }
@@ -268,6 +333,34 @@ fun BillHistoryScreen(
                             }
                         }
                     }
+
+                    // Date range filter
+                    Text(
+                        strings.dateRange,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val dateOptions = listOf(
+                            BillDateRange.ALL to strings.dateAll,
+                            BillDateRange.TODAY to strings.dateToday,
+                            BillDateRange.WEEK to strings.dateThisWeek,
+                            BillDateRange.MONTH to strings.dateThisMonth,
+                            BillDateRange.YEAR to strings.dateThisYear
+                        )
+                        items(dateOptions) { (option, label) ->
+                            FilterChip(
+                                selected = dateRange == option,
+                                onClick = { dateRange = option },
+                                label = { Text(label, fontSize = 11.sp) },
+                                leadingIcon = if (dateRange == option) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                                } else null,
+                                modifier = Modifier.height(28.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -286,7 +379,7 @@ fun BillHistoryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (searchQuery.isNotBlank() || paymentFilter != "All") {
+                    if (searchQuery.isNotBlank() || paymentFilter != "All" || dateRange != BillDateRange.ALL) {
                         EmptyStateView(
                             icon = Icons.Default.SearchOff,
                             title = strings.noBillsFound,
@@ -306,15 +399,26 @@ fun BillHistoryScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(currentBills, key = { it.id }) { bill ->
-                        BillHistoryCard(
-                            bill = bill,
-                            isPurchaseBill = selectedTab == 1,
-                            currencyFormat = currencyFormat,
-                            dateFormat = dateFormat,
-                            onClick = { onBillClick(bill.id) },
-                            onDeleteClick = { billToDelete = bill.id }
-                        )
+                    groupedByDate.entries.forEach { entry ->
+                        val dateInMillis = entry.key
+                        val bills = entry.value
+                        item(key = "header_$dateInMillis") {
+                            DateHeaderWithTotal(
+                                dateInMillis = dateInMillis,
+                                total = dateTotals[dateInMillis] ?: 0.0,
+                                currencyFormat = currencyFormat
+                            )
+                        }
+                        items(bills, key = { it.id }) { bill ->
+                            BillHistoryCard(
+                                bill = bill,
+                                isPurchaseBill = selectedTab == 1,
+                                currencyFormat = currencyFormat,
+                                dateFormat = dateFormat,
+                                onClick = { onBillClick(bill.id) },
+                                onDeleteClick = { billToDelete = bill.id }
+                            )
+                        }
                     }
                 }
             }
@@ -414,6 +518,66 @@ private fun BillHistoryCard(
                     modifier = Modifier.size(18.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DateHeaderWithTotal(
+    dateInMillis: Long,
+    total: Double,
+    currencyFormat: NumberFormat
+) {
+    val strings = LocalAppStrings.current
+    val isToday = remember(dateInMillis) {
+        val cal1 = Calendar.getInstance()
+        val cal2 = Calendar.getInstance().apply { timeInMillis = dateInMillis }
+        cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    val isYesterday = remember(dateInMillis) {
+        val cal1 = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = dateInMillis }
+        cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    val headerDateText = when {
+        isToday -> strings.today
+        isYesterday -> strings.yesterday
+        else -> {
+            val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+            dateFormat.format(Date(dateInMillis))
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = headerDateText,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${strings.total}: ${currencyFormat.format(total)}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

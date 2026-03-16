@@ -69,7 +69,7 @@ RULES:
 1. Translate ONLY the values, keep all JSON keys exactly the same
 2. Keep translations SHORT - these are mobile UI labels
 3. Use simple, everyday $targetLanguageName words a shopkeeper would understand
-4. Do NOT translate: proper nouns (GSTIN, UPI, IFSC, PDF), currency symbols, technical terms commonly used in English (AI, PDF, OCR)
+4. Do NOT translate technical proper nouns (GSTIN, UPI, IFSC, PDF, AI, OCR). ALL OTHER terms (e.g., Speak, Tap, Sales, Accounts, Bills) MUST be translated to conversational $targetLanguageName.
 5. Keep app name "Dukaan AI" as-is
 6. Return ONLY valid JSON — no markdown, no code fences, no explanation
 
@@ -77,29 +77,38 @@ JSON to translate:
 $chunkJson
             """.trimIndent()
 
-            try {
-                Log.d(TAG, "Translating chunk ${index + 1}/${chunks.size} (${chunkMap.size} fields)")
-                val response = generativeModel.generateContent(prompt)
-                val rawText = response.text
-                if (rawText == null) {
-                    Log.w(TAG, "Chunk ${index + 1}: Gemini returned null text")
-                    mergedResult.putAll(chunkMap)
-                    continue
+            var attempts = 0
+            var success = false
+            while (attempts < 2 && !success) {
+                try {
+                    Log.d(TAG, "Translating chunk ${index + 1}/${chunks.size} (${chunkMap.size} fields), Attempt: ${attempts + 1}")
+                    val response = generativeModel.generateContent(prompt)
+                    val rawText = response.text
+                    if (rawText == null) {
+                        Log.w(TAG, "Chunk ${index + 1}: Gemini returned null text")
+                        attempts++
+                        continue
+                    }
+                    Log.d(TAG, "Chunk ${index + 1} raw response length: ${rawText.length}")
+                    val cleanJson = rawText
+                        .replace("```json", "")
+                        .replace("```JSON", "")
+                        .replace("```", "")
+                        .trim()
+                    
+                    val translated: Map<String, String> = gson.fromJson(cleanJson, mapType)
+                    Log.d(TAG, "Chunk ${index + 1}: translated ${translated.size} fields successfully")
+                    mergedResult.putAll(translated)
+                    successChunks++
+                    success = true
+                } catch (e: Exception) {
+                    attempts++
+                    Log.e(TAG, "Chunk ${index + 1} attempt $attempts FAILED: ${e.javaClass.simpleName}: ${e.message}")
+                    if (attempts >= 2) {
+                        Log.w(TAG, "Chunk ${index + 1} failed after $attempts attempts. Falling back to English for this chunk.")
+                        mergedResult.putAll(chunkMap)
+                    }
                 }
-                Log.d(TAG, "Chunk ${index + 1} raw response length: ${rawText.length}")
-                val cleanJson = rawText
-                    .replace("```json", "")
-                    .replace("```JSON", "")
-                    .replace("```", "")
-                    .trim()
-                val translated: Map<String, String> = gson.fromJson(cleanJson, mapType)
-                Log.d(TAG, "Chunk ${index + 1}: translated ${translated.size} fields successfully")
-                mergedResult.putAll(translated)
-                successChunks++
-            } catch (e: Exception) {
-                Log.e(TAG, "Chunk ${index + 1} FAILED: ${e.javaClass.simpleName}: ${e.message}", e)
-                // If a chunk fails, use the English values for those keys
-                mergedResult.putAll(chunkMap)
             }
         }
 
