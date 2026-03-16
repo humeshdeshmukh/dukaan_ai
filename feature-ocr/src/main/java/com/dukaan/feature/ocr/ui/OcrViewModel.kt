@@ -245,7 +245,9 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.filter { it != item }
-                state.copy(scannedBill = bill.copy(items = newItems, totalAmount = newItems.sumOf { it.total }))
+                val newSubtotal = newItems.sumOf { it.total }
+                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
+                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
             } ?: state
         }
     }
@@ -254,7 +256,9 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.toMutableList().apply { set(index, updatedItem) }
-                state.copy(scannedBill = bill.copy(items = newItems, totalAmount = newItems.sumOf { it.total }))
+                val newSubtotal = newItems.sumOf { it.total }
+                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
+                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
             } ?: state
         }
     }
@@ -263,7 +267,9 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items + item
-                state.copy(scannedBill = bill.copy(items = newItems, totalAmount = newItems.sumOf { it.total }))
+                val newSubtotal = newItems.sumOf { it.total }
+                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
+                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
             } ?: state
         }
     }
@@ -297,10 +303,9 @@ class OcrViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val billToSave = bill.copy(
-                    items = validItems,
-                    totalAmount = validItems.sumOf { it.total }
-                )
+                // Use the bill's totalAmount as-is (already accounts for discount/GST from Gemini,
+                // or recalculated correctly when user edited items).
+                val billToSave = bill.copy(items = validItems)
                 billingRepository.saveBill(billToSave, "OCR", imagePath)
                 _uiState.update { it.copy(isSaved = true, isSaving = false, scannedBill = null) }
                 cachedBillBitmap = null
@@ -435,11 +440,8 @@ class OcrViewModel @Inject constructor(
             try {
                 // Delete the old bill first
                 billingRepository.deleteBill(editingId)
-                // Save as new
-                val billToSave = bill.copy(
-                    items = validItems,
-                    totalAmount = validItems.sumOf { it.total }
-                )
+                // Save as new — use bill's totalAmount as-is (respects discount/GST)
+                val billToSave = bill.copy(items = validItems)
                 billingRepository.saveBill(billToSave, "OCR", imagePath)
                 _uiState.update { it.copy(isSaved = true, isSaving = false, scannedBill = null, editingBillId = null) }
                 cachedBillBitmap = null

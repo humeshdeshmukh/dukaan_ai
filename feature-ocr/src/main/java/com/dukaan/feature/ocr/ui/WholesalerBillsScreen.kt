@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dukaan.core.network.model.Bill
@@ -28,6 +29,37 @@ fun WholesalerBillsScreen(
 ) {
     val bills by viewModel.getBillsByWholesaler(sellerName).collectAsState(initial = emptyList())
     val strings = LocalAppStrings.current
+    var billToDelete by remember { mutableStateOf<Bill?>(null) }
+
+    // Confirmation dialog
+    billToDelete?.let { bill ->
+        AlertDialog(
+            onDismissRequest = { billToDelete = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete Bill?") },
+            text = {
+                Text(
+                    "This purchase bill dated ${
+                        SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(bill.timestamp))
+                    } (₹${"%.2f".format(bill.totalAmount)}) will be permanently deleted."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteBill(bill.id)
+                        billToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { billToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -62,15 +94,13 @@ fun WholesalerBillsScreen(
                 )
             }
         } else {
-            // Total summary at top
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+                // Total summary card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
@@ -110,10 +140,11 @@ fun WholesalerBillsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(bills) { bill ->
+                    items(bills, key = { it.id }) { bill ->
                         BillCard(
                             bill = bill,
-                            onClick = { onBillClick(bill.id) }
+                            onClick = { onBillClick(bill.id) },
+                            onDeleteClick = { billToDelete = bill }
                         )
                     }
                 }
@@ -126,7 +157,8 @@ fun WholesalerBillsScreen(
 @Composable
 private fun BillCard(
     bill: Bill,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     val strings = LocalAppStrings.current
@@ -139,7 +171,7 @@ private fun BillCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -168,6 +200,13 @@ private fun BillCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete bill",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

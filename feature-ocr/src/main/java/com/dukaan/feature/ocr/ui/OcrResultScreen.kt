@@ -279,7 +279,9 @@ fun OcrResultScreen(
                     }
                 }
 
-                // Total amount card
+                // Total amount / breakdown card
+                val bill = state.scannedBill!!
+                val hasBreakdown = bill.discountAmount > 0 || bill.taxAmount > 0
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -289,18 +291,84 @@ fun OcrResultScreen(
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(strings.totalAmount, style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            "₹${"%.2f".format(state.scannedBill.totalAmount)}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                        if (hasBreakdown) {
+                            // Subtotal row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Subtotal",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    "₹${"%.2f".format(bill.subtotal.takeIf { it > 0 } ?: bill.items.sumOf { it.total })}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                            // Discount row
+                            if (bill.discountAmount > 0) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        if (bill.discountPercent > 0) "Discount (${bill.discountPercent}%)" else "Discount",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        "- ₹${"%.2f".format(bill.discountAmount)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            // GST row
+                            if (bill.taxAmount > 0) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        if (bill.taxPercent > 0) "GST (${bill.taxPercent}%)" else "GST/Tax",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                    Text(
+                                        "+ ₹${"%.2f".format(bill.taxAmount)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                            )
+                        }
+                        // Final total row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(strings.totalAmount, style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                "₹${"%.2f".format(bill.totalAmount)}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
 

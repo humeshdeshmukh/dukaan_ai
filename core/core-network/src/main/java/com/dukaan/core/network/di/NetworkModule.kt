@@ -10,7 +10,16 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class GeminiLite
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class GeminiFlash
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -18,6 +27,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @GeminiLite
     fun provideGenerativeModel(): GenerativeModel {
         return GenerativeModel(
             modelName = "gemini-2.5-flash-lite",
@@ -27,13 +37,23 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGeminiKhataService(generativeModel: GenerativeModel): GeminiKhataService {
+    @GeminiFlash
+    fun provideFlashGenerativeModel(): GenerativeModel {
+        return GenerativeModel(
+            modelName = "gemini-2.5-flash",
+            apiKey = BuildConfig.GEMINI_API_KEY
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGeminiKhataService(@GeminiLite generativeModel: GenerativeModel): GeminiKhataService {
         return GeminiKhataServiceImpl(generativeModel)
     }
 
     @Provides
     @Singleton
-    fun provideGeminiTranslationService(generativeModel: GenerativeModel): GeminiTranslationService {
+    fun provideGeminiTranslationService(@GeminiLite generativeModel: GenerativeModel): GeminiTranslationService {
         return GeminiTranslationServiceImpl(generativeModel)
     }
 }

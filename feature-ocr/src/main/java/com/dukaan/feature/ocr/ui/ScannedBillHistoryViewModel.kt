@@ -6,6 +6,7 @@ import com.dukaan.core.network.model.Bill
 import com.dukaan.feature.billing.domain.repository.BillingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SellerSummary(
@@ -37,4 +38,10 @@ class ScannedBillHistoryViewModel @Inject constructor(
 
     fun getBillsByWholesaler(name: String): Flow<List<Bill>> =
         billingRepository.getBillsBySellerName(name)
+
+    fun deleteBill(id: Long) {
+        viewModelScope.launch {
+            billingRepository.deleteBill(id)
+        }
+    }
 }

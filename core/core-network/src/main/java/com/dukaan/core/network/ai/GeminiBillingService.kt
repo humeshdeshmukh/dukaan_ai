@@ -9,6 +9,8 @@ import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.dukaan.core.network.di.GeminiFlash
+import com.dukaan.core.network.di.GeminiLite
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,7 +27,8 @@ interface GeminiBillingService {
 
 @Singleton
 class GeminiBillingServiceImpl @Inject constructor(
-    private val generativeModel: GenerativeModel
+    @GeminiLite private val generativeModel: GenerativeModel,
+    @GeminiFlash private val flashModel: GenerativeModel
 ) : GeminiBillingService {
 
     override suspend fun parseBillingSpeech(speechText: String, languageCode: String): List<BillItem> = withContext(Dispatchers.IO) {
@@ -145,6 +148,11 @@ class GeminiBillingServiceImpl @Inject constructor(
             val sellerName = jsonElement.get("sellerName")?.asString ?: ""
             val billNumber = jsonElement.get("billNumber")?.asString ?: ""
             val totalAmount = jsonElement.get("totalAmount")?.asDouble ?: 0.0
+            val subtotal = jsonElement.get("subtotal")?.asDouble ?: 0.0
+            val discountAmount = jsonElement.get("discountAmount")?.asDouble ?: 0.0
+            val discountPercent = jsonElement.get("discountPercent")?.asDouble ?: 0.0
+            val taxAmount = jsonElement.get("taxAmount")?.asDouble ?: 0.0
+            val taxPercent = jsonElement.get("taxPercent")?.asDouble ?: 0.0
 
             val itemsArray = jsonElement.getAsJsonArray("items")
             val items = if (itemsArray != null && itemsArray.size() > 0) {
@@ -170,13 +178,27 @@ class GeminiBillingServiceImpl @Inject constructor(
                 emptyList()
             }
 
-            val recalcTotal = if (totalAmount <= 0.0 && items.isNotEmpty()) {
-                items.sumOf { it.total }
-            } else {
-                totalAmount
+            // Use Gemini's totalAmount. Only fall back to sum if Gemini returned nothing.
+            val finalTotal = when {
+                totalAmount > 0.0 -> totalAmount
+                items.isNotEmpty() -> items.sumOf { it.total } - discountAmount + taxAmount
+                else -> 0.0
             }
 
-            Bill(items = items, totalAmount = recalcTotal, sellerName = sellerName.trim(), billNumber = billNumber.trim())
+            // If subtotal not returned by Gemini, derive it from items sum
+            val finalSubtotal = if (subtotal > 0.0) subtotal else items.sumOf { it.total }
+
+            Bill(
+                items = items,
+                totalAmount = finalTotal,
+                sellerName = sellerName.trim(),
+                billNumber = billNumber.trim(),
+                subtotal = finalSubtotal,
+                discountAmount = discountAmount,
+                discountPercent = discountPercent,
+                taxAmount = taxAmount,
+                taxPercent = taxPercent
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
@@ -185,26 +207,35 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     override suspend fun parseOcrText(rawText: String): Bill = withContext(Dispatchers.IO) {
         val prompt = """
-            You are an AI for Dukaan AI, a shop management app for Indian shopkeepers.
-            Extract bill/invoice details from this OCR text of a wholesale purchase bill.
+            You are an expert Indian wholesale bill reader for Dukaan AI app.
+            Extract full bill details from this OCR text of a wholesale purchase bill.
 
             OCR Text: "$rawText"
 
             Return ONLY a valid JSON object with these fields:
-            - "sellerName": string (the wholesaler/seller/company name)
+            - "sellerName": string (wholesaler/seller/company name at the top)
             - "billNumber": string (invoice/bill number, empty string if not found)
             - "items": array of objects, each with:
-                - "name": string (product name)
+                - "name": string (product name exactly as written)
                 - "quantity": number
                 - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
-                - "price": number (TOTAL price for this line item, i.e. quantity × per-unit rate)
-            - "totalAmount": number (grand total)
+                - "price": number (TOTAL price for this line item = quantity × per-unit rate)
+            - "subtotal": number (sum of all item prices before discount/tax, 0 if not present)
+            - "discountAmount": number (rupee discount on the bill, 0 if none)
+            - "discountPercent": number (discount as percentage, 0 if none)
+            - "taxAmount": number (total GST/tax amount = CGST + SGST or IGST, 0 if none)
+            - "taxPercent": number (GST percentage rate, 0 if none)
+            - "totalAmount": number (FINAL grand total / net amount the buyer has to pay)
+
+            IMPORTANT: "totalAmount" must be the FINAL amount after discount and tax.
+            If bill shows: subtotal=1000, discount=50, GST=90, then totalAmount=1040.
+            If items are added by hand after the printed total, include them in items[] and add their amount to totalAmount.
         """.trimIndent()
 
         try {
-            val response = generativeModel.generateContent(prompt)
-            val rawText = response.text ?: "{}"
-            parseBillJson(rawText)
+            val response = flashModel.generateContent(prompt)
+            val rawJson = response.text ?: "{}"
+            parseBillJson(rawJson)
         } catch (e: Exception) {
             e.printStackTrace()
             Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
@@ -219,7 +250,7 @@ class GeminiBillingServiceImpl @Inject constructor(
                 image(image)
                 text(prompt)
             }
-            val response = generativeModel.generateContent(inputContent)
+            val response = flashModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
             parseBillJson(rawJson)
         } catch (e: Exception) {
@@ -236,7 +267,7 @@ class GeminiBillingServiceImpl @Inject constructor(
                 image(image)
                 text(prompt)
             }
-            val response = generativeModel.generateContent(inputContent)
+            val response = flashModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
             val bill = parseBillJson(rawJson)
 
@@ -277,14 +308,16 @@ class GeminiBillingServiceImpl @Inject constructor(
 
         return """
             You are an expert Indian wholesale bill reader for Dukaan AI app.
-            Your job is to digitize this bill image with 100% accuracy.
+            Your job is to digitize this bill image with 100% accuracy — including ALL items,
+            ALL charges, discount, GST, and any handwritten additions.
 
             STEP 1 — READ THE BILL CAREFULLY:
             Look at every single line of text in this bill image. Indian wholesale bills typically have:
             • Header: Shop/company name, address, phone, GSTIN
             • Bill info: Bill No., Date, Customer name
             • Item table with columns: Sr.No, Item/Product, Qty, Rate, Amount
-            • Footer: Total, Discount, Net Amount, Signature
+            • Footer: Subtotal, Discount, GST (CGST+SGST or IGST), Net Amount, Signature
+            • HANDWRITTEN additions: items or amounts written in pen AFTER the printed total line
 
             BILL FORMAT RECOGNITION:
             • Cash memo style: columns may be "Particulars | Qty | Rate | Amount"
@@ -298,12 +331,19 @@ class GeminiBillingServiceImpl @Inject constructor(
             • Patterns: "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency", "Store", "Bhandar", "भंडार", "ट्रेडर्स"
             • If GSTIN is present, the name is usually above it
 
-            STEP 3 — EXTRACT EACH ITEM:
-            For EVERY item line in the bill:
+            STEP 3 — EXTRACT EACH ITEM (INCLUDING HANDWRITTEN):
+            For EVERY printed AND handwritten item line in the bill:
             • "name": exact product name as written (e.g. "Tata Salt 1kg", "Fortune Oil 1L", "Parle-G 50g")
             • "quantity": the quantity number
             • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
             • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
+
+            HANDWRITTEN ADDITIONS — CRITICAL:
+            • Sellers in India often add extra items with a pen AFTER printing the bill
+            • These may appear BELOW the printed total line, in empty space, or in the margin
+            • They may be written as: "Dal 2kg - 180", "Soap 3pc 90" or just "180" beside a hand-written item
+            • INCLUDE all such handwritten items in the items[] array
+            • Adjust the totalAmount to include these additions
 
             PRICE DISAMBIGUATION:
             • If column header says "Rate" — that is per-unit rate, MULTIPLY by quantity to get price
@@ -312,12 +352,25 @@ class GeminiBillingServiceImpl @Inject constructor(
             • If bill shows "Dal 5kg 450" → price = 450
             • If numbers appear without clear columns, the rightmost number is usually the amount
 
-            STEP 4 — EXTRACT TOTAL:
-            • "totalAmount": the GRAND TOTAL / NET AMOUNT from the bottom of the bill
-            • Look for: "Grand Total", "Net Amount", "Net Amt", "कुल", "Total", "G.Total"
-            • If "Round Off" is present, use the rounded total
-            • If multiple totals exist (subtotal, tax, grand total), use the final/net amount
-            • If no total found, calculate: sum of all item prices
+            STEP 4 — EXTRACT DISCOUNT:
+            Look for discount fields near the bottom:
+            • "Discount", "Disc", "छूट", "Less:"
+            • It may be a flat rupee amount (e.g. "Discount: ₹50") or a percentage (e.g. "5%")
+            • Fill "discountAmount" and "discountPercent" (use 0 if not present)
+
+            STEP 5 — EXTRACT GST / TAX:
+            Look for tax fields near the bottom:
+            • CGST + SGST (add them together for taxAmount)
+            • IGST (use directly as taxAmount)
+            • "Tax", "GST", "VAT", "TDS"
+            • Fill "taxAmount" = total tax rupees, "taxPercent" = GST rate % (use 0 if not present)
+
+            STEP 6 — EXTRACT TOTALS:
+            • "subtotal": sum of all item prices BEFORE discount/tax (look for "Subtotal", "Gross Total", "Sub Total")
+            • "totalAmount": FINAL amount to be paid = subtotal - discount + tax
+            • Look for: "Grand Total", "Net Amount", "Net Amt", "कुल", "Total", "G.Total", "Payable"
+            • If "Round Off" adjusts the total by a few rupees, use the rounded final amount
+            • If handwritten items were added after the printed total, add their amounts to totalAmount
             $ocrSection
 
             RETURN ONLY this JSON (no markdown, no explanation):
@@ -328,13 +381,19 @@ class GeminiBillingServiceImpl @Inject constructor(
                 {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0},
                 {"name": "Another Item", "quantity": 1.0, "unit": "pc", "price": 120.0}
               ],
-              "totalAmount": 210.0
+              "subtotal": 210.0,
+              "discountAmount": 10.0,
+              "discountPercent": 0.0,
+              "taxAmount": 18.0,
+              "taxPercent": 9.0,
+              "totalAmount": 218.0
             }
 
             CRITICAL RULES:
-            - Read EVERY item. Do NOT skip any line item. You MUST return at least 1 item if there is any text on the bill.
+            - Read EVERY item (printed AND handwritten). Do NOT skip any line item.
             - Hindi/Devanagari text: transliterate to English (e.g. "चीनी" → "Cheeni/Sugar")
             - "price" MUST be the total amount for this line item, not per-unit rate
+            - "totalAmount" MUST be the final net amount the buyer pays (after discount, after tax)
             - Abbreviations: "dz"=dozen, "pkt"=packet, "L"=litre, "pcs"=pieces
             - If handwritten, try your best to read accurately. Common confusions: 1 vs 7, 0 vs 6, 5 vs 8
             - Do NOT invent items that aren't in the image
@@ -368,32 +427,36 @@ class GeminiBillingServiceImpl @Inject constructor(
         val prompt = """
             You are an expert Indian wholesale bill reader for Dukaan AI app.
             You are given ${images.size} pages of the SAME bill.
-            Read ALL pages and combine them into ONE complete bill.
+            Read ALL pages and combine them into ONE complete bill, including discount and GST.
 
             STEP 1 — READ ALL PAGES:
             These are CONSECUTIVE PAGES of the same bill. Items may continue from one page to the next.
             The seller name and bill number typically appear on the first page.
-            The grand total typically appears on the last page.
+            The grand total, discount, and GST typically appear on the last page.
 
             STEP 2 — EXTRACT SELLER NAME:
-            Find the SHOP/COMPANY name at the TOP of the FIRST page. Look for:
-            • Large text or bold text at the top
-            • Patterns: "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency", "Store"
+            Find the SHOP/COMPANY name at the TOP of the FIRST page.
 
-            STEP 3 — EXTRACT EACH ITEM FROM ALL PAGES:
-            For EVERY item line across ALL pages:
-            • "name": exact product name as written
-            • "quantity": the quantity number
-            • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
-            • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
+            STEP 3 — EXTRACT EACH ITEM FROM ALL PAGES (INCLUDING HANDWRITTEN):
+            For EVERY printed AND handwritten item line across ALL pages:
+            • "name", "quantity", "unit", "price" (TOTAL price = quantity × rate)
+            • Include any items written by hand after the printed total
 
             PRICE DISAMBIGUATION:
-            • If column header says "Rate" — that is per-unit rate, MULTIPLY by quantity
-            • If column header says "Amount" or "Total" — use directly as price
+            • "Rate" column = per-unit rate, MULTIPLY by quantity
+            • "Amount" or "Total" column = use directly as price
 
-            STEP 4 — EXTRACT TOTAL:
-            • "totalAmount": the GRAND TOTAL / NET AMOUNT (usually on the last page)
-            • If no total found, calculate: sum of all item prices
+            STEP 4 — EXTRACT DISCOUNT (from last page footer):
+            • "discountAmount": flat rupee discount (0 if none)
+            • "discountPercent": discount percentage (0 if none)
+
+            STEP 5 — EXTRACT GST/TAX (from last page footer):
+            • "taxAmount": CGST + SGST or IGST total (0 if none)
+            • "taxPercent": GST rate % (0 if none)
+
+            STEP 6 — EXTRACT TOTALS:
+            • "subtotal": item sum before discount/tax (0 if not shown)
+            • "totalAmount": FINAL net amount payable (after discount, after tax)
             $ocrSection
 
             RETURN ONLY this JSON (no markdown, no explanation):
@@ -403,14 +466,21 @@ class GeminiBillingServiceImpl @Inject constructor(
               "items": [
                 {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0}
               ],
+              "subtotal": 0.0,
+              "discountAmount": 0.0,
+              "discountPercent": 0.0,
+              "taxAmount": 0.0,
+              "taxPercent": 0.0,
               "totalAmount": 210.0
             }
 
             CRITICAL RULES:
             - Combine ALL items from ALL pages into one list — do NOT skip any page
             - Do NOT duplicate items that appear as carry-forward totals between pages
+            - Include handwritten items added after the printed total
             - Hindi/Devanagari text: transliterate to English
             - "price" MUST be the total amount for this line item, not per-unit rate
+            - "totalAmount" MUST be the final net amount (after discount, after tax)
             - Do NOT invent items that aren't in the images
             - NEVER return an empty items array if the bill has any items at all
         """.trimIndent()
@@ -423,7 +493,7 @@ class GeminiBillingServiceImpl @Inject constructor(
                 }
                 text(prompt)
             }
-            val response = generativeModel.generateContent(inputContent)
+            val response = flashModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
             val bill = parseBillJson(rawJson)
 

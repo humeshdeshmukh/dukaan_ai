@@ -47,6 +47,7 @@ fun BillDetailScreen(
     var bill by remember { mutableStateOf<Bill?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var showImageViewer by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     val strings = LocalAppStrings.current
@@ -55,6 +56,31 @@ fun BillDetailScreen(
         isLoading = true
         bill = viewModel.getBillById(billId)
         isLoading = false
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete Bill?") },
+            text = { Text("This bill will be permanently deleted and cannot be recovered.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteBill(billId)
+                        showDeleteDialog = false
+                        onBackClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Scaffold(
@@ -78,6 +104,9 @@ fun BillDetailScreen(
                         }
                         IconButton(onClick = { onShareClick(b) }) {
                             Icon(Icons.Default.Share, contentDescription = strings.share)
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -260,6 +289,70 @@ fun BillDetailScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                            }
+                        }
+                    }
+
+                    // Discount / GST breakdown (shown only when present)
+                    if (b.discountAmount > 0 || b.taxAmount > 0) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp).fillMaxWidth()) {
+                                    // Subtotal
+                                    val subtotalVal = b.subtotal.takeIf { it > 0 } ?: b.items.sumOf { it.total }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Subtotal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(currencyFormat.format(subtotalVal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    // Discount
+                                    if (b.discountAmount > 0) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                if (b.discountPercent > 0) "Discount (${b.discountPercent}%)" else "Discount",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                            Text(
+                                                "- ${currencyFormat.format(b.discountAmount)}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                    // GST / Tax
+                                    if (b.taxAmount > 0) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                if (b.taxPercent > 0) "GST (${b.taxPercent}%)" else "GST/Tax",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                "+ ${currencyFormat.format(b.taxAmount)}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
