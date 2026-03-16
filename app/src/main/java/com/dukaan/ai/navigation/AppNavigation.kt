@@ -108,9 +108,17 @@ fun AppNavigation(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val coroutineScope = rememberCoroutineScope()
     val isTranslating by translationManager.isTranslating.collectAsState()
     var pdfPreviewFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    // HIGH VALUE: Show interstitial every 2nd time user generates a PDF
+    LaunchedEffect(pdfPreviewFile) {
+        if (pdfPreviewFile != null) {
+            activity?.let { adManager.showInterstitialAfterPdfDownload(it) }
+        }
+    }
 
     // Handle interstitial ads on app resume
     AppResumeInterstitialEffect(adManager = adManager)
@@ -270,6 +278,10 @@ fun AppNavigation(
             composable(Screen.ScanBill.route) { entry ->
                 val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OcrFlow.route) }
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
+
+                // HIGH VALUE: Show interstitial when entering scan - user is already waiting for camera
+                ShowInterstitialOnEnter(adManager = adManager, trigger = InterstitialTrigger.ENTER_SCAN)
+
                 BillScannerScreen(
                     viewModel = ocrViewModel,
                     onBackClick = {
@@ -298,6 +310,18 @@ fun AppNavigation(
                 val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OcrFlow.route) }
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
+                val activity = context as? android.app.Activity
+
+                // Track when bill is saved to show interstitial
+                var billSavedTrigger by remember { mutableStateOf<Long?>(null) }
+
+                // HIGH VALUE: Show interstitial after scan bill is saved
+                if (billSavedTrigger != null) {
+                    LaunchedEffect(billSavedTrigger) {
+                        activity?.let { adManager.showInterstitialAfterScanBillSave(it) }
+                    }
+                }
+
                 OcrResultScreen(
                     state = ocrViewModel.uiState.collectAsState().value,
                     existingSellerNames = existingSellerNames,
@@ -309,6 +333,7 @@ fun AppNavigation(
                         ocrViewModel.saveBill()
                     },
                     onNavigateAfterSave = {
+                        billSavedTrigger = System.currentTimeMillis()
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.Dashboard.route) { inclusive = true }
                         }
@@ -332,6 +357,18 @@ fun AppNavigation(
                 val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
                 val settingsVm: SettingsViewModel = hiltViewModel()
                 val settingsState by settingsVm.uiState.collectAsState()
+                val activity = context as? android.app.Activity
+
+                // Track order saves for interstitial
+                var orderSavedTrigger by remember { mutableStateOf<Long?>(null) }
+
+                // HIGH VALUE: Show interstitial after saving order (orders are rare)
+                if (orderSavedTrigger != null) {
+                    LaunchedEffect(orderSavedTrigger) {
+                        activity?.let { adManager.showInterstitialAfterOrderSave(it) }
+                    }
+                }
+
                 WholesaleOrderScreen(
                     viewModel = orderViewModel,
                     onBackClick = null,
@@ -339,6 +376,7 @@ fun AppNavigation(
                         shareViaWhatsApp(context, message)
                     },
                     onSharePdf = { order ->
+                        orderSavedTrigger = System.currentTimeMillis()
                         val shopInfo = settingsState.toShopInfo()
                         val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
                         pdfPreviewFile = file
@@ -434,6 +472,18 @@ fun AppNavigation(
             val billingViewModel: BillingViewModel = hiltViewModel()
             val settingsVm: SettingsViewModel = hiltViewModel()
             val settingsState by settingsVm.uiState.collectAsState()
+
+            // Track bill saves via list count change
+            val voiceBills by billingViewModel.voiceBills.collectAsState()
+            var prevBillCount by remember { mutableStateOf(voiceBills.size) }
+            LaunchedEffect(voiceBills.size) {
+                if (voiceBills.size > prevBillCount) {
+                    // A new bill was saved - show interstitial every 3rd save
+                    activity?.let { adManager.showInterstitialAfterBillSave(it) }
+                }
+                prevBillCount = voiceBills.size
+            }
+
             VoiceBillingScreen(
                 viewModel = billingViewModel,
                 onBackClick = null,
