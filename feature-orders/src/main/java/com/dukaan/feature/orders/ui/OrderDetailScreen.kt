@@ -30,7 +30,9 @@ fun OrderDetailScreen(
     orderId: Long,
     viewModel: OrderViewModel,
     onBackClick: () -> Unit,
-    onShareClick: (String) -> Unit,
+    onShareText: (String) -> Unit,
+    onSharePdf: (Order) -> Unit,
+    onSendPdfToPhone: (Order) -> Unit,
     onEditClick: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,6 +41,7 @@ fun OrderDetailScreen(
     val order = uiState.selectedOrder
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(orderId) {
         viewModel.loadOrderDetail(orderId)
@@ -75,7 +78,7 @@ fun OrderDetailScreen(
                     IconButton(onClick = { onEditClick(orderId) }) {
                         Icon(Icons.Outlined.Edit, contentDescription = strings.editOrder)
                     }
-                    IconButton(onClick = { onShareClick(viewModel.getWhatsAppMessageForOrder(o)) }) {
+                    IconButton(onClick = { showShareSheet = true }) {
                         Icon(Icons.Default.Share, contentDescription = strings.share)
                     }
                 }
@@ -408,6 +411,24 @@ fun OrderDetailScreen(
                 onBackClick()
             },
             onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    // Share options bottom sheet
+    if (showShareSheet && order != null) {
+        OrderShareBottomSheet(
+            supplierName = order.supplierName ?: "",
+            supplierPhone = order.supplierPhone ?: "",
+            onShareText = {
+                onShareText(viewModel.getWhatsAppMessageForOrder(order))
+            },
+            onSharePdf = {
+                onSharePdf(order)
+            },
+            onSendToSupplier = {
+                onSendPdfToPhone(order)
+            },
+            onDismiss = { showShareSheet = false }
         )
     }
 }

@@ -45,7 +45,9 @@ import java.util.*
 fun WholesaleOrderScreen(
     viewModel: OrderViewModel,
     onBackClick: (() -> Unit)? = null,
-    onShareClick: (String) -> Unit,
+    onShareText: (String) -> Unit,
+    onSharePdf: (Order) -> Unit,
+    onSendPdfToPhone: (Order) -> Unit,
     onOrderClick: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -54,6 +56,7 @@ fun WholesaleOrderScreen(
     val strings = LocalAppStrings.current
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var showShareSheet by remember { mutableStateOf(false) }
 
     // Mic permission
     val micPermissionLauncher = rememberLauncherForActivityResult(
@@ -143,10 +146,7 @@ fun WholesaleOrderScreen(
                             Text(strings.save)
                         }
                         Button(
-                            onClick = {
-                                onShareClick(viewModel.getWhatsAppMessage())
-                                viewModel.saveOrder()
-                            },
+                            onClick = { showShareSheet = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(50.dp),
@@ -239,8 +239,8 @@ fun WholesaleOrderScreen(
         AddItemDialog(
             title = strings.addItem,
             strings = strings,
-            onConfirm = { name, qty, unit ->
-                viewModel.addItemManually(name, qty, unit)
+            onConfirm = { name, qty, unit, notes ->
+                viewModel.addItemManually(name, qty, unit, notes)
             },
             onDismiss = { viewModel.dismissAddItemDialog() }
         )
@@ -255,10 +255,11 @@ fun WholesaleOrderScreen(
             initialName = editItem.name,
             initialQty = editItem.quantity.toString(),
             initialUnit = editItem.unit,
-            onConfirm = { name, qty, unit ->
+            initialNotes = editItem.notes,
+            onConfirm = { name, qty, unit, notes ->
                 viewModel.updateItem(
                     uiState.editingItemIndex,
-                    OrderItem(name = name, quantity = qty, unit = unit)
+                    OrderItem(name = name, quantity = qty, unit = unit, notes = notes)
                 )
             },
             onDismiss = { viewModel.dismissEditItemDialog() }
@@ -274,6 +275,27 @@ fun WholesaleOrderScreen(
             onClear = { viewModel.clearSupplier() },
             onDismiss = { viewModel.dismissSupplierPicker() },
             strings = strings
+        )
+    }
+
+    // Share options bottom sheet
+    if (showShareSheet) {
+        OrderShareBottomSheet(
+            supplierName = uiState.supplierName,
+            supplierPhone = uiState.supplierPhone,
+            onShareText = {
+                onShareText(viewModel.getWhatsAppMessage())
+                viewModel.saveOrder()
+            },
+            onSharePdf = {
+                onSharePdf(viewModel.getCurrentOrderAsOrder())
+                viewModel.saveOrder()
+            },
+            onSendToSupplier = {
+                onSendPdfToPhone(viewModel.getCurrentOrderAsOrder())
+                viewModel.saveOrder()
+            },
+            onDismiss = { showShareSheet = false }
         )
     }
 }
@@ -726,6 +748,14 @@ private fun OrderItemCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (item.notes.isNotBlank()) {
+                    Text(
+                        item.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
             IconButton(
                 onClick = onEditClick,
@@ -1152,12 +1182,14 @@ private fun AddItemDialog(
     initialName: String = "",
     initialQty: String = "",
     initialUnit: String = "",
-    onConfirm: (name: String, quantity: Double, unit: String) -> Unit,
+    initialNotes: String = "",
+    onConfirm: (name: String, quantity: Double, unit: String, notes: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var qty by remember { mutableStateOf(initialQty) }
     var unit by remember { mutableStateOf(initialUnit) }
+    var notes by remember { mutableStateOf(initialNotes) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1191,6 +1223,16 @@ private fun AddItemDialog(
                         shape = RoundedCornerShape(10.dp)
                     )
                 }
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text(strings.orderNotes) },
+                    placeholder = { Text(strings.addNotesOptional) },
+                    singleLine = false,
+                    maxLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
+                )
             }
         },
         confirmButton = {
@@ -1198,7 +1240,7 @@ private fun AddItemDialog(
                 onClick = {
                     val quantity = qty.toDoubleOrNull()
                     if (name.isNotBlank() && quantity != null && quantity > 0 && unit.isNotBlank()) {
-                        onConfirm(name.trim(), quantity, unit.trim())
+                        onConfirm(name.trim(), quantity, unit.trim(), notes.trim())
                     }
                 },
                 enabled = name.isNotBlank() && qty.toDoubleOrNull() != null && unit.isNotBlank()

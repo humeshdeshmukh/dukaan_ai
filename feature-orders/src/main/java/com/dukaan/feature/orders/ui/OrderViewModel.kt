@@ -13,6 +13,9 @@ import com.dukaan.feature.orders.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 data class OrderUiState(
@@ -203,7 +206,8 @@ class OrderViewModel @Inject constructor(
                 result[matchIndex] = OrderItem(
                     name = old.name,
                     quantity = old.quantity + newItem.quantity,
-                    unit = old.unit
+                    unit = old.unit,
+                    notes = if (old.notes.isNotBlank() && newItem.notes.isNotBlank()) "${old.notes} | ${newItem.notes}" else old.notes.ifBlank { newItem.notes }
                 )
             } else {
                 result.add(newItem)
@@ -262,8 +266,8 @@ class OrderViewModel @Inject constructor(
         _uiState.update { it.copy(showAddItemDialog = false) }
     }
 
-    fun addItemManually(name: String, quantity: Double, unit: String) {
-        val item = OrderItem(name = name, quantity = quantity, unit = unit)
+    fun addItemManually(name: String, quantity: Double, unit: String, notes: String = "") {
+        val item = OrderItem(name = name, quantity = quantity, unit = unit, notes = notes)
         _uiState.update { state ->
             state.copy(
                 items = mergeItems(state.items, listOf(item)),
@@ -444,24 +448,46 @@ class OrderViewModel @Inject constructor(
         _uiState.update { it.copy(snackbarMessage = null) }
     }
 
+    // --- Build current state as Order (for PDF generation) ---
+    fun getCurrentOrderAsOrder(): Order {
+        val state = _uiState.value
+        return Order(
+            id = (state.editingOrderId ?: 0).toString(),
+            items = state.items,
+            timestamp = System.currentTimeMillis(),
+            supplierName = state.supplierName.ifBlank { null },
+            supplierPhone = state.supplierPhone.ifBlank { null },
+            status = "PENDING",
+            notes = state.notes.ifBlank { null }
+        )
+    }
+
     // --- WhatsApp message ---
     fun getWhatsAppMessage(): String {
         val state = _uiState.value
-        return buildOrderMessage(state.items, state.supplierName, state.notes)
+        return buildOrderMessage(state.items, state.supplierName, state.notes, System.currentTimeMillis())
     }
 
     fun getWhatsAppMessageForOrder(order: Order): String {
-        return buildOrderMessage(order.items, order.supplierName ?: "", order.notes ?: "")
+        return buildOrderMessage(order.items, order.supplierName ?: "", order.notes ?: "", order.timestamp)
     }
 
-    private fun buildOrderMessage(items: List<OrderItem>, supplier: String, notes: String): String {
-        val builder = StringBuilder("*Wholesale Order - Dukaan AI*\n")
+    private fun buildOrderMessage(items: List<OrderItem>, supplier: String, notes: String, timestamp: Long): String {
+        val dateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(timestamp))
+        val builder = StringBuilder("*Purchase Order*\n")
+        builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         if (supplier.isNotBlank()) {
             builder.append("Supplier: $supplier\n")
         }
+        builder.append("Date: $dateStr\n")
         builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         items.forEachIndexed { index, item ->
-            builder.append("${index + 1}. ${item.name} - ${item.quantity} ${item.unit}\n")
+            val qty = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else "%.2f".format(item.quantity)
+            builder.append("${index + 1}. ${item.name} \u2013 $qty ${item.unit}")
+            if (item.notes.isNotBlank()) {
+                builder.append(" (${item.notes})")
+            }
+            builder.append("\n")
         }
         builder.append("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n")
         builder.append("Total Items: ${items.size}\n")

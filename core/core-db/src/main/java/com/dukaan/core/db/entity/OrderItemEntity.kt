@@ -19,5 +19,6 @@ data class OrderItemEntity(
     val orderId: Long,
     val name: String,
     val quantity: Double,
-    val unit: String
+    val unit: String,
+    val notes: String = ""
 )

@@ -8,6 +8,7 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.dukaan.core.network.model.Bill
 import com.dukaan.core.network.model.BillItem
+import com.dukaan.core.network.model.Order
 import com.dukaan.feature.khata.domain.model.StatementShareData
 import com.dukaan.feature.khata.domain.model.TransactionType
 import java.io.File
@@ -468,6 +469,253 @@ object PdfGenerator {
         val text = "Page $pageNum"
         val w = fp.measureText(text)
         canvas.drawText(text, (PAGE_WIDTH - w) / 2f, PAGE_HEIGHT - 20f, fp)
+    }
+
+    // ===================== ORDER / PURCHASE ORDER PDF =====================
+
+    fun generateOrderPdf(context: Context, shopInfo: ShopInfo, order: Order): File {
+        val document = PdfDocument()
+        var pageNum = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create()
+        var page = document.startPage(pageInfo)
+        var canvas = page.canvas
+        var y = MARGIN
+
+        y = drawOrderHeader(canvas, shopInfo, order, y)
+        y = drawSupplierAndDeliverTo(canvas, order, y)
+        y = drawOrderItemsTableHeader(canvas, y)
+
+        order.items.forEachIndexed { index, item ->
+            if (y > PAGE_HEIGHT - 150f) {
+                drawPageFooter(canvas, pageNum)
+                document.finishPage(page)
+                pageNum++
+                pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create()
+                page = document.startPage(pageInfo)
+                canvas = page.canvas
+                y = MARGIN
+                y = drawOrderItemsTableHeader(canvas, y)
+            }
+            y = drawOrderItemRow(canvas, index, item, y)
+        }
+
+        canvas.drawLine(MARGIN, y + 2f, PAGE_WIDTH - MARGIN, y + 2f, linePaint())
+        y += 12f
+
+        // Total items summary
+        val summaryLabel = "Total Items:"
+        val summaryValue = "${order.items.size}"
+        val lp = totalLabelPaint()
+        val vp = totalValuePaint()
+        val svW = vp.measureText(summaryValue)
+        canvas.drawText(summaryLabel, PAGE_WIDTH / 2f + 20f, y + 12f, lp)
+        canvas.drawText(summaryValue, PAGE_WIDTH - MARGIN - svW, y + 12f, vp)
+        y += 24f
+
+        // Notes
+        val orderNotes = order.notes
+        if (!orderNotes.isNullOrBlank()) {
+            canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint())
+            y += 10f
+            canvas.drawText("Notes:", MARGIN, y + 10f, boldPaint())
+            y += 14f
+            canvas.drawText(orderNotes.take(100), MARGIN + 8f, y + 10f, bodyPaint())
+            y += 16f
+        }
+
+        // Ensure space for footer
+        if (y > PAGE_HEIGHT - 90f) {
+            drawPageFooter(canvas, pageNum)
+            document.finishPage(page)
+            pageNum++
+            pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create()
+            page = document.startPage(pageInfo)
+            canvas = page.canvas
+            y = MARGIN
+        }
+
+        drawOrderFooter(canvas, y)
+        document.finishPage(page)
+
+        val dir = File(context.cacheDir, "pdfs").also { it.mkdirs() }
+        val file = File(dir, "Order_${order.id}_${System.currentTimeMillis()}.pdf")
+        FileOutputStream(file).use { document.writeTo(it) }
+        document.close()
+        return file
+    }
+
+    /**
+     * Two-column header: shop info (left) | order meta (right)
+     */
+    private fun drawOrderHeader(canvas: Canvas, shop: ShopInfo, order: Order, startY: Float): Float {
+        var y = startY
+        val rightEdge = PAGE_WIDTH - MARGIN
+
+        // Shop name (left) + "PURCHASE ORDER" (right)
+        canvas.drawText(shop.shopName.ifBlank { "My Shop" }, MARGIN, y + 20f, titlePaint())
+        val dtPaint = docTitlePaint()
+        val dtText = "PURCHASE ORDER"
+        val dtW = dtPaint.measureText(dtText)
+        canvas.drawText(dtText, rightEdge - dtW, y + 20f, dtPaint)
+        y += 28f
+
+        var leftY = y
+        var rightY = y
+        val sub = subtitlePaint()
+        val metaBody = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 9f; color = Color.parseColor("#666666") }
+        val metaBold = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 9f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            color = Color.parseColor("#1a1a1a")
+        }
+
+        if (shop.address.isNotBlank()) {
+            canvas.drawText(shop.address, MARGIN, leftY + 9f, sub)
+            leftY += 13f
+        }
+        val contact = listOfNotNull(
+            shop.phone.takeIf { it.isNotBlank() }?.let { "Ph: $it" },
+            shop.email.takeIf { it.isNotBlank() }
+        ).joinToString("  |  ")
+        if (contact.isNotBlank()) {
+            canvas.drawText(contact, MARGIN, leftY + 9f, sub)
+            leftY += 13f
+        }
+        if (shop.gstNumber.isNotBlank()) {
+            canvas.drawText("GSTIN: ${shop.gstNumber}", MARGIN, leftY + 9f, sub)
+            leftY += 13f
+        }
+
+        // Right column: order meta
+        fun drawMetaRow(label: String, value: String, bold: Boolean = false) {
+            val lW = metaBody.measureText(label)
+            val vPaint = if (bold) metaBold else metaBody
+            val vW = vPaint.measureText(value)
+            canvas.drawText(label, rightEdge - lW - vW - 2f, rightY + 9f, metaBody)
+            canvas.drawText(value, rightEdge - vW, rightY + 9f, vPaint)
+            rightY += 13f
+        }
+
+        val orderNum = if (order.id == "0" || order.id.isBlank()) "NEW" else "#${order.id}"
+        drawMetaRow("Order No:  ", orderNum, bold = true)
+        drawMetaRow("Date:  ", dateFormat.format(Date(order.timestamp)), bold = true)
+        drawMetaRow("Time:  ", timeFormat.format(Date(order.timestamp)))
+        drawMetaRow("Status:  ", order.status.uppercase())
+
+        y = maxOf(leftY, rightY) + 8f
+        canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint())
+        y += 14f
+        return y
+    }
+
+    /**
+     * Two-column info box: Supplier (left) | Deliver To (right)
+     */
+    private fun drawSupplierAndDeliverTo(canvas: Canvas, order: Order, startY: Float): Float {
+        val hasSupplier = !order.supplierName.isNullOrBlank()
+        if (!hasSupplier) return startY
+
+        var y = startY
+        val boxH = 50f
+        val supplierName = order.supplierName ?: ""
+        val supplierPhone = order.supplierPhone ?: ""
+
+        val bgPaint = Paint().apply { color = Color.parseColor("#EFF6FF"); style = Paint.Style.FILL }
+        val borderPaint = Paint().apply { color = Color.parseColor("#BFDBFE"); style = Paint.Style.STROKE; strokeWidth = 1f }
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + boxH, bgPaint)
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + boxH, borderPaint)
+
+        val sup = sectionLabelPaint()
+        val bold = boldPaint()
+        val body = bodyPaint()
+
+        canvas.drawText("SUPPLIER", MARGIN + 8f, y + 14f, sup)
+        if (hasSupplier) {
+            canvas.drawText(supplierName.take(50), MARGIN + 8f, y + 28f, bold)
+            if (supplierPhone.isNotBlank()) {
+                canvas.drawText("Ph: $supplierPhone", MARGIN + 8f, y + 41f, body)
+            }
+        }
+
+        y += boxH + 14f
+        return y
+    }
+
+    /**
+     * Order items table header (4 columns: S.No | Item/Description | Quantity | Unit)
+     */
+    private fun drawOrderItemsTableHeader(canvas: Canvas, startY: Float): Float {
+        val y = startY
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + 22f, accentBgPaint())
+        val hp = headerPaint()
+        // Col X: S.No(40) Item(72) Qty(330 right-aligned) Unit(420)
+        canvas.drawText("S.No", MARGIN + 4f, y + 15f, hp)
+        canvas.drawText("Item / Description", MARGIN + 36f, y + 15f, hp)
+        val qtyH = "Quantity"
+        val qtyHW = hp.measureText(qtyH)
+        canvas.drawText(qtyH, 420f - qtyHW - 4f, y + 15f, hp)
+        canvas.drawText("Unit", 420f + 4f, y + 15f, hp)
+        return y + 26f
+    }
+
+    /**
+     * Single order item row
+     */
+    private fun drawOrderItemRow(canvas: Canvas, index: Int, item: com.dukaan.core.network.model.OrderItem, startY: Float): Float {
+        var y = startY
+        val hasNotes = item.notes.isNotBlank()
+        val rowHeight = if (hasNotes) 34f else 20f
+
+        if (index % 2 == 0) canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + rowHeight, stripePaint())
+        val body = bodyPaint()
+        val bold = boldPaint()
+
+        canvas.drawText("${index + 1}", MARGIN + 4f, y + 14f, body)
+        canvas.drawText(item.name.take(35), MARGIN + 36f, y + 14f, body)
+
+        val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString()
+        else "%.2f".format(item.quantity)
+        val qtyW = bold.measureText(qtyStr)
+        canvas.drawText(qtyStr, 420f - qtyW - 4f, y + 14f, bold)
+        canvas.drawText(item.unit.take(10), 420f + 4f, y + 14f, body)
+
+        if (hasNotes) {
+            val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 8f
+                color = Color.parseColor("#4B5563")
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+            }
+            canvas.drawText("Note: ${item.notes.take(62)}", MARGIN + 36f, y + 26f, notePaint)
+        }
+
+        return y + rowHeight
+    }
+
+    /**
+     * Order PDF footer: thank-you + computer-generated note
+     */
+    private fun drawOrderFooter(canvas: Canvas, startY: Float) {
+        var y = startY
+        canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint())
+        y += 12f
+
+        val tyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 10f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            color = Color.parseColor("#065F46")
+        }
+        val tyText = "Thank you for your order!"
+        val tyW = tyPaint.measureText(tyText)
+        canvas.drawText(tyText, (PAGE_WIDTH - tyW) / 2f, y + 10f, tyPaint)
+        y += 16f
+
+        val fp = footerPaint()
+        val cgText = "This is a computer-generated purchase order."
+        val cgW = fp.measureText(cgText)
+        canvas.drawText(cgText, (PAGE_WIDTH - cgW) / 2f, y + 9f, fp)
+        y += 12f
+
+        val genText = "Generated by Dukaan AI"
+        val genW = fp.measureText(genText)
+        canvas.drawText(genText, (PAGE_WIDTH - genW) / 2f, y + 9f, fp)
     }
 
     // ===================== STATEMENT PDF =====================

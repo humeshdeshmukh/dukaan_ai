@@ -22,7 +22,7 @@ class OrderRepositoryImpl @Inject constructor(
         return Order(
             id = owi.order.id.toString(),
             items = owi.items.map { item ->
-                OrderItem(name = item.name, quantity = item.quantity, unit = item.unit)
+                OrderItem(name = item.name, quantity = item.quantity, unit = item.unit, notes = item.notes)
             },
             timestamp = owi.order.timestamp,
             supplierName = owi.order.supplierName,
@@ -46,7 +46,8 @@ class OrderRepositoryImpl @Inject constructor(
                 orderId = 0,
                 name = item.name,
                 quantity = item.quantity,
-                unit = item.unit
+                unit = item.unit,
+                notes = item.notes
             )
         }
         return orderDao.insertOrderWithItems(orderEntity, itemEntities)
@@ -94,7 +95,7 @@ class OrderRepositoryImpl @Inject constructor(
             notes = order.notes
         )
         val itemEntities = order.items.map { item ->
-            OrderItemEntity(orderId = orderId, name = item.name, quantity = item.quantity, unit = item.unit)
+            OrderItemEntity(orderId = orderId, name = item.name, quantity = item.quantity, unit = item.unit, notes = item.notes)
         }
         orderDao.updateOrderWithItems(orderEntity, itemEntities)
     }

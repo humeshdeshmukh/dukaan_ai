@@ -312,11 +312,25 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
             composable(Screen.WholesaleOrder.route) { entry ->
                 val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
                 val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 WholesaleOrderScreen(
                     viewModel = orderViewModel,
                     onBackClick = null,
-                    onShareClick = { message ->
+                    onShareText = { message ->
                         shareViaWhatsApp(context, message)
+                    },
+                    onSharePdf = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        pdfPreviewFile = file
+                    },
+                    onSendPdfToPhone = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        val phone = order.supplierPhone ?: ""
+                        if (phone.isNotBlank()) sharePdfViaWhatsAppToPhone(context, file, phone)
+                        else sharePdfFile(context, file, "Share Order PDF")
                     },
                     onOrderClick = { orderId ->
                         navController.navigate(Screen.OrderDetail.createRoute(orderId)) {
@@ -330,12 +344,26 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 val orderId = backStackEntry.arguments?.getString("orderId")?.toLongOrNull() ?: return@composable
                 val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
                 val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 OrderDetailScreen(
                     orderId = orderId,
                     viewModel = orderViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onShareClick = { message ->
+                    onShareText = { message ->
                         shareViaWhatsApp(context, message)
+                    },
+                    onSharePdf = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        pdfPreviewFile = file
+                    },
+                    onSendPdfToPhone = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        val phone = order.supplierPhone ?: ""
+                        if (phone.isNotBlank()) sharePdfViaWhatsAppToPhone(context, file, phone)
+                        else sharePdfFile(context, file, "Share Order PDF")
                     },
                     onEditClick = { editId ->
                         navController.navigate(Screen.EditOrder.createRoute(editId)) {
@@ -349,6 +377,8 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 val orderId = backStackEntry.arguments?.getString("orderId")?.toLongOrNull() ?: return@composable
                 val parentEntry = remember(backStackEntry) { navController.getBackStackEntry(Screen.OrdersFlow.route) }
                 val orderViewModel: OrderViewModel = hiltViewModel(parentEntry)
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
 
                 LaunchedEffect(orderId) {
                     orderViewModel.loadOrderForEditing(orderId)
@@ -357,8 +387,20 @@ fun AppNavigation(navController: NavHostController, translationManager: Translat
                 WholesaleOrderScreen(
                     viewModel = orderViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onShareClick = { message ->
+                    onShareText = { message ->
                         shareViaWhatsApp(context, message)
+                    },
+                    onSharePdf = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        pdfPreviewFile = file
+                    },
+                    onSendPdfToPhone = { order ->
+                        val shopInfo = settingsState.toShopInfo()
+                        val file = PdfGenerator.generateOrderPdf(context, shopInfo, order)
+                        val phone = order.supplierPhone ?: ""
+                        if (phone.isNotBlank()) sharePdfViaWhatsAppToPhone(context, file, phone)
+                        else sharePdfFile(context, file, "Share Order PDF")
                     },
                     onOrderClick = { id ->
                         navController.navigate(Screen.OrderDetail.createRoute(id)) {
