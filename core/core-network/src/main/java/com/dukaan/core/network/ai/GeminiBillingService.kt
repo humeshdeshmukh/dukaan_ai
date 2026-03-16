@@ -565,12 +565,38 @@ class GeminiBillingServiceImpl @Inject constructor(
             else -> "Keep item names exactly as spoken. Do NOT translate to English."
         }
         val prompt = """
-            You are an AI for Dukaan AI. Extract wholesale order list from this speech: "$speechText"
-            $nameInstruction
-            Brand names should always stay as-is.
+            You are an AI for Dukaan AI, an Indian shop billing app used by kirana/grocery shopkeepers.
+            Extract wholesale order items from this shopkeeper's speech: "$speechText"
+
             Return ONLY a JSON array of objects with: name (string), quantity (number), unit (string).
-            Example input: "Sugar 50 kilo, Lux soap 2 carton"
-            Example output: [{"name": "Sugar", "quantity": 50, "unit": "kg"}, {"name": "Lux soap", "quantity": 2, "unit": "carton"}]
+
+            ITEM NAMES: $nameInstruction
+            Brand names should always stay as-is (Parle-G, Amul, Tata Salt, etc.)
+
+            LOCAL QUANTITY TERMS:
+            pav/paav = 0.25 (e.g. 250g), adha/aadha kilo = 0.5 (e.g. 500g), savaa/sawa kilo = 1.25,
+            dedh/deedh kilo = 1.5, dhai/dhaai kilo = 2.5, paune/paunai = 0.75x,
+            dozen/darjan = 12, dabba/dibba = box, peti = crate/case,
+            packet/packit = packet, bottle/botal = bottle, tin/dabba = tin/can
+            kilo=kg, gram/garam=g, piece/pees=pc, litre/liter=L, packet=pkt
+            If term implies a number like "dozen", use that number for "quantity" and "pc" or item name for unit.
+
+            NOISY ENVIRONMENT HANDLING:
+            The speech text may contain recognition errors from a noisy Indian shop environment.
+            - Fix obvious misspellings from speech recognition
+            - Recognize garbled brand names from context
+            - Ignore filler words: "aur", "phir", "hmm", "ok", "haan", "toh", "woh", "ye", "yeh"
+            - Ignore conversational fragments that aren't item entries
+            - If speech contains "bas" or "done" or "ho gaya", ignore those (means "that's all")
+
+            EXAMPLES:
+            - "Sugar 50 kilo" → [{"name": "Sugar", "quantity": 50.0, "unit": "kg"}]
+            - "Lux soap 2 carton" → [{"name": "Lux soap", "quantity": 2.0, "unit": "carton"}]
+            - "1 dozen banana" → [{"name": "Banana", "quantity": 12.0, "unit": "pc"}]
+            - "Adha kilo cheeni" → [{"name": "Sugar", "quantity": 0.5, "unit": "kg"}]
+
+            MULTIPLE ITEMS: The shopkeeper may dictate many items in one go. Extract ALL of them.
+            If no valid items found, return an empty array [].
         """.trimIndent()
 
         try {
