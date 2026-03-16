@@ -111,10 +111,18 @@ class GeminiKhataServiceImpl @Inject constructor(
 
         try {
             val response = generativeModel.generateContent(prompt)
-            response.text ?: "Namaste $customerName ji, aapka ₹$amount baaki hai $shopName mein. Jab convenient ho payment kar dijiye. Dhanyavaad!"
+            response.text ?: if (languageCode == "en") {
+                "Hello $customerName, you have an outstanding balance of ₹$amount at $shopName. Please make the payment when convenient. Thank you!"
+            } else {
+                "Namaste $customerName ji, aapka ₹$amount baaki hai $shopName mein. Jab convenient ho payment kar dijiye. Dhanyavaad!"
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-            "Namaste $customerName ji, aapka ₹$amount baaki hai $shopName mein. Jab convenient ho payment kar dijiye. Dhanyavaad!"
+            if (languageCode == "en") {
+                "Hello $customerName, you have an outstanding balance of ₹$amount at $shopName. Please make the payment when convenient. Thank you!"
+            } else {
+                "Namaste $customerName ji, aapka ₹$amount baaki hai $shopName mein. Jab convenient ho payment kar dijiye. Dhanyavaad!"
+            }
         }
     }
 

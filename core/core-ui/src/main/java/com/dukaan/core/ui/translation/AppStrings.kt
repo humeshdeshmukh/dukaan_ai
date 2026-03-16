@@ -24,7 +24,7 @@ class AppStrings {
     var navScan: String = "Scan"
     var navBills: String = "Bills"
     var navVoiceBill: String = "Billing"
-    var navKhata: String = "Khata"
+    var navKhata: String = "Ledger"
     var navOrders: String = "Orders"
 
     // === SPLASH ===
@@ -40,7 +40,7 @@ class AppStrings {
     var ocrScanner: String = "OCR Scanner"
     var voiceBill: String = "Billing"
     var speakItems: String = "Create Bills"
-    var smartKhata: String = "Smart Khata"
+    var smartKhata: String = "Smart Ledger"
     var ledgerBook: String = "Ledger Book"
     var orders: String = "Orders"
     var wholesale: String = "Wholesale"
@@ -112,8 +112,8 @@ class AppStrings {
 
     // === KHATA - Customer Detail ===
     var customer: String = "Customer"
-    var totalBakiToCollect: String = "Total BAKI (to collect)"
-    var totalJamaToPay: String = "Total JAMA (to pay)"
+    var totalBakiToCollect: String = "Total Due (to collect)"
+    var totalJamaToPay: String = "Total Paid (to pay)"
     var sendReminder: String = "Send Reminder"
     var getAiInsight: String = "Get AI Insight"
     var aiInsight: String = "AI Insight"
@@ -132,15 +132,15 @@ class AppStrings {
     var editCustomer: String = "Edit Customer"
     var deleteTransaction: String = "Delete Transaction"
     var deleteTransactionMessage: String = "This will delete this transaction and reverse the balance. This cannot be undone."
-    var baki: String = "BAKI"
-    var jama: String = "JAMA"
+    var baki: String = "DUE"
+    var jama: String = "PAID"
 
     // === KHATA - Statement ===
     var statement: String = "Statement"
     var threeMonths: String = "3 Months"
     var summary: String = "Summary"
-    var totalCreditBaki: String = "Total Credit (Baki)"
-    var totalPaymentsJama: String = "Total Payments (Jama)"
+    var totalCreditBaki: String = "Total Credit"
+    var totalPaymentsJama: String = "Total Received"
     var netBalance: String = "Net Balance"
     var customerOwesYou: String = "Customer owes you"
     var youOweCustomer: String = "You owe customer"
@@ -148,8 +148,8 @@ class AppStrings {
     var noTransactionsInPeriod: String = "No transactions in this period"
 
     // === KHATA - Add Transaction ===
-    var paymentReceivedJama: String = "Payment Received (Jama)"
-    var creditGivenBaki: String = "Credit Given (Baki)"
+    var paymentReceivedJama: String = "Payment Received"
+    var creditGivenBaki: String = "Credit Given"
     var addNotesOptional: String = "Add notes (Optional)"
     var saveEntry: String = "SAVE ENTRY"
     var smartVoiceEntry: String = "Smart Voice Entry"
@@ -159,7 +159,7 @@ class AppStrings {
     var undo: String = "Undo"
 
     // === KHATA - Overview ===
-    var khataOverview: String = "Khata Overview"
+    var khataOverview: String = "Ledger Overview"
     var netPosition: String = "Net Position"
     var topDebtorsOweYou: String = "Top Debtors (Owe You)"
     var topCreditorsYouOwe: String = "Top Creditors (You Owe)"
@@ -167,7 +167,7 @@ class AppStrings {
     var bigAccounts: String = "Big Accounts"
     var smallAccounts: String = "Small Accounts"
     var allAccounts: String = "All"
-    var aiKhataAssistant: String = "AI Khata Assistant"
+    var aiKhataAssistant: String = "AI Ledger Assistant"
     var askAboutOverallKhata: String = "Ask about your overall khata..."
     var overallInsight: String = "Overall Insight"
     var latePayments: String = "Late Payments"
@@ -189,7 +189,7 @@ class AppStrings {
     var call: String = "Call"
 
     // === KHATA - AI Chat ===
-    var khataAiAssistant: String = "Khata AI Assistant"
+    var khataAiAssistant: String = "Ledger AI Assistant"
     var paymentPattern: String = "Payment pattern"
     var creditRisk: String = "Credit risk?"
     var thinking: String = "Thinking..."
