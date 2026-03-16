@@ -603,7 +603,18 @@ class GeminiBillingServiceImpl @Inject constructor(
             val response = generativeModel.generateContent(prompt)
             val rawText = response.text ?: "[]"
             val jsonString = extractJsonArray(rawText)
-            com.google.gson.Gson().fromJson(jsonString, Array<OrderItem>::class.java).toList()
+            com.google.gson.Gson().fromJson(jsonString, Array<OrderItem>::class.java)
+                .map { item ->
+                    // Gson bypasses Kotlin null-safety; sanitize all string fields
+                    OrderItem(
+                        name = item.name as? String ?: "",
+                        quantity = item.quantity,
+                        unit = item.unit as? String ?: "",
+                        notes = item.notes as? String ?: ""
+                    )
+                }
+                .filter { it.name.isNotBlank() }
+                .toList()
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
