@@ -42,6 +42,7 @@ fun CustomerListScreen(
     var customerToDelete by remember { mutableStateOf<Long?>(null) }
     var showFinalDeleteConfirm by remember { mutableStateOf<Long?>(null) }
     var showAiChat by remember { mutableStateOf(false) }
+    var showFilters by remember { mutableStateOf(false) }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
     // Account category filter by khataType: All, Big, Small
@@ -167,85 +168,128 @@ fun CustomerListScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Search
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(52.dp),
-                placeholder = { Text(strings.searchByNameOrPhone, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Account type tabs: All / Big Khata / Small Khata
+            // Search bar + Filter button in one row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val accountOptions = listOf(
-                    "All" to strings.allAccounts,
-                    "BIG" to strings.bigAccounts,
-                    "SMALL" to strings.smallAccounts
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = viewModel::onSearchQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    placeholder = { Text(strings.searchByNameOrPhone, fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium
                 )
-                accountOptions.forEach { (key, label) ->
-                    FilterChip(
-                        selected = accountFilter == key,
-                        onClick = { accountFilter = key },
-                        label = { Text(label, fontSize = 12.sp) },
-                        leadingIcon = when (key) {
-                            "BIG" -> {{ Icon(Icons.Default.MenuBook, null, Modifier.size(14.dp)) }}
-                            "SMALL" -> {{ Icon(Icons.Default.StickyNote2, null, Modifier.size(14.dp)) }}
-                            else -> if (accountFilter == key) {{ Icon(Icons.Default.Check, null, Modifier.size(14.dp)) }} else null
-                        },
-                        modifier = Modifier.height(32.dp)
+                val activeFilterCount = (if (accountFilter != "All") 1 else 0) +
+                    (if (sortOption != SortOption.NAME) 1 else 0)
+                FilledTonalIconButton(
+                    onClick = { showFilters = !showFilters },
+                    modifier = Modifier.size(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (showFilters || activeFilterCount > 0)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
                     )
+                ) {
+                    BadgedBox(
+                        badge = {
+                            if (activeFilterCount > 0) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ) {
+                                    Text("$activeFilterCount", fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.FilterList,
+                            contentDescription = "Filter",
+                            modifier = Modifier.size(22.dp),
+                            tint = if (showFilters || activeFilterCount > 0)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            // Total count below filters
-            Text(
-                "${filteredByAccount.size} ${strings.customers}",
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val sortOptions = listOf(
-                    SortOption.NAME to strings.sortName,
-                    SortOption.BALANCE_HIGH to strings.sortHighestBalance,
-                    SortOption.BALANCE_LOW to strings.sortLowestBalance,
-                    SortOption.RECENT to strings.sortRecent
-                )
-                items(sortOptions) { (option, label) ->
-                    FilterChip(
-                        selected = sortOption == option,
-                        onClick = { viewModel.setSortOption(option) },
-                        label = { Text(label, fontSize = 11.sp) },
-                        leadingIcon = if (sortOption == option) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
-                        } else null,
-                        modifier = Modifier.height(28.dp)
+            // Collapsible filter panel
+            androidx.compose.animation.AnimatedVisibility(visible = showFilters) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Account type filter
+                    Text(
+                        strings.type,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val accountOptions = listOf(
+                            "All" to strings.allAccounts,
+                            "BIG" to strings.bigAccounts,
+                            "SMALL" to strings.smallAccounts
+                        )
+                        accountOptions.forEach { (key, label) ->
+                            FilterChip(
+                                selected = accountFilter == key,
+                                onClick = { accountFilter = key },
+                                label = { Text(label, fontSize = 12.sp) },
+                                leadingIcon = when (key) {
+                                    "BIG" -> {{ Icon(Icons.Default.MenuBook, null, Modifier.size(14.dp)) }}
+                                    "SMALL" -> {{ Icon(Icons.Default.StickyNote2, null, Modifier.size(14.dp)) }}
+                                    else -> if (accountFilter == key) {{ Icon(Icons.Default.Check, null, Modifier.size(14.dp)) }} else null
+                                },
+                                modifier = Modifier.height(32.dp)
+                            )
+                        }
+                    }
+
+                    // Sort options
+                    Text(
+                        strings.sort,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val sortOptions = listOf(
+                            SortOption.NAME to strings.sortName,
+                            SortOption.BALANCE_HIGH to strings.sortHighestBalance,
+                            SortOption.BALANCE_LOW to strings.sortLowestBalance,
+                            SortOption.RECENT to strings.sortRecent
+                        )
+                        items(sortOptions) { (option, label) ->
+                            FilterChip(
+                                selected = sortOption == option,
+                                onClick = { viewModel.setSortOption(option) },
+                                label = { Text(label, fontSize = 11.sp) },
+                                leadingIcon = if (sortOption == option) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                                } else null,
+                                modifier = Modifier.height(28.dp)
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (showFilters) 4.dp else 8.dp))
 
             if (filteredByAccount.isEmpty() && uiState.searchQuery.isBlank()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

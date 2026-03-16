@@ -93,6 +93,7 @@ class AppStrings {
     var toCollect: String = "To Collect"
     var toPay: String = "To Pay"
     var searchByNameOrPhone: String = "Search by name or phone"
+    var sort: String = "Sort"
     var sortName: String = "Name"
     var sortHighestBalance: String = "Highest Balance"
     var sortLowestBalance: String = "Lowest Balance"
