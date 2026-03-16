@@ -236,6 +236,12 @@ class AppStrings {
     var billsAppearHere: String = "Bills created via Billing or Scan will appear here"
     var deleteBill: String = "Delete Bill"
     var deleteBillMessage: String = "This bill will be permanently deleted."
+    var searchBills: String = "Search bills..."
+    var sortNewest: String = "Newest"
+    var sortOldest: String = "Oldest"
+    var sortHighestAmount: String = "Highest Amount"
+    var sortLowestAmount: String = "Lowest Amount"
+    var paymentType: String = "Payment"
 
     // === BILL DETAIL ===
     var billDetails: String = "Bill Details"
