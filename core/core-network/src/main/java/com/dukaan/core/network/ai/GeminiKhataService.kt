@@ -131,12 +131,13 @@ class GeminiKhataServiceImpl @Inject constructor(
         userMessage: String,
         languageCode: String
     ): String = withContext(Dispatchers.IO) {
+        val trimmedContext = khataContext.take(1500)
         val prompt = """
             You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
             The user is viewing a customer's khata (ledger) and wants to ask about it.
 
             Khata Data:
-            $khataContext
+            $trimmedContext
 
             User's question: "$userMessage"
 
@@ -233,12 +234,13 @@ class GeminiKhataServiceImpl @Inject constructor(
         userMessage: String,
         languageCode: String
     ): String = withContext(Dispatchers.IO) {
+        val trimmedOverview = khataOverview.take(1500)
         val prompt = """
             You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
             The user wants to ask about their overall khata (ledger) business data.
 
             Overall Khata Data:
-            $khataOverview
+            $trimmedOverview
 
             User's question: "$userMessage"
 

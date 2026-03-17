@@ -41,55 +41,25 @@ class GeminiBillingServiceImpl @Inject constructor(
         }
 
         val prompt = """
-            You are an AI for Dukaan AI, an Indian shop billing app used by kirana/grocery shopkeepers.
+            You are an AI for Dukaan AI, an Indian grocery billing app.
             Extract items from this shopkeeper's speech: "$speechText"
 
-            Return ONLY a JSON array with: name, quantity, unit, price
-            - "price" = TOTAL price for that item (the final amount the customer pays for that line)
-            - The shopkeeper may say per-unit rate or total — always compute the TOTAL.
+            Return ONLY a JSON array. Each item: name, quantity, unit, price.
+            - "price" = TOTAL amount for the line (qty × rate if rate given, or stated total)
+            $nameInstruction
+            - Brand names stay as-is (Tata Salt, Parle-G, Amul, Surf Excel, Fortune, etc.)
 
-            ITEM NAMES: $nameInstruction
-            Brand names should always stay as-is (Tata Salt, Parle-G, Surf Excel, Amul, etc.)
+            EXAMPLES:
+            - "500 gram cheeni 60 rupees per kg" → qty=500, unit="g", price=30
+            - "2 kg chawal 80 rupees per kg" → qty=2, unit="kg", price=160
+            - "Soap 3 piece 30 rupees each" → qty=3, unit="pc", price=90
+            - "Oil 1 litre 180 rupees" → qty=1, unit="L", price=180
 
-            PRICING EXAMPLES:
-            - "500 gram cheeni 60 rupees per kg" → quantity=500, unit="g", price=30 (500g at 60/kg = 30)
-            - "2 kg chawal 80 rupees per kg" → quantity=2, unit="kg", price=160 (2×80)
-            - "Soap 3 piece 30 rupees each" → quantity=3, unit="pc", price=90 (3×30)
-            - "Milk 500ml 30 rupees per litre" → quantity=500, unit="ml", price=15 (500/1000×30)
-            - "1 dozen banana 60 rupees" → quantity=12, unit="pc", price=60 (already total)
-            - "Oil 1 litre 180 rupees" → quantity=1, unit="L", price=180
-            CRITICAL: "price" must always be the TOTAL amount for that item, NOT per-unit.
+            UNITS: pav=250g, adha kilo=500g, savaa kilo=1.25kg, dedh kilo=1.5kg, dhai=2.5kg, dozen/darjan=12pc
+            All other standard Indian grocery units and terms are recognized.
 
-            RECOGNIZE THESE TERMS (but use the name according to the language instruction above):
-            cheeni/chini, atta/aata, maida, chawal/chaawal, daal/dal, namak/nimak,
-            tel/tail, doodh/dudh, ghee, sabun/saabun, chai patti, haldi, mirch/mirchi,
-            jeera/zeera, dhaniya, hing, besan, suji/sooji/rawa, poha, gur/gud,
-            saunf, ajwain, dalchini, elaichi, laung, rai/sarson, methi, kali mirch,
-            tamatar, pyaaz, aloo, adrak, lehsun, palak, gobhi, bhindi, baigan, gajar, matar,
-            anda/ande, bread/double roti, biscuit/biskut, maggi, chips/wafer
-
-            BRAND NAMES (fix mispronunciations, keep brand name as-is):
-            Tata namak/nimak = Tata Salt, Parle G/Parle ji = Parle-G, Surf/Surf Excel,
-            Vim, Lifebuoy/Laibuoy, Colgate/Kolgate, Amul/Amool, Britannia/Britania,
-            Fortune/Farchun, Aashirvaad/Ashirwad, Patanjali/Patanjli, Haldiram/Haldirams
-
-            LOCAL QUANTITY TERMS:
-            pav/paav = 250g, adha/aadha kilo = 500g, savaa/sawa kilo = 1.25kg,
-            dedh/deedh kilo = 1.5kg, dhai/dhaai kilo = 2.5kg, paune/paunai = 0.75x,
-            dozen/darjan = 12pc, dabba/dibba = box, peti = crate/case,
-            packet/packit = packet, bottle/botal = bottle, tin/dabba = tin/can
-            kilo=kg, gram/garam=g, piece/pees=pc, litre/liter=L, packet=pkt
-
-            NOISY ENVIRONMENT HANDLING:
-            The speech text may contain recognition errors from a noisy Indian shop environment.
-            - Fix obvious misspellings from speech recognition
-            - Recognize garbled brand names from context
-            - Ignore filler words: "aur", "phir", "hmm", "ok", "haan", "toh", "woh", "ye", "yeh"
-            - Ignore conversational fragments that aren't item entries
-            - If speech contains "bas" or "done" or "ho gaya", ignore those (means "that's all")
-
-            MULTIPLE ITEMS: The shopkeeper may dictate many items in one go. Extract ALL of them.
-            If no valid items found, return an empty array [].
+            Ignore filler words: aur, phir, hmm, ok, haan, toh, bas, ho gaya.
+            If no valid items, return [].
         """.trimIndent()
 
         try {
@@ -270,13 +240,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             }
             val response = flashModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
-            val bill = parseBillJson(rawJson)
-
-            // If combined approach returned empty, retry with text-only as fallback
-            if (bill.items.isEmpty() && ocrText.isNotBlank()) {
-                return@withContext parseOcrText(ocrText)
-            }
-            bill
+            parseBillJson(rawJson)
         } catch (e: Exception) {
             e.printStackTrace()
             // Fallback: try text-only parsing if image+text failed
@@ -291,115 +255,33 @@ class GeminiBillingServiceImpl @Inject constructor(
         val ocrSection = if (!ocrText.isNullOrBlank()) {
             """
 
-            ADDITIONAL CONTEXT — ML Kit OCR Text (pre-extracted from this image):
-            The following text was extracted by on-device OCR. Use it as a REFERENCE to cross-check
-            what you see in the image. The image is the primary source of truth, but this OCR text
-            can help you identify items, numbers, and text that may be hard to read in the image.
-
-            --- OCR TEXT START ---
+            OCR PRE-EXTRACTED TEXT (use as reference, image is primary source):
+            --- OCR START ---
             $ocrText
-            --- OCR TEXT END ---
-
-            IMPORTANT: Cross-reference the OCR text with what you see in the image.
-            If the image is unclear but OCR text shows an item clearly, include it.
-            If OCR text seems garbled but the image is clear, trust the image.
-            Use BOTH sources together for maximum accuracy.
+            --- OCR END ---
             """.trimIndent()
         } else ""
 
         return """
-            You are an expert Indian wholesale bill reader for Dukaan AI app.
-            Your job is to digitize this bill image with 100% accuracy — including ALL items,
-            ALL charges, discount, GST, and any handwritten additions.
+            You are an Indian wholesale bill reader for Dukaan AI. Extract all data from this bill image.
 
-            STEP 1 — READ THE BILL CAREFULLY:
-            Look at every single line of text in this bill image. Indian wholesale bills typically have:
-            • Header: Shop/company name, address, phone, GSTIN
-            • Bill info: Bill No., Date, Customer name
-            • Item table with columns: Sr.No, Item/Product, Qty, Rate, Amount
-            • Footer: Subtotal, Discount, GST (CGST+SGST or IGST), Net Amount, Signature
-            • HANDWRITTEN additions: items or amounts written in pen AFTER the printed total line
-
-            BILL FORMAT RECOGNITION:
-            • Cash memo style: columns may be "Particulars | Qty | Rate | Amount"
-            • Computer-generated bills: columns usually "Description | HSN | Qty | Rate | CGST | SGST | Total"
-            • Handwritten bills: items may be in a simple list with amounts on the right side
-            • Carbon copy bills: text may be faint or duplicated — read the clearest copy
-
-            STEP 2 — EXTRACT SELLER NAME:
-            Find the SHOP/COMPANY name at the TOP of the bill. Look for:
-            • Large text or bold text at the top
-            • Patterns: "M/s", "Shri", "& Sons", "Traders", "Enterprises", "Agency", "Store", "Bhandar", "भंडार", "ट्रेडर्स"
-            • If GSTIN is present, the name is usually above it
-
-            STEP 3 — EXTRACT EACH ITEM (INCLUDING HANDWRITTEN):
-            For EVERY printed AND handwritten item line in the bill:
-            • "name": exact product name as written (e.g. "Tata Salt 1kg", "Fortune Oil 1L", "Parle-G 50g")
-            • "quantity": the quantity number
-            • "unit": the unit (kg, g, L, ml, pc, pkt, box, dz, etc.)
-            • "price": the TOTAL AMOUNT for this line item (quantity × per-unit rate)
-
-            HANDWRITTEN ADDITIONS — CRITICAL:
-            • Sellers in India often add extra items with a pen AFTER printing the bill
-            • These may appear BELOW the printed total line, in empty space, or in the margin
-            • They may be written as: "Dal 2kg - 180", "Soap 3pc 90" or just "180" beside a hand-written item
-            • INCLUDE all such handwritten items in the items[] array
-            • Adjust the totalAmount to include these additions
-
-            PRICE DISAMBIGUATION:
-            • If column header says "Rate" — that is per-unit rate, MULTIPLY by quantity to get price
-            • If column header says "Amount", "Total", or "Amt" — that IS the line total, use directly as price
-            • If bill shows "Qty: 5, Rate: 40, Amount: 200" → price = 200
-            • If bill shows "Dal 5kg 450" → price = 450
-            • If numbers appear without clear columns, the rightmost number is usually the amount
-
-            STEP 4 — EXTRACT DISCOUNT:
-            Look for discount fields near the bottom:
-            • "Discount", "Disc", "छूट", "Less:"
-            • It may be a flat rupee amount (e.g. "Discount: ₹50") or a percentage (e.g. "5%")
-            • Fill "discountAmount" and "discountPercent" (use 0 if not present)
-
-            STEP 5 — EXTRACT GST / TAX:
-            Look for tax fields near the bottom:
-            • CGST + SGST (add them together for taxAmount)
-            • IGST (use directly as taxAmount)
-            • "Tax", "GST", "VAT", "TDS"
-            • Fill "taxAmount" = total tax rupees, "taxPercent" = GST rate % (use 0 if not present)
-
-            STEP 6 — EXTRACT TOTALS:
-            • "subtotal": sum of all item prices BEFORE discount/tax (look for "Subtotal", "Gross Total", "Sub Total")
-            • "totalAmount": FINAL amount to be paid = subtotal - discount + tax
-            • Look for: "Grand Total", "Net Amount", "Net Amt", "कुल", "Total", "G.Total", "Payable"
-            • If "Round Off" adjusts the total by a few rupees, use the rounded final amount
-            • If handwritten items were added after the printed total, add their amounts to totalAmount
+            EXTRACT these fields:
+            - "sellerName": shop/company name at top (bold text, look for M/s, Shri, Traders, Enterprises, Bhandar)
+            - "billNumber": invoice/bill number ("" if not found)
+            - "items": ALL printed AND handwritten items. Each item: name, quantity, unit, price (TOTAL line amount).
+              • "Rate" column = per-unit → multiply by qty. "Amount"/"Total" column = use directly as price.
+              • Include items written by pen BELOW the printed total (handwritten additions).
+              • Ditto marks (") or "do" = repeat the item name from the line above.
+            - "subtotal": sum before discount/tax (0 if not shown)
+            - "discountAmount": rupee discount (0 if none); "discountPercent": % discount (0 if none)
+            - "taxAmount": CGST+SGST or IGST total rupees (0 if none); "taxPercent": GST rate % (0 if none)
+            - "totalAmount": FINAL net amount payable (after discount, after tax). If handwritten items added after printed total, include them.
             $ocrSection
 
-            RETURN ONLY this JSON (no markdown, no explanation):
-            {
-              "sellerName": "Shop Name Here",
-              "billNumber": "Bill/Invoice number or empty string",
-              "items": [
-                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0},
-                {"name": "Another Item", "quantity": 1.0, "unit": "pc", "price": 120.0}
-              ],
-              "subtotal": 210.0,
-              "discountAmount": 10.0,
-              "discountPercent": 0.0,
-              "taxAmount": 18.0,
-              "taxPercent": 9.0,
-              "totalAmount": 218.0
-            }
+            Return ONLY this JSON (no markdown, no explanation):
+            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","price":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            CRITICAL RULES:
-            - Read EVERY item (printed AND handwritten). Do NOT skip any line item.
-            - Hindi/Devanagari text: transliterate to English (e.g. "चीनी" → "Cheeni/Sugar")
-            - "price" MUST be the total amount for this line item, not per-unit rate
-            - "totalAmount" MUST be the final net amount the buyer pays (after discount, after tax)
-            - Abbreviations: "dz"=dozen, "pkt"=packet, "L"=litre, "pcs"=pieces
-            - If handwritten, try your best to read accurately. Common confusions: 1 vs 7, 0 vs 6, 5 vs 8
-            - Do NOT invent items that aren't in the image
-            - If a line has ditto marks (") or "do", it means same item name as above
-            - NEVER return an empty items array if the bill has any items at all
+            Rules: price = line total (not per-unit rate). Include ALL items. NEVER return empty items[] if bill has items.
         """.trimIndent()
     }
 
@@ -426,64 +308,26 @@ class GeminiBillingServiceImpl @Inject constructor(
         } else ""
 
         val prompt = """
-            You are an expert Indian wholesale bill reader for Dukaan AI app.
-            You are given ${images.size} pages of the SAME bill.
-            Read ALL pages and combine them into ONE complete bill, including discount and GST.
+            You are an Indian wholesale bill reader for Dukaan AI. You have ${images.size} pages of the SAME bill.
+            Read ALL pages and produce ONE combined bill output.
 
-            STEP 1 — READ ALL PAGES:
-            These are CONSECUTIVE PAGES of the same bill. Items may continue from one page to the next.
-            The seller name and bill number typically appear on the first page.
-            The grand total, discount, and GST typically appear on the last page.
-
-            STEP 2 — EXTRACT SELLER NAME:
-            Find the SHOP/COMPANY name at the TOP of the FIRST page.
-
-            STEP 3 — EXTRACT EACH ITEM FROM ALL PAGES (INCLUDING HANDWRITTEN):
-            For EVERY printed AND handwritten item line across ALL pages:
-            • "name", "quantity", "unit", "price" (TOTAL price = quantity × rate)
-            • Include any items written by hand after the printed total
-
-            PRICE DISAMBIGUATION:
-            • "Rate" column = per-unit rate, MULTIPLY by quantity
-            • "Amount" or "Total" column = use directly as price
-
-            STEP 4 — EXTRACT DISCOUNT (from last page footer):
-            • "discountAmount": flat rupee discount (0 if none)
-            • "discountPercent": discount percentage (0 if none)
-
-            STEP 5 — EXTRACT GST/TAX (from last page footer):
-            • "taxAmount": CGST + SGST or IGST total (0 if none)
-            • "taxPercent": GST rate % (0 if none)
-
-            STEP 6 — EXTRACT TOTALS:
-            • "subtotal": item sum before discount/tax (0 if not shown)
-            • "totalAmount": FINAL net amount payable (after discount, after tax)
+            EXTRACT:
+            - "sellerName": shop/company name from the first page (bold/top text, M/s, Traders, Enterprises)
+            - "billNumber": invoice/bill number ("" if not found)
+            - "items": ALL items across ALL pages (printed and handwritten). Each: name, quantity, unit, price (TOTAL line amount).
+              • "Rate" column = per-unit → multiply by qty. "Amount"/"Total" column = use directly.
+              • Do NOT duplicate carry-forward totals between pages.
+              • Include handwritten items added by pen after the printed total.
+            - "subtotal": sum before discount/tax (0 if not shown)
+            - "discountAmount": rupee discount (0 if none); "discountPercent": % (0 if none)
+            - "taxAmount": CGST+SGST or IGST total (0 if none); "taxPercent": GST rate % (0 if none)
+            - "totalAmount": FINAL net amount payable (last page footer, after discount+tax)
             $ocrSection
 
-            RETURN ONLY this JSON (no markdown, no explanation):
-            {
-              "sellerName": "Shop Name Here",
-              "billNumber": "Bill/Invoice number or empty string",
-              "items": [
-                {"name": "Product Name", "quantity": 2.0, "unit": "kg", "price": 90.0}
-              ],
-              "subtotal": 0.0,
-              "discountAmount": 0.0,
-              "discountPercent": 0.0,
-              "taxAmount": 0.0,
-              "taxPercent": 0.0,
-              "totalAmount": 210.0
-            }
+            Return ONLY this JSON (no markdown, no explanation):
+            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","price":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            CRITICAL RULES:
-            - Combine ALL items from ALL pages into one list — do NOT skip any page
-            - Do NOT duplicate items that appear as carry-forward totals between pages
-            - Include handwritten items added after the printed total
-            - Hindi/Devanagari text: transliterate to English
-            - "price" MUST be the total amount for this line item, not per-unit rate
-            - "totalAmount" MUST be the final net amount (after discount, after tax)
-            - Do NOT invent items that aren't in the images
-            - NEVER return an empty items array if the bill has any items at all
+            Rules: price = line total. Combine ALL pages. NEVER return empty items[] if bill has items.
         """.trimIndent()
 
         try {
@@ -496,13 +340,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             }
             val response = flashModel.generateContent(inputContent)
             val rawJson = response.text ?: "{}"
-            val bill = parseBillJson(rawJson)
-
-            // Fallback if empty items
-            if (bill.items.isEmpty() && combinedOcr.isNotBlank()) {
-                return@withContext parseOcrText(combinedOcr)
-            }
-            bill
+            parseBillJson(rawJson)
         } catch (e: Exception) {
             e.printStackTrace()
             if (combinedOcr.isNotBlank()) {
@@ -524,12 +362,13 @@ class GeminiBillingServiceImpl @Inject constructor(
             "hi-en" -> "Respond in simple Hinglish (Hindi-English mix)."
             else -> "Respond in simple, easy language the user understands."
         }
+        val trimmedBill = billJson.take(1500)
         val prompt = """
             You are an AI assistant for Dukaan AI, a shop management app for Indian shopkeepers.
             The user is looking at a scanned bill and wants to ask you about it.
 
             Here is the digitized bill data:
-            $billJson
+            $trimmedBill
 
             User's question: "$userMessage"
 
@@ -566,38 +405,18 @@ class GeminiBillingServiceImpl @Inject constructor(
             else -> "Keep item names exactly as spoken. Do NOT translate to English."
         }
         val prompt = """
-            You are an AI for Dukaan AI, an Indian shop billing app used by kirana/grocery shopkeepers.
+            You are an AI for Dukaan AI, an Indian grocery billing app.
             Extract wholesale order items from this shopkeeper's speech: "$speechText"
 
-            Return ONLY a JSON array of objects with: name (string), quantity (number), unit (string).
+            Return ONLY a JSON array. Each item: name, quantity, unit. (No price needed for orders.)
+            $nameInstruction
+            - Brand names stay as-is (Parle-G, Amul, Tata Salt, etc.)
 
-            ITEM NAMES: $nameInstruction
-            Brand names should always stay as-is (Parle-G, Amul, Tata Salt, etc.)
+            UNITS: pav=250g, adha kilo=500g, savaa kilo=1.25kg, dedh kilo=1.5kg, dhai=2.5kg, dozen/darjan=12pc
+            All other standard Indian grocery units and terms are recognized.
 
-            LOCAL QUANTITY TERMS:
-            pav/paav = 0.25 (e.g. 250g), adha/aadha kilo = 0.5 (e.g. 500g), savaa/sawa kilo = 1.25,
-            dedh/deedh kilo = 1.5, dhai/dhaai kilo = 2.5, paune/paunai = 0.75x,
-            dozen/darjan = 12, dabba/dibba = box, peti = crate/case,
-            packet/packit = packet, bottle/botal = bottle, tin/dabba = tin/can
-            kilo=kg, gram/garam=g, piece/pees=pc, litre/liter=L, packet=pkt
-            If term implies a number like "dozen", use that number for "quantity" and "pc" or item name for unit.
-
-            NOISY ENVIRONMENT HANDLING:
-            The speech text may contain recognition errors from a noisy Indian shop environment.
-            - Fix obvious misspellings from speech recognition
-            - Recognize garbled brand names from context
-            - Ignore filler words: "aur", "phir", "hmm", "ok", "haan", "toh", "woh", "ye", "yeh"
-            - Ignore conversational fragments that aren't item entries
-            - If speech contains "bas" or "done" or "ho gaya", ignore those (means "that's all")
-
-            EXAMPLES:
-            - "Sugar 50 kilo" → [{"name": "Sugar", "quantity": 50.0, "unit": "kg"}]
-            - "Lux soap 2 carton" → [{"name": "Lux soap", "quantity": 2.0, "unit": "carton"}]
-            - "1 dozen banana" → [{"name": "Banana", "quantity": 12.0, "unit": "pc"}]
-            - "Adha kilo cheeni" → [{"name": "Sugar", "quantity": 0.5, "unit": "kg"}]
-
-            MULTIPLE ITEMS: The shopkeeper may dictate many items in one go. Extract ALL of them.
-            If no valid items found, return an empty array [].
+            Ignore filler words: aur, phir, hmm, ok, haan, toh, bas, ho gaya.
+            If no valid items, return [].
         """.trimIndent()
 
         try {

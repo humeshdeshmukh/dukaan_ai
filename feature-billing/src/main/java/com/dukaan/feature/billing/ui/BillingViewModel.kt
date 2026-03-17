@@ -21,7 +21,12 @@ import com.dukaan.feature.billing.domain.repository.BillingRepository
 import com.dukaan.core.voice.SpeechManager
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -84,8 +89,13 @@ class BillingViewModel @Inject constructor(
     val uiState: StateFlow<BillingUiState> = _uiState.asStateFlow()
 
     // ML Kit text recognizer — Devanagari model covers Hindi + English scripts
-    private val textRecognizer = TextRecognition.getClient(
+    // ML Kit text recognizers: Devanagari handles Hindi script, Latin handles English.
+    // Both are run in parallel on every image to maximise accuracy on mixed-script Indian bills.
+    private val devanagariRecognizer = TextRecognition.getClient(
         DevanagariTextRecognizerOptions.Builder().build()
+    )
+    private val latinRecognizer = TextRecognition.getClient(
+        TextRecognizerOptions.DEFAULT_OPTIONS
     )
 
     // Language code from user's settings — used for AI parsing
@@ -423,14 +433,42 @@ class BillingViewModel @Inject constructor(
         return enhancedBitmap
     }
 
-    /** Extract text from a bitmap using ML Kit on-device OCR */
-    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String {
-        return suspendCancellableCoroutine { cont ->
+    /** Run a single ML Kit recognizer on a bitmap, returning extracted text or "". */
+    private suspend fun extractText(bitmap: Bitmap, recognizer: TextRecognizer): String =
+        suspendCancellableCoroutine { cont ->
             val inputImage = InputImage.fromBitmap(bitmap, 0)
-            textRecognizer.process(inputImage)
+            recognizer.process(inputImage)
                 .addOnSuccessListener { cont.resume(it.text) }
                 .addOnFailureListener { cont.resume("") }
         }
+
+    /**
+     * Extract text from bitmap using both Devanagari and Latin recognizers in parallel.
+     * Merges their results so Gemini receives both Hindi and English content.
+     */
+    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String = coroutineScope {
+        val devanagariDeferred = async { extractText(bitmap, devanagariRecognizer) }
+        val latinDeferred = async { extractText(bitmap, latinRecognizer) }
+        val devanagari = devanagariDeferred.await()
+        val latin = latinDeferred.await()
+        // Merge unique lines from both recognizers
+        val combined = (devanagari.lines() + latin.lines())
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("\n")
+        combined
+    }
+
+    /**
+     * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
+     */
+    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 1600): Bitmap {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= maxDim && h <= maxDim) return bitmap
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true)
     }
 
     /** Process pages from GmsDocumentScanning: ML Kit OCR + Gemini dual extraction */
@@ -449,21 +487,27 @@ class BillingViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Step 1: ML Kit OCR on original images (better for printed text)
-                val ocrTexts = bitmaps.map { extractTextFromBitmap(it) }
+                // Step 1: ML Kit OCR on original images in parallel
+                val ocrTexts = withContext(Dispatchers.Default) {
+                    bitmaps.map { async { extractTextFromBitmap(it) } }.awaitAll()
+                }
                 _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                // Step 2: Enhance images for better handwriting detection, then send to Gemini
-                val allItems = mutableListOf<BillItem>()
-                bitmaps.forEachIndexed { i, bitmap ->
-                    val ocrText = ocrTexts.getOrElse(i) { "" }
-                    // Use contrast-enhanced image for Gemini to better detect handwritten text
-                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
-                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                    allItems.addAll(items)
-                    // Clean up enhanced bitmap
-                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                // Step 2: Enhance images and send to Gemini in parallel
+                val itemsList = withContext(Dispatchers.Default) {
+                    bitmaps.mapIndexed { i, bitmap ->
+                        async {
+                            val ocrText = ocrTexts.getOrElse(i) { "" }
+                            val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                            val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
+                            val items = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                            if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                            if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
+                            items
+                        }
+                    }.awaitAll()
                 }
+                val allItems = itemsList.flatten()
 
                 // Merge duplicate items (same name + unit → sum quantities & prices)
                 val merged = allItems
@@ -510,10 +554,15 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image for better handwriting detection
-                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
-                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                    // Enhance image and resize before Gemini
+                    val items = withContext(Dispatchers.Default) {
+                        val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                        val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
+                        val result = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                        if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                        if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
+                        result
+                    }
 
                     val validItems = items.filter { it.name.isNotBlank() }
 
@@ -549,10 +598,15 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image for better handwriting detection
-                    val enhancedBitmap = withContext(Dispatchers.Default) { enhanceImageForHandwriting(bitmap) }
-                    val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                    if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                    // Enhance image and resize before Gemini
+                    val items = withContext(Dispatchers.Default) {
+                        val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                        val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
+                        val result = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                        if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                        if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
+                        result
+                    }
 
                     val validItems = items.filter { it.name.isNotBlank() }
 
@@ -624,6 +678,7 @@ class BillingViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        textRecognizer.close()
+        devanagariRecognizer.close()
+        latinRecognizer.close()
     }
 }

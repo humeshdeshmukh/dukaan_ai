@@ -12,9 +12,14 @@ import com.dukaan.core.network.ai.GeminiBillingService
 import com.dukaan.feature.billing.domain.repository.BillingRepository
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,28 +71,58 @@ class OcrViewModel @Inject constructor(
     // Cached bitmap for AI chat with image context
     private var cachedBillBitmap: Bitmap? = null
 
-    // ML Kit text recognizer for extracting OCR text from bitmaps
-    private val textRecognizer = TextRecognition.getClient(
+    // ML Kit text recognizers: Devanagari handles Hindi script, Latin handles English.
+    // Both are run in parallel on every image to maximise accuracy on mixed-script Indian bills.
+    private val devanagariRecognizer = TextRecognition.getClient(
         DevanagariTextRecognizerOptions.Builder().build()
     )
+    private val latinRecognizer = TextRecognition.getClient(
+        TextRecognizerOptions.DEFAULT_OPTIONS
+    )
 
-    /** Extract text from bitmap using ML Kit (on-device OCR) */
-    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String {
-        return suspendCancellableCoroutine { cont ->
+    /** Run a single ML Kit recognizer on a bitmap, returning extracted text or "". */
+    private suspend fun extractText(bitmap: Bitmap, recognizer: TextRecognizer): String =
+        suspendCancellableCoroutine { cont ->
             val inputImage = InputImage.fromBitmap(bitmap, 0)
-            textRecognizer.process(inputImage)
-                .addOnSuccessListener { visionText ->
-                    cont.resume(visionText.text)
-                }
-                .addOnFailureListener {
-                    cont.resume("")
-                }
+            recognizer.process(inputImage)
+                .addOnSuccessListener { cont.resume(it.text) }
+                .addOnFailureListener { cont.resume("") }
         }
+
+    /**
+     * Extract text from bitmap using both Devanagari and Latin recognizers in parallel.
+     * Merges their results so Gemini receives both Hindi and English content from the bill.
+     */
+    private suspend fun extractTextFromBitmap(bitmap: Bitmap): String = coroutineScope {
+        val devanagariDeferred = async { extractText(bitmap, devanagariRecognizer) }
+        val latinDeferred = async { extractText(bitmap, latinRecognizer) }
+        val devanagari = devanagariDeferred.await()
+        val latin = latinDeferred.await()
+        // Merge unique lines from both recognizers — Gemini handles any duplicates
+        val combined = (devanagari.lines() + latin.lines())
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("\n")
+        combined
     }
 
-    /** Extract text from multiple bitmaps */
-    private suspend fun extractTextsFromBitmaps(bitmaps: List<Bitmap>): List<String> {
-        return bitmaps.map { extractTextFromBitmap(it) }
+    /** Extract text from multiple bitmaps in parallel. */
+    private suspend fun extractTextsFromBitmaps(bitmaps: List<Bitmap>): List<String> =
+        coroutineScope {
+            bitmaps.map { bitmap -> async { extractTextFromBitmap(bitmap) } }.awaitAll()
+        }
+
+    /**
+     * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
+     * ML Kit OCR runs on the full-res image before this; Gemini doesn't benefit from >1600px.
+     */
+    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 1600): Bitmap {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= maxDim && h <= maxDim) return bitmap
+        val scale = maxDim.toFloat() / maxOf(w, h)
+        return Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true)
     }
 
     /** Process a captured camera image via ML Kit OCR + Gemini vision (dual extraction) */
@@ -103,16 +138,17 @@ class OcrViewModel @Inject constructor(
                 if (bitmap != null) {
                     cachedBillBitmap = bitmap
 
-                    // Step 1: Extract text using ML Kit (on-device OCR)
+                    // Step 1: Extract text using ML Kit (on-device OCR, full-res)
                     val ocrText = extractTextFromBitmap(bitmap)
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Send BOTH image + OCR text to Gemini for best accuracy
+                    // Step 2: Resize for Gemini, then send image + OCR text for best accuracy
+                    val geminiImage = withContext(Dispatchers.Default) { resizeBitmapForGemini(bitmap) }
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                        geminiService.parseBillImageWithOcr(geminiImage, ocrText)
                     } else {
-                        geminiService.parseBillImage(bitmap)
+                        geminiService.parseBillImage(geminiImage)
                     }
 
                     _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
@@ -156,16 +192,17 @@ class OcrViewModel @Inject constructor(
                     cachedBillBitmap = bitmap
                     _uiState.update { it.copy(capturedImageUri = savedPath) }
 
-                    // Step 1: Extract text using ML Kit
+                    // Step 1: Extract text using ML Kit (full-res bitmap)
                     val ocrText = extractTextFromBitmap(bitmap)
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Send BOTH image + OCR text to Gemini
+                    // Step 2: Resize for Gemini, then send image + OCR text
+                    val geminiImage = withContext(Dispatchers.Default) { resizeBitmapForGemini(bitmap) }
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                        geminiService.parseBillImageWithOcr(geminiImage, ocrText)
                     } else {
-                        geminiService.parseBillImage(bitmap)
+                        geminiService.parseBillImage(geminiImage)
                     }
 
                     _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
@@ -245,9 +282,7 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.filter { it != item }
-                val newSubtotal = newItems.sumOf { it.total }
-                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
-                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
+                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
             } ?: state
         }
     }
@@ -256,9 +291,7 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.toMutableList().apply { set(index, updatedItem) }
-                val newSubtotal = newItems.sumOf { it.total }
-                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
-                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
+                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
             } ?: state
         }
     }
@@ -267,11 +300,31 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items + item
-                val newSubtotal = newItems.sumOf { it.total }
-                val newTotal = (newSubtotal - bill.discountAmount + bill.taxAmount).coerceAtLeast(0.0)
-                state.copy(scannedBill = bill.copy(items = newItems, subtotal = newSubtotal, totalAmount = newTotal))
+                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
             } ?: state
         }
+    }
+
+    /**
+     * Recalculates subtotal, totalAmount, discountPercent, and taxPercent after items change.
+     * discountAmount and taxAmount (rupee values) are preserved — only the derived % fields update.
+     */
+    private fun Bill.withRecalculatedTotals(original: Bill): Bill {
+        val newSubtotal = items.sumOf { it.total }
+        val newTotal = (newSubtotal - original.discountAmount + original.taxAmount).coerceAtLeast(0.0)
+        val newDiscountPercent = if (newSubtotal > 0 && original.discountAmount > 0)
+            (original.discountAmount / newSubtotal * 100) else original.discountPercent
+        val taxableAmount = newSubtotal - original.discountAmount
+        val newTaxPercent = if (taxableAmount > 0 && original.taxAmount > 0)
+            (original.taxAmount / taxableAmount * 100) else original.taxPercent
+        return copy(
+            subtotal = newSubtotal,
+            totalAmount = newTotal,
+            discountAmount = original.discountAmount,
+            discountPercent = newDiscountPercent,
+            taxAmount = original.taxAmount,
+            taxPercent = newTaxPercent
+        )
     }
 
     fun updateSellerName(name: String) {
@@ -370,19 +423,22 @@ class OcrViewModel @Inject constructor(
 
                 cachedBillBitmap = bitmaps.first()
 
-                // Step 2: Send images + OCR text to Gemini (dual extraction)
+                // Step 2: Resize for Gemini (OCR already done on full-res above), then send to Gemini
+                val geminiImages = withContext(Dispatchers.Default) {
+                    bitmaps.map { resizeBitmapForGemini(it) }
+                }
                 val hasOcrText = ocrTexts.any { it.isNotBlank() }
-                val bill = if (bitmaps.size == 1) {
+                val bill = if (geminiImages.size == 1) {
                     if (hasOcrText) {
-                        geminiService.parseBillImageWithOcr(bitmaps.first(), ocrTexts.first())
+                        geminiService.parseBillImageWithOcr(geminiImages.first(), ocrTexts.first())
                     } else {
-                        geminiService.parseBillImage(bitmaps.first())
+                        geminiService.parseBillImage(geminiImages.first())
                     }
                 } else {
                     if (hasOcrText) {
-                        geminiService.parseMultiPageBillWithOcr(bitmaps, ocrTexts)
+                        geminiService.parseMultiPageBillWithOcr(geminiImages, ocrTexts)
                     } else {
-                        geminiService.parseMultiPageBill(bitmaps)
+                        geminiService.parseMultiPageBill(geminiImages)
                     }
                 }
 
