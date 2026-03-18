@@ -30,10 +30,10 @@ object PdfGenerator {
     private val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
     private val dateTimeFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
 
-    // 6-column item table layout (MARGIN=40, right edge=555, total content=515)
-    // S.No(32) | Item(168) | Qty(50) | Unit(50) | Rate(80) | Amount(135)
-    private val ITEM_COL_X = floatArrayOf(MARGIN, MARGIN + 32f, MARGIN + 200f, MARGIN + 250f, MARGIN + 300f, MARGIN + 380f)
-    private val ITEM_COL_R = floatArrayOf(MARGIN + 32f, MARGIN + 200f, MARGIN + 250f, MARGIN + 300f, MARGIN + 380f, PAGE_WIDTH - MARGIN.toFloat())
+    // 7-column item table layout (MARGIN=40, right edge=555, total content=515)
+    // S.No(25) | Item(140) | Qty(45) | Unit(40) | Rate(70) | Discount(70) | Amount(125)
+    private val ITEM_COL_X = floatArrayOf(MARGIN, MARGIN + 25f, MARGIN + 165f, MARGIN + 210f, MARGIN + 250f, MARGIN + 320f, MARGIN + 390f)
+    private val ITEM_COL_R = floatArrayOf(MARGIN + 25f, MARGIN + 165f, MARGIN + 210f, MARGIN + 250f, MARGIN + 320f, MARGIN + 390f, PAGE_WIDTH - MARGIN.toFloat())
 
     // ===================== PAINTS =====================
 
@@ -277,7 +277,7 @@ object PdfGenerator {
         val y = startY
         canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + 22f, accentBgPaint())
         val hp = headerPaint()
-        val headers = listOf("S.No", "Item / Description", "Qty", "Unit", "Rate (₹)", "Amount (₹)")
+        val headers = listOf("S.No", "Item / Description", "Qty", "Unit", "Original Rate", "Discount", "Amount")
         headers.forEachIndexed { i, h ->
             if (i >= 4) {
                 val w = hp.measureText(h)
@@ -290,32 +290,51 @@ object PdfGenerator {
     }
 
     /**
-     * Single item row with per-unit rate calculation
+     * Single item row with per-unit rate calculation and item discount
      */
     private fun drawItemRow(canvas: Canvas, index: Int, item: BillItem, startY: Float): Float {
-        val y = startY
+        var y = startY
         if (index % 2 == 0) canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + 20f, stripePaint())
         val body = bodyPaint()
         val bold = boldPaint()
+        val smallBody = Paint().apply {
+            color = Color.DKGRAY
+            textSize = 8f
+            isAntiAlias = true
+        }
 
         canvas.drawText("${index + 1}", ITEM_COL_X[0] + 4f, y + 14f, body)
-        canvas.drawText(item.name.take(28), ITEM_COL_X[1] + 4f, y + 14f, body)
+
+        // Item name (just name now, discount has its own column)
+        val itemName = item.name.take(28)
+        canvas.drawText(itemName, ITEM_COL_X[1] + 4f, y + 14f, body)
 
         val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString()
         else "%.2f".format(item.quantity)
         canvas.drawText(qtyStr, ITEM_COL_X[2] + 4f, y + 14f, body)
         canvas.drawText(item.unit.take(8), ITEM_COL_X[3] + 4f, y + 14f, body)
 
-        // Per-unit rate (right-aligned within col 4)
-        val rate = if (item.quantity > 0) item.price / item.quantity else item.price
+        // Per-unit rate
+        val rate = item.effectiveUnitPrice
         val rateStr = "%.2f".format(rate)
         val rateW = body.measureText(rateStr)
         canvas.drawText(rateStr, ITEM_COL_R[4] - rateW - 4f, y + 14f, body)
 
-        // Line total (right-aligned within col 5)
+        // Item Discount column
+        val discountStr = if (item.itemDiscountPercent > 0) {
+            "%.1f%%".format(item.itemDiscountPercent)
+        } else if (item.itemDiscountAmount > 0) {
+            "₹%.0f".format(item.itemDiscountAmount)
+        } else {
+            "-"
+        }
+        val discW = body.measureText(discountStr)
+        canvas.drawText(discountStr, ITEM_COL_R[5] - discW - 4f, y + 14f, body)
+
+        // Line total (after item discount)
         val amtStr = "%.2f".format(item.total)
         val amtW = bold.measureText(amtStr)
-        canvas.drawText(amtStr, ITEM_COL_R[5] - amtW - 4f, y + 14f, bold)
+        canvas.drawText(amtStr, ITEM_COL_R[6] - amtW - 4f, y + 14f, bold)
 
         return y + 20f
     }

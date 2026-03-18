@@ -9,6 +9,7 @@ interface BillingRepository {
     fun getVoiceBills(): Flow<List<Bill>>
     suspend fun getBillById(id: Long): Bill?
     suspend fun deleteBill(id: Long)
+    suspend fun deleteBillsBySellerName(sellerName: String)
     fun getAllSellerNames(): Flow<List<String>>
     fun getBillsBySellerName(sellerName: String): Flow<List<Bill>>
     fun getScannedBills(): Flow<List<Bill>>

@@ -82,6 +82,20 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE bills ADD COLUMN sellerPhone TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    private val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE bill_items ADD COLUMN unitPrice REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE bill_items ADD COLUMN itemDiscountPercent REAL NOT NULL DEFAULT 0.0")
+            db.execSQL("ALTER TABLE bill_items ADD COLUMN itemDiscountAmount REAL NOT NULL DEFAULT 0.0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideKhataDatabase(
@@ -91,7 +105,7 @@ object DatabaseModule {
             context,
             KhataDatabase::class.java,
             "dukaan_khata.db"
-        ).addMigrations(MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+        ).addMigrations(MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
          .fallbackToDestructiveMigration().build()
     }
 

@@ -134,13 +134,45 @@ class GeminiBillingServiceImpl @Inject constructor(
                         if (name.isBlank()) return@mapNotNull null
                         val quantity = obj.get("quantity")?.asDouble ?: 1.0
                         val unit = obj.get("unit")?.asString ?: "pc"
-                        // Try "price" first, then "amount", then "total"
-                        val price = obj.get("price")?.asDouble
+
+                        // Extract unitPrice (per-unit rate) if available
+                        val unitPrice = obj.get("unitPrice")?.asDouble
+                            ?: obj.get("rate")?.asDouble
+                            ?: 0.0
+
+                        // Extract lineTotal/price (total for this item line)
+                        val lineTotal = obj.get("lineTotal")?.asDouble
+                            ?: obj.get("price")?.asDouble
                             ?: obj.get("amount")?.asDouble
                             ?: obj.get("total")?.asDouble
                             ?: 0.0
+
+                        // Extract per-item discount if present
+                        val itemDiscountAmount = obj.get("itemDiscount")?.asDouble
+                            ?: obj.get("itemDiscountAmount")?.asDouble
+                            ?: 0.0
+                        val itemDiscountPercent = obj.get("itemDiscountPercent")?.asDouble ?: 0.0
+
+                        // Calculate price: if unitPrice given, compute; else use lineTotal
+                        val price = if (unitPrice > 0 && lineTotal <= 0) {
+                            val gross = unitPrice * quantity
+                            val discount = if (itemDiscountAmount > 0) itemDiscountAmount
+                                           else gross * itemDiscountPercent / 100.0
+                            (gross - discount).coerceAtLeast(0.0)
+                        } else {
+                            lineTotal
+                        }
+
                         if (price < 0) return@mapNotNull null
-                        BillItem(name = name.trim(), quantity = quantity, unit = unit.trim(), price = price)
+                        BillItem(
+                            name = name.trim(),
+                            quantity = quantity,
+                            unit = unit.trim(),
+                            price = price,
+                            unitPrice = unitPrice,
+                            itemDiscountPercent = itemDiscountPercent,
+                            itemDiscountAmount = itemDiscountAmount
+                        )
                     } catch (e: Exception) {
                         null
                     }
@@ -190,17 +222,21 @@ class GeminiBillingServiceImpl @Inject constructor(
                 - "name": string (product name exactly as written)
                 - "quantity": number
                 - "unit": string (kg, pc, box, packet, litre, dozen, etc.)
-                - "price": number (TOTAL price for this line item = quantity × per-unit rate)
-            - "subtotal": number (sum of all item prices before discount/tax, 0 if not present)
-            - "discountAmount": number (rupee discount on the bill, 0 if none)
-            - "discountPercent": number (discount as percentage, 0 if none)
+                - "unitPrice": number (per-unit rate/price from Rate column)
+                - "lineTotal": number (total for this line = unitPrice × quantity)
+                - "itemDiscount": number (rupee discount on THIS item, 0 if none)
+                - "itemDiscountPercent": number (% discount on THIS item, 0 if none)
+            - "subtotal": number (sum of all lineTotals before bill discount/tax, 0 if not present)
+            - "discountAmount": number (overall bill discount in rupees, 0 if none)
+            - "discountPercent": number (overall bill discount as percentage, 0 if none)
             - "taxAmount": number (total GST/tax amount = CGST + SGST or IGST, 0 if none)
             - "taxPercent": number (GST percentage rate, 0 if none)
             - "totalAmount": number (FINAL grand total / net amount the buyer has to pay)
 
-            IMPORTANT: "totalAmount" must be the FINAL amount after discount and tax.
-            If bill shows: subtotal=1000, discount=50, GST=90, then totalAmount=1040.
-            If items are added by hand after the printed total, include them in items[] and add their amount to totalAmount.
+            IMPORTANT:
+            - "totalAmount" must be the FINAL amount after discount and tax
+            - Extract BOTH unitPrice (rate) AND lineTotal (amount) for each item
+            - If only one value available, use it as lineTotal and compute unitPrice = lineTotal / quantity
         """.trimIndent()
 
         try {
@@ -268,20 +304,29 @@ class GeminiBillingServiceImpl @Inject constructor(
             EXTRACT these fields:
             - "sellerName": shop/company name at top (bold text, look for M/s, Shri, Traders, Enterprises, Bhandar)
             - "billNumber": invoice/bill number ("" if not found)
-            - "items": ALL printed AND handwritten items. Each item: name, quantity, unit, price (TOTAL line amount).
-              • "Rate" column = per-unit → multiply by qty. "Amount"/"Total" column = use directly as price.
-              • Include items written by pen BELOW the printed total (handwritten additions).
-              • Ditto marks (") or "do" = repeat the item name from the line above.
+            - "items": ALL printed AND handwritten items. Each item object must have:
+              • "name": item name exactly as written
+              • "quantity": number (e.g., 2, 0.5, 1.5)
+              • "unit": string (kg, g, L, ml, pc, pkt, box, dozen, etc.)
+              • "unitPrice": per-unit rate/price (the RATE column value, NOT the line total)
+              • "lineTotal": total for this line = unitPrice × quantity (the AMOUNT/TOTAL column value)
+              • "itemDiscount": rupee discount on THIS item only (0 if none)
+              • "itemDiscountPercent": percentage discount on THIS item (0 if none)
+              Example: If bill shows "Sugar 2kg Rate:45 Amount:90", then unitPrice=45, lineTotal=90
+              Example: If bill shows "Rice 5kg @60 = 300 -10%", then unitPrice=60, lineTotal=270, itemDiscountPercent=10
             - "subtotal": sum before discount/tax (0 if not shown)
-            - "discountAmount": rupee discount (0 if none); "discountPercent": % discount (0 if none)
+            - "discountAmount": overall bill discount rupees (0 if none); "discountPercent": % discount (0 if none)
             - "taxAmount": CGST+SGST or IGST total rupees (0 if none); "taxPercent": GST rate % (0 if none)
-            - "totalAmount": FINAL net amount payable (after discount, after tax). If handwritten items added after printed total, include them.
+            - "totalAmount": FINAL net amount payable (after discount, after tax)
             $ocrSection
 
             Return ONLY this JSON (no markdown, no explanation):
-            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","price":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
+            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","unitPrice":0.0,"lineTotal":0.0,"itemDiscount":0.0,"itemDiscountPercent":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            Rules: price = line total (not per-unit rate). Include ALL items. NEVER return empty items[] if bill has items.
+            Rules:
+            - ALWAYS extract unitPrice (per-unit rate) and lineTotal (line amount) separately
+            - If only one value visible, put it in lineTotal and set unitPrice=lineTotal/quantity
+            - Include handwritten items added by pen. Include ALL items. NEVER return empty items[] if bill has items.
         """.trimIndent()
     }
 
@@ -314,20 +359,26 @@ class GeminiBillingServiceImpl @Inject constructor(
             EXTRACT:
             - "sellerName": shop/company name from the first page (bold/top text, M/s, Traders, Enterprises)
             - "billNumber": invoice/bill number ("" if not found)
-            - "items": ALL items across ALL pages (printed and handwritten). Each: name, quantity, unit, price (TOTAL line amount).
-              • "Rate" column = per-unit → multiply by qty. "Amount"/"Total" column = use directly.
-              • Do NOT duplicate carry-forward totals between pages.
-              • Include handwritten items added by pen after the printed total.
+            - "items": ALL items across ALL pages (printed and handwritten). Each item must have:
+              • "name": item name exactly as written
+              • "quantity": number
+              • "unit": string (kg, g, L, pc, pkt, box, dozen, etc.)
+              • "unitPrice": per-unit rate/price (Rate column value)
+              • "lineTotal": total for this line = unitPrice × quantity (Amount column value)
+              • "itemDiscount": rupee discount on THIS item (0 if none)
+              • "itemDiscountPercent": % discount on THIS item (0 if none)
+              Do NOT duplicate carry-forward totals between pages.
+              Include handwritten items added by pen after the printed total.
             - "subtotal": sum before discount/tax (0 if not shown)
-            - "discountAmount": rupee discount (0 if none); "discountPercent": % (0 if none)
+            - "discountAmount": overall bill discount rupees (0 if none); "discountPercent": % (0 if none)
             - "taxAmount": CGST+SGST or IGST total (0 if none); "taxPercent": GST rate % (0 if none)
             - "totalAmount": FINAL net amount payable (last page footer, after discount+tax)
             $ocrSection
 
             Return ONLY this JSON (no markdown, no explanation):
-            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","price":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
+            {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","unitPrice":0.0,"lineTotal":0.0,"itemDiscount":0.0,"itemDiscountPercent":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            Rules: price = line total. Combine ALL pages. NEVER return empty items[] if bill has items.
+            Rules: Extract unitPrice AND lineTotal for each item. Combine ALL pages. NEVER return empty items[] if bill has items.
         """.trimIndent()
 
         try {

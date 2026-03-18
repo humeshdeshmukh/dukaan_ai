@@ -45,6 +45,9 @@ interface BillDao {
     @Query("DELETE FROM bills WHERE id = :billId")
     suspend fun deleteBill(billId: Long)
 
+    @Query("DELETE FROM bills WHERE sellerName = :sellerName")
+    suspend fun deleteBillsBySellerName(sellerName: String)
+
     @Query("SELECT COUNT(*) FROM bills WHERE source = 'VOICE'")
     fun getBillCount(): Flow<Int>
 

@@ -44,4 +44,10 @@ class ScannedBillHistoryViewModel @Inject constructor(
             billingRepository.deleteBill(id)
         }
     }
+
+    fun deleteWholesaler(sellerName: String) {
+        viewModelScope.launch {
+            billingRepository.deleteBillsBySellerName(sellerName)
+        }
+    }
 }

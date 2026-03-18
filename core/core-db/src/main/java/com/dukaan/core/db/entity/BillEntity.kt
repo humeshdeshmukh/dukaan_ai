@@ -13,6 +13,7 @@ data class BillEntity(
     val totalAmount: Double,
     val source: BillSource = BillSource.VOICE,
     val sellerName: String = "",
+    val sellerPhone: String = "",  // Wholesaler phone number
     val billNumber: String = "",
     val imagePath: String? = null,
     val timestamp: Long = System.currentTimeMillis(),

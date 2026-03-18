@@ -1,5 +1,7 @@
 package com.dukaan.feature.ocr.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,7 +28,27 @@ fun ScannedBillHistoryScreen(
 ) {
     val sellers by viewModel.sellerSummaries.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var wholesalerToDelete by remember { mutableStateOf<SellerSummary?>(null) }
     val strings = LocalAppStrings.current
+
+    wholesalerToDelete?.let { summary ->
+        AlertDialog(
+            onDismissRequest = { wholesalerToDelete = null },
+            icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete Wholesaler?") },
+            text = { Text("All ${summary.billCount} purchase bills from ${summary.sellerName} will be permanently deleted.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteWholesaler(summary.sellerName)
+                        wholesalerToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { wholesalerToDelete = null }) { Text("Cancel") } }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -94,7 +116,8 @@ fun ScannedBillHistoryScreen(
                     items(filtered) { summary ->
                         WholesalerSummaryCard(
                             summary = summary,
-                            onClick = { onWholesalerClick(summary.sellerName) }
+                            onClick = { onWholesalerClick(summary.sellerName) },
+                            onLongClick = { wholesalerToDelete = summary }
                         )
                     }
                 }
@@ -103,22 +126,26 @@ fun ScannedBillHistoryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WholesalerSummaryCard(
     summary: SellerSummary,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val strings = LocalAppStrings.current
 
     Card(
-        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically

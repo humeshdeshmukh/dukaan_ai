@@ -53,8 +53,22 @@ data class OcrUiState(
     val docScannerAvailable: Boolean = true,
     val chatMessages: List<ChatMessage> = emptyList(),
     val isAiTyping: Boolean = false,
-    val editingBillId: Long? = null
+    val editingBillId: Long? = null,
+    // Accuracy validation fields
+    val subtotalMismatch: SubtotalMismatch? = null,
+    val originalExtractedSubtotal: Double = 0.0  // Store original for comparison when items change
 )
+
+/**
+ * Represents a mismatch between Gemini's extracted subtotal and calculated items sum.
+ */
+data class SubtotalMismatch(
+    val extractedSubtotal: Double,
+    val calculatedItemsSum: Double,
+    val difference: Double
+) {
+    val isSignificant: Boolean get() = kotlin.math.abs(difference) > 0.50  // ₹0.50 tolerance
+}
 
 @HiltViewModel
 class OcrViewModel @Inject constructor(
@@ -151,7 +165,16 @@ class OcrViewModel @Inject constructor(
                         geminiService.parseBillImage(geminiImage)
                     }
 
-                    _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
+                    // Validate subtotal accuracy
+                    val mismatch = validateSubtotal(bill)
+
+                    _uiState.update { it.copy(
+                        scannedBill = bill,
+                        isScanning = false,
+                        scanProgress = ScanProgress.DONE,
+                        subtotalMismatch = mismatch,
+                        originalExtractedSubtotal = bill.subtotal
+                    ) }
                 } else {
                     _uiState.update { it.copy(error = "Failed to load captured image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
                 }
@@ -205,7 +228,16 @@ class OcrViewModel @Inject constructor(
                         geminiService.parseBillImage(geminiImage)
                     }
 
-                    _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
+                    // Validate subtotal accuracy
+                    val mismatch = validateSubtotal(bill)
+
+                    _uiState.update { it.copy(
+                        scannedBill = bill,
+                        isScanning = false,
+                        scanProgress = ScanProgress.DONE,
+                        subtotalMismatch = mismatch,
+                        originalExtractedSubtotal = bill.subtotal
+                    ) }
                 } else {
                     _uiState.update { it.copy(error = "Failed to load image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
                 }
@@ -282,7 +314,10 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.filter { it != item }
-                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
+                val updatedBill = bill.copy(items = newItems).withRecalculatedTotals(bill)
+                // Recalculate mismatch with new items using stored original subtotal
+                val newMismatch = recalculateMismatch(updatedBill, state.originalExtractedSubtotal)
+                state.copy(scannedBill = updatedBill, subtotalMismatch = newMismatch)
             } ?: state
         }
     }
@@ -291,7 +326,10 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items.toMutableList().apply { set(index, updatedItem) }
-                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
+                val updatedBill = bill.copy(items = newItems).withRecalculatedTotals(bill)
+                // Recalculate mismatch with new items using stored original subtotal
+                val newMismatch = recalculateMismatch(updatedBill, state.originalExtractedSubtotal)
+                state.copy(scannedBill = updatedBill, subtotalMismatch = newMismatch)
             } ?: state
         }
     }
@@ -300,9 +338,34 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val newItems = bill.items + item
-                state.copy(scannedBill = bill.copy(items = newItems).withRecalculatedTotals(bill))
+                val updatedBill = bill.copy(items = newItems).withRecalculatedTotals(bill)
+                // Recalculate mismatch with new items using stored original subtotal
+                val newMismatch = recalculateMismatch(updatedBill, state.originalExtractedSubtotal)
+                state.copy(scannedBill = updatedBill, subtotalMismatch = newMismatch)
             } ?: state
         }
+    }
+
+    /**
+     * Recalculate mismatch when items change.
+     * Uses the original extracted subtotal for comparison.
+     */
+    private fun recalculateMismatch(bill: Bill, originalExtractedSubtotal: Double): SubtotalMismatch? {
+        val itemsSum = bill.items.sumOf { it.total }
+
+        // Only show mismatch if original subtotal was > 0
+        if (originalExtractedSubtotal <= 0) return null
+
+        val difference = originalExtractedSubtotal - itemsSum
+
+        // Return mismatch if difference exceeds tolerance (₹0.50)
+        return if (kotlin.math.abs(difference) > 0.50) {
+            SubtotalMismatch(
+                extractedSubtotal = originalExtractedSubtotal,
+                calculatedItemsSum = itemsSum,
+                difference = difference
+            )
+        } else null
     }
 
     /**
@@ -331,6 +394,100 @@ class OcrViewModel @Inject constructor(
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 state.copy(scannedBill = bill.copy(sellerName = name))
+            } ?: state
+        }
+    }
+
+    fun updateSellerPhone(phone: String) {
+        _uiState.update { state ->
+            state.scannedBill?.let { bill ->
+                state.copy(scannedBill = bill.copy(sellerPhone = phone))
+            } ?: state
+        }
+    }
+
+    /**
+     * Validates subtotal accuracy by comparing Gemini's extracted subtotal
+     * with the calculated sum of item totals.
+     */
+    private fun validateSubtotal(bill: Bill): SubtotalMismatch? {
+        val itemsSum = bill.items.sumOf { it.total }
+        val extractedSubtotal = bill.subtotal
+
+        // Only check if Gemini returned a subtotal > 0
+        if (extractedSubtotal <= 0) return null
+
+        val difference = extractedSubtotal - itemsSum
+
+        // Return mismatch if difference exceeds tolerance (₹0.50)
+        return if (kotlin.math.abs(difference) > 0.50) {
+            SubtotalMismatch(
+                extractedSubtotal = extractedSubtotal,
+                calculatedItemsSum = itemsSum,
+                difference = difference
+            )
+        } else null
+    }
+
+    /**
+     * User chose to use the calculated items sum as subtotal (fixes mismatch).
+     */
+    fun useCalculatedSubtotal() {
+        _uiState.update { state ->
+            state.scannedBill?.let { bill ->
+                val itemsSum = bill.items.sumOf { it.total }
+                val updatedBill = bill.copy(subtotal = itemsSum)
+                state.copy(
+                    scannedBill = updatedBill.withRecalculatedTotals(updatedBill),
+                    subtotalMismatch = null
+                )
+            } ?: state
+        }
+    }
+
+    /**
+     * User chose to ignore the subtotal mismatch warning.
+     */
+    fun dismissSubtotalMismatch() {
+        _uiState.update { it.copy(subtotalMismatch = null) }
+    }
+
+    /**
+     * Updates discount percentage and recalculates totals.
+     */
+    fun updateDiscountPercent(percent: Double) {
+        _uiState.update { state ->
+            state.scannedBill?.let { bill ->
+                val subtotal = bill.items.sumOf { it.total }
+                val discountAmount = subtotal * percent / 100.0
+                val afterDiscount = subtotal - discountAmount
+                val taxAmount = afterDiscount * bill.taxPercent / 100.0
+                val total = afterDiscount + taxAmount
+                state.copy(scannedBill = bill.copy(
+                    discountPercent = percent,
+                    discountAmount = discountAmount,
+                    taxAmount = taxAmount,
+                    totalAmount = total
+                ))
+            } ?: state
+        }
+    }
+
+    /**
+     * Updates tax percentage and recalculates totals.
+     */
+    fun updateTaxPercent(percent: Double) {
+        _uiState.update { state ->
+            state.scannedBill?.let { bill ->
+                val subtotal = bill.items.sumOf { it.total }
+                val afterDiscount = subtotal - bill.discountAmount
+                val taxAmount = afterDiscount * percent / 100.0
+                val total = afterDiscount + taxAmount
+                state.copy(scannedBill = bill.copy(
+                    taxPercent = percent,
+                    taxAmount = taxAmount,
+                    totalAmount = total
+                ))
             } ?: state
         }
     }
@@ -442,7 +599,16 @@ class OcrViewModel @Inject constructor(
                     }
                 }
 
-                _uiState.update { it.copy(scannedBill = bill, isScanning = false, scanProgress = ScanProgress.DONE) }
+                // Validate subtotal accuracy
+                val mismatch = validateSubtotal(bill)
+
+                _uiState.update { it.copy(
+                    scannedBill = bill,
+                    isScanning = false,
+                    scanProgress = ScanProgress.DONE,
+                    subtotalMismatch = mismatch,
+                    originalExtractedSubtotal = bill.subtotal
+                ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     error = "Failed to process scanned pages: ${e.localizedMessage}",

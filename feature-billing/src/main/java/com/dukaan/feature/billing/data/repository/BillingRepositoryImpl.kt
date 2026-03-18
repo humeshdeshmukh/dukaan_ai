@@ -22,6 +22,7 @@ class BillingRepositoryImpl @Inject constructor(
             totalAmount = bill.totalAmount,
             source = try { BillSource.valueOf(source) } catch (e: Exception) { BillSource.VOICE },
             sellerName = bill.sellerName,
+            sellerPhone = bill.sellerPhone,
             billNumber = bill.billNumber,
             imagePath = imagePath,
             timestamp = bill.timestamp,
@@ -43,7 +44,10 @@ class BillingRepositoryImpl @Inject constructor(
                 name = item.name,
                 quantity = item.quantity,
                 unit = item.unit,
-                price = item.price
+                price = item.price,
+                unitPrice = item.unitPrice,
+                itemDiscountPercent = item.itemDiscountPercent,
+                itemDiscountAmount = item.itemDiscountAmount
             )
         }
         return billDao.insertBillWithItems(billEntity, itemEntities)
@@ -67,6 +71,10 @@ class BillingRepositoryImpl @Inject constructor(
 
     override suspend fun deleteBill(id: Long) {
         billDao.deleteBill(id)
+    }
+
+    override suspend fun deleteBillsBySellerName(sellerName: String) {
+        billDao.deleteBillsBySellerName(sellerName)
     }
 
     override fun getAllSellerNames(): Flow<List<String>> {
@@ -93,11 +101,15 @@ class BillingRepositoryImpl @Inject constructor(
                     name = item.name,
                     quantity = item.quantity,
                     unit = item.unit,
-                    price = item.price
+                    price = item.price,
+                    unitPrice = item.unitPrice,
+                    itemDiscountPercent = item.itemDiscountPercent,
+                    itemDiscountAmount = item.itemDiscountAmount
                 )
             },
             totalAmount = bill.totalAmount,
             sellerName = bill.sellerName,
+            sellerPhone = bill.sellerPhone,
             billNumber = bill.billNumber,
             imagePath = bill.imagePath,
             timestamp = bill.timestamp,

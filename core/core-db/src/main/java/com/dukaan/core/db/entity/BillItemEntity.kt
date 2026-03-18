@@ -20,5 +20,8 @@ data class BillItemEntity(
     val name: String,
     val quantity: Double,
     val unit: String,
-    val price: Double
+    val price: Double,
+    val unitPrice: Double = 0.0,
+    val itemDiscountPercent: Double = 0.0,
+    val itemDiscountAmount: Double = 0.0
 )

@@ -277,11 +277,31 @@ fun BillDetailScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                    // Show rate × qty breakdown
+                                    val unitPrice = item.effectiveUnitPrice
+                                    val rateDisplay = if (unitPrice > 0 && item.quantity > 0) {
+                                        "${item.quantity} ${item.unit} × ${currencyFormat.format(unitPrice)}/${item.unit}"
+                                    } else {
+                                        "${item.quantity} ${item.unit}"
+                                    }
                                     Text(
-                                        "${item.quantity} ${item.unit}",
+                                        rateDisplay,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    // Show item discount if present
+                                    if (item.itemDiscountAmount > 0 || item.itemDiscountPercent > 0) {
+                                        val discountText = if (item.itemDiscountPercent > 0) {
+                                            "Discount: ${item.itemDiscountPercent}% (-${currencyFormat.format(item.grossTotal - item.total)})"
+                                        } else {
+                                            "Discount: -${currencyFormat.format(item.itemDiscountAmount)}"
+                                        }
+                                        Text(
+                                            discountText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
                                 Text(
                                     currencyFormat.format(item.total),

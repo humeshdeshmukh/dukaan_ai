@@ -342,7 +342,12 @@ fun AppNavigation(
                     onEditItem = { index, item -> ocrViewModel.editItem(index, item) },
                     onAddItem = { item -> ocrViewModel.addItem(item) },
                     onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
-                    onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) }
+                    onSellerPhoneChanged = { phone -> ocrViewModel.updateSellerPhone(phone) },
+                    onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) },
+                    onUseCalculatedSubtotal = { ocrViewModel.useCalculatedSubtotal() },
+                    onDismissSubtotalMismatch = { ocrViewModel.dismissSubtotalMismatch() },
+                    onDiscountPercentChanged = { percent -> ocrViewModel.updateDiscountPercent(percent) },
+                    onTaxPercentChanged = { percent -> ocrViewModel.updateTaxPercent(percent) }
                 )
             }
         }
@@ -637,7 +642,12 @@ fun AppNavigation(
                 onEditItem = { index, item -> ocrViewModel.editItem(index, item) },
                 onAddItem = { item -> ocrViewModel.addItem(item) },
                 onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
-                onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) }
+                onSellerPhoneChanged = { phone -> ocrViewModel.updateSellerPhone(phone) },
+                onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) },
+                onUseCalculatedSubtotal = { ocrViewModel.useCalculatedSubtotal() },
+                onDismissSubtotalMismatch = { ocrViewModel.dismissSubtotalMismatch() },
+                onDiscountPercentChanged = { percent -> ocrViewModel.updateDiscountPercent(percent) },
+                onTaxPercentChanged = { percent -> ocrViewModel.updateTaxPercent(percent) }
             )
         }
 
