@@ -685,21 +685,26 @@ fun AppNavigation(
                     },
                     isTranslating = isTranslating,
                     onPreviewPdf = {
-                        val shopInfo = settingsState.toShopInfo()
-                        val sampleBill = com.dukaan.core.network.model.Bill(
-                            id = 0,
-                            items = listOf(
-                                com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
-                                com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
-                                com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
-                            ),
-                            totalAmount = 310.0,
-                            sellerName = "",
-                            billNumber = "SAMPLE-001",
-                            timestamp = System.currentTimeMillis()
-                        )
-                        val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
-                        pdfPreviewFile = file
+                        try {
+                            val shopInfo = settingsState.toShopInfo()
+                            val sampleBill = com.dukaan.core.network.model.Bill(
+                                id = 0,
+                                items = listOf(
+                                    com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
+                                    com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
+                                    com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
+                                ),
+                                totalAmount = 310.0,
+                                sellerName = "",
+                                billNumber = "SAMPLE-001",
+                                timestamp = System.currentTimeMillis()
+                            )
+                            val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
+                            pdfPreviewFile = file
+                        } catch (e: Exception) {
+                            // PDF generation failed - create a basic error indicator
+                            android.util.Log.e("AppNavigation", "PDF preview failed: ${e.message}", e)
+                        }
                     }
                 )
             }

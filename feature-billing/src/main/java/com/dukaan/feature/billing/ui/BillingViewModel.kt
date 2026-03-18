@@ -463,18 +463,6 @@ class BillingViewModel @Inject constructor(
         combined
     }
 
-    /**
-     * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
-     * Higher resolution improves handwriting recognition accuracy.
-     */
-    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 2048): Bitmap {
-        val w = bitmap.width
-        val h = bitmap.height
-        if (w <= maxDim && h <= maxDim) return bitmap
-        val scale = maxDim.toFloat() / maxOf(w, h)
-        return Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true)
-    }
-
     /** Process pages from GmsDocumentScanning: ML Kit OCR + Gemini dual extraction */
     fun processScannedCustomerListPages(context: Context, pageUris: List<Uri>) {
         if (_uiState.value.isScanningList) return
@@ -497,16 +485,14 @@ class BillingViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                // Step 2: Enhance images and send to Gemini in parallel
+                // Step 2: Enhance images and send to Gemini in parallel (original quality for best OCR)
                 val itemsList = withContext(Dispatchers.Default) {
                     bitmaps.mapIndexed { i, bitmap ->
                         async {
                             val ocrText = ocrTexts.getOrElse(i) { "" }
                             val enhancedBitmap = enhanceImageForHandwriting(bitmap)
-                            val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
-                            val items = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                            val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
                             if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
-                            if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
                             items
                         }
                     }.awaitAll()
@@ -558,13 +544,11 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image and resize before Gemini
+                    // Enhance image and send to Gemini at original quality
                     val items = withContext(Dispatchers.Default) {
                         val enhancedBitmap = enhanceImageForHandwriting(bitmap)
-                        val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
-                        val result = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                        val result = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
                         if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
-                        if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
                         result
                     }
 
@@ -602,13 +586,11 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image and resize before Gemini
+                    // Enhance image and send to Gemini at original quality
                     val items = withContext(Dispatchers.Default) {
                         val enhancedBitmap = enhanceImageForHandwriting(bitmap)
-                        val resizedBitmap = resizeBitmapForGemini(enhancedBitmap)
-                        val result = geminiService.parseCustomerListImage(resizedBitmap, ocrText)
+                        val result = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
                         if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
-                        if (resizedBitmap != enhancedBitmap && resizedBitmap != bitmap) resizedBitmap.recycle()
                         result
                     }
 

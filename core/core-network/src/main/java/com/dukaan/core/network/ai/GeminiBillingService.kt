@@ -111,47 +111,62 @@ class GeminiBillingServiceImpl @Inject constructor(
 
     private fun parseBillJson(rawText: String): Bill {
         val jsonString = extractJsonObject(rawText)
+
+        if (jsonString.isBlank() || jsonString == "{}") {
+            throw IllegalStateException("AI service returned empty response. Please try with a clearer image.")
+        }
+
         return try {
             val gson = com.google.gson.Gson()
             val jsonElement = gson.fromJson(jsonString, com.google.gson.JsonObject::class.java)
-                ?: return Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+                ?: throw IllegalStateException("Invalid response format from AI service.")
 
             val sellerName = jsonElement.get("sellerName")?.asString ?: ""
             val billNumber = jsonElement.get("billNumber")?.asString ?: ""
-            val totalAmount = jsonElement.get("totalAmount")?.asDouble ?: 0.0
-            val subtotal = jsonElement.get("subtotal")?.asDouble ?: 0.0
-            val discountAmount = jsonElement.get("discountAmount")?.asDouble ?: 0.0
-            val discountPercent = jsonElement.get("discountPercent")?.asDouble ?: 0.0
-            val taxAmount = jsonElement.get("taxAmount")?.asDouble ?: 0.0
-            val taxPercent = jsonElement.get("taxPercent")?.asDouble ?: 0.0
+
+            // Validate numeric values and coerce to safe ranges
+            val totalAmount = jsonElement.get("totalAmount")?.asDouble?.takeIf { it >= 0 } ?: 0.0
+            val subtotal = jsonElement.get("subtotal")?.asDouble?.takeIf { it >= 0 } ?: 0.0
+            val discountAmount = jsonElement.get("discountAmount")?.asDouble?.takeIf { it >= 0 } ?: 0.0
+            val discountPercent = jsonElement.get("discountPercent")?.asDouble?.coerceIn(0.0, 100.0) ?: 0.0
+            val taxAmount = jsonElement.get("taxAmount")?.asDouble?.takeIf { it >= 0 } ?: 0.0
+            val taxPercent = jsonElement.get("taxPercent")?.asDouble?.coerceIn(0.0, 50.0) ?: 0.0
 
             val itemsArray = jsonElement.getAsJsonArray("items")
+            var validItemCount = 0
+            var skippedItemCount = 0
+
             val items = if (itemsArray != null && itemsArray.size() > 0) {
                 itemsArray.mapNotNull { element ->
                     try {
                         val obj = element.asJsonObject
-                        val name = obj.get("name")?.asString ?: return@mapNotNull null
-                        if (name.isBlank()) return@mapNotNull null
-                        val quantity = obj.get("quantity")?.asDouble ?: 1.0
-                        val unit = obj.get("unit")?.asString ?: "pc"
+                        val name = obj.get("name")?.asString?.trim()
+
+                        if (name.isNullOrBlank()) {
+                            skippedItemCount++
+                            return@mapNotNull null
+                        }
+
+                        val quantity = obj.get("quantity")?.asDouble?.takeIf { it > 0 } ?: 1.0
+                        val unit = obj.get("unit")?.asString?.trim() ?: "pc"
 
                         // Extract unitPrice (per-unit rate) if available
-                        val unitPrice = obj.get("unitPrice")?.asDouble
-                            ?: obj.get("rate")?.asDouble
+                        val unitPrice = obj.get("unitPrice")?.asDouble?.takeIf { it >= 0 }
+                            ?: obj.get("rate")?.asDouble?.takeIf { it >= 0 }
                             ?: 0.0
 
                         // Extract lineTotal/price (total for this item line)
-                        val lineTotal = obj.get("lineTotal")?.asDouble
-                            ?: obj.get("price")?.asDouble
-                            ?: obj.get("amount")?.asDouble
-                            ?: obj.get("total")?.asDouble
+                        val lineTotal = obj.get("lineTotal")?.asDouble?.takeIf { it >= 0 }
+                            ?: obj.get("price")?.asDouble?.takeIf { it >= 0 }
+                            ?: obj.get("amount")?.asDouble?.takeIf { it >= 0 }
+                            ?: obj.get("total")?.asDouble?.takeIf { it >= 0 }
                             ?: 0.0
 
                         // Extract per-item discount if present
-                        val itemDiscountAmount = obj.get("itemDiscount")?.asDouble
-                            ?: obj.get("itemDiscountAmount")?.asDouble
+                        val itemDiscountAmount = obj.get("itemDiscount")?.asDouble?.takeIf { it >= 0 }
+                            ?: obj.get("itemDiscountAmount")?.asDouble?.takeIf { it >= 0 }
                             ?: 0.0
-                        val itemDiscountPercent = obj.get("itemDiscountPercent")?.asDouble ?: 0.0
+                        val itemDiscountPercent = obj.get("itemDiscountPercent")?.asDouble?.coerceIn(0.0, 100.0) ?: 0.0
 
                         // Calculate price: if unitPrice given, compute; else use lineTotal
                         val price = if (unitPrice > 0 && lineTotal <= 0) {
@@ -163,17 +178,24 @@ class GeminiBillingServiceImpl @Inject constructor(
                             lineTotal
                         }
 
-                        if (price < 0) return@mapNotNull null
+                        if (price <= 0) {
+                            skippedItemCount++
+                            return@mapNotNull null
+                        }
+
+                        validItemCount++
                         BillItem(
-                            name = name.trim(),
+                            name = name,
                             quantity = quantity,
-                            unit = unit.trim(),
+                            unit = unit,
                             price = price,
                             unitPrice = unitPrice,
                             itemDiscountPercent = itemDiscountPercent,
                             itemDiscountAmount = itemDiscountAmount
                         )
                     } catch (e: Exception) {
+                        skippedItemCount++
+                        android.util.Log.w("BillingService", "Skipped malformed item: ${e.message}")
                         null
                     }
                 }
@@ -181,14 +203,24 @@ class GeminiBillingServiceImpl @Inject constructor(
                 emptyList()
             }
 
-            // Use Gemini's totalAmount. Only fall back to sum if Gemini returned nothing.
+            // Log parsing statistics for debugging
+            if (skippedItemCount > 0) {
+                android.util.Log.w("BillingService", "Parsed $validItemCount items, skipped $skippedItemCount invalid items")
+            }
+
+            // Validate we extracted meaningful data
+            if (items.isEmpty() && sellerName.isBlank()) {
+                throw IllegalStateException("No valid bill data could be extracted. Please try with a clearer image of the bill.")
+            }
+
+            // Use AI service's totalAmount. Only fall back to sum if AI service returned nothing.
             val finalTotal = when {
                 totalAmount > 0.0 -> totalAmount
                 items.isNotEmpty() -> items.sumOf { it.total } - discountAmount + taxAmount
                 else -> 0.0
             }
 
-            // If subtotal not returned by Gemini, derive it from items sum
+            // If subtotal not returned by AI service, derive it from items sum
             val finalSubtotal = if (subtotal > 0.0) subtotal else items.sumOf { it.total }
 
             Bill(
@@ -202,9 +234,14 @@ class GeminiBillingServiceImpl @Inject constructor(
                 taxAmount = taxAmount,
                 taxPercent = taxPercent
             )
+        } catch (e: IllegalStateException) {
+            throw e // Re-throw our meaningful exceptions
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            android.util.Log.e("BillingService", "Invalid JSON from AI service: $jsonString", e)
+            throw RuntimeException("AI service returned invalid data format. Please try again.")
         } catch (e: Exception) {
-            e.printStackTrace()
-            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+            android.util.Log.e("BillingService", "Bill parsing failed", e)
+            throw RuntimeException("Unable to parse the bill data. Please try with a clearer image.")
         }
     }
 
@@ -241,11 +278,18 @@ class GeminiBillingServiceImpl @Inject constructor(
 
         try {
             val response = flashModel.generateContent(prompt)
-            val rawJson = response.text ?: "{}"
+            val rawJson = response.text
+
+            if (rawJson.isNullOrBlank()) {
+                throw IllegalStateException("No response received from AI service")
+            }
+
             parseBillJson(rawJson)
+        } catch (e: IllegalStateException) {
+            throw e // Re-throw our own exceptions
         } catch (e: Exception) {
-            e.printStackTrace()
-            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+            android.util.Log.e("BillingService", "AI OCR parsing failed", e)
+            throw RuntimeException("Unable to parse the extracted text. Please try with a clearer image.")
         }
     }
 
@@ -258,11 +302,19 @@ class GeminiBillingServiceImpl @Inject constructor(
                 text(prompt)
             }
             val response = flashModel.generateContent(inputContent)
-            val rawJson = response.text ?: "{}"
+            val rawJson = response.text
+
+            if (rawJson.isNullOrBlank()) {
+                throw IllegalStateException("No response received from AI service")
+            }
+
             parseBillJson(rawJson)
+        } catch (e: IllegalStateException) {
+            throw e // Re-throw our own exceptions
         } catch (e: Exception) {
-            e.printStackTrace()
-            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+            // Log for debugging but throw user-friendly exception
+            android.util.Log.e("BillingService", "AI image parsing failed", e)
+            throw RuntimeException("Unable to analyze the bill image. Please try again with a clearer photo.")
         }
     }
 
@@ -275,15 +327,26 @@ class GeminiBillingServiceImpl @Inject constructor(
                 text(prompt)
             }
             val response = flashModel.generateContent(inputContent)
-            val rawJson = response.text ?: "{}"
+            val rawJson = response.text
+
+            if (rawJson.isNullOrBlank()) {
+                throw IllegalStateException("No response received from AI service")
+            }
+
             parseBillJson(rawJson)
+        } catch (e: IllegalStateException) {
+            throw e // Re-throw our own exceptions
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("BillingService", "AI image+OCR parsing failed", e)
             // Fallback: try text-only parsing if image+text failed
             if (ocrText.isNotBlank()) {
-                try { return@withContext parseOcrText(ocrText) } catch (_: Exception) {}
+                try {
+                    return@withContext parseOcrText(ocrText)
+                } catch (fallbackException: Exception) {
+                    android.util.Log.e("BillingService", "OCR fallback also failed", fallbackException)
+                }
             }
-            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+            throw RuntimeException("Unable to analyze the bill image. Please try again with a clearer photo.")
         }
     }
 
@@ -403,14 +466,26 @@ class GeminiBillingServiceImpl @Inject constructor(
                 text(prompt)
             }
             val response = flashModel.generateContent(inputContent)
-            val rawJson = response.text ?: "{}"
-            parseBillJson(rawJson)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            if (combinedOcr.isNotBlank()) {
-                try { return@withContext parseOcrText(combinedOcr) } catch (_: Exception) {}
+            val rawJson = response.text
+
+            if (rawJson.isNullOrBlank()) {
+                throw IllegalStateException("No response received from AI service")
             }
-            Bill(items = emptyList(), totalAmount = 0.0, sellerName = "Unknown Seller")
+
+            parseBillJson(rawJson)
+        } catch (e: IllegalStateException) {
+            throw e // Re-throw our own exceptions
+        } catch (e: Exception) {
+            android.util.Log.e("BillingService", "AI multi-page parsing failed", e)
+            // Fallback: try OCR-only parsing if available
+            if (combinedOcr.isNotBlank()) {
+                try {
+                    return@withContext parseOcrText(combinedOcr)
+                } catch (fallbackException: Exception) {
+                    android.util.Log.e("BillingService", "Multi-page OCR fallback also failed", fallbackException)
+                }
+            }
+            throw RuntimeException("Unable to analyze the multi-page bill. Please try with clearer images.")
         }
     }
 

@@ -17,8 +17,23 @@ interface ShopProfileDao {
     suspend fun getProfileOnce(): ShopProfileEntity?
 
     @Query("UPDATE shop_profile SET isDarkTheme = :isDark WHERE id = 1")
-    suspend fun updateDarkTheme(isDark: Boolean)
+    suspend fun updateDarkThemeRaw(isDark: Boolean): Int
 
     @Query("UPDATE shop_profile SET languageCode = :code WHERE id = 1")
-    suspend fun updateLanguage(code: String)
+    suspend fun updateLanguageRaw(code: String): Int
+
+    // Helper methods that ensure row exists before updating
+    suspend fun updateDarkTheme(isDark: Boolean) {
+        if (updateDarkThemeRaw(isDark) == 0) {
+            // No row existed, create default profile with this setting
+            upsertProfile(ShopProfileEntity(isDarkTheme = isDark))
+        }
+    }
+
+    suspend fun updateLanguage(code: String) {
+        if (updateLanguageRaw(code) == 0) {
+            // No row existed, create default profile with this setting
+            upsertProfile(ShopProfileEntity(languageCode = code))
+        }
+    }
 }

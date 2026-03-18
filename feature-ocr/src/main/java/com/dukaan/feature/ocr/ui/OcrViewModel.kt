@@ -95,6 +95,32 @@ class OcrViewModel @Inject constructor(
         TextRecognizerOptions.DEFAULT_OPTIONS
     )
 
+    override fun onCleared() {
+        super.onCleared()
+        // Clean up resources to prevent memory leaks
+        recycleCachedBitmap()
+        try {
+            devanagariRecognizer.close()
+            latinRecognizer.close()
+        } catch (e: Exception) {
+            // Ignore cleanup errors
+        }
+    }
+
+    private fun recycleCachedBitmap() {
+        cachedBillBitmap?.let { bitmap ->
+            if (!bitmap.isRecycled) {
+                bitmap.recycle()
+            }
+        }
+        cachedBillBitmap = null
+    }
+
+    private fun setCachedBitmap(bitmap: Bitmap) {
+        recycleCachedBitmap() // Clean up previous bitmap first
+        cachedBillBitmap = bitmap
+    }
+
     /** Run a single ML Kit recognizer on a bitmap, returning extracted text or "". */
     private suspend fun extractText(bitmap: Bitmap, recognizer: TextRecognizer): String =
         suspendCancellableCoroutine { cont ->
@@ -106,20 +132,26 @@ class OcrViewModel @Inject constructor(
 
     /**
      * Extract text from bitmap using both Devanagari and Latin recognizers in parallel.
-     * Merges their results so Gemini receives both Hindi and English content from the bill.
+     * Merges their results so AI service receives both Hindi and English content from the bill.
      */
     private suspend fun extractTextFromBitmap(bitmap: Bitmap): String = coroutineScope {
         val devanagariDeferred = async { extractText(bitmap, devanagariRecognizer) }
         val latinDeferred = async { extractText(bitmap, latinRecognizer) }
         val devanagari = devanagariDeferred.await()
         val latin = latinDeferred.await()
-        // Merge unique lines from both recognizers — Gemini handles any duplicates
-        val combined = (devanagari.lines() + latin.lines())
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .joinToString("\n")
-        combined
+
+        // Efficiently merge unique lines from both recognizers
+        val allLines = mutableSetOf<String>()
+        devanagari.lines().forEach { line ->
+            val trimmed = line.trim()
+            if (trimmed.isNotBlank()) allLines.add(trimmed)
+        }
+        latin.lines().forEach { line ->
+            val trimmed = line.trim()
+            if (trimmed.isNotBlank()) allLines.add(trimmed)
+        }
+
+        allLines.joinToString("\n")
     }
 
     /** Extract text from multiple bitmaps in parallel. */
@@ -128,42 +160,38 @@ class OcrViewModel @Inject constructor(
             bitmaps.map { bitmap -> async { extractTextFromBitmap(bitmap) } }.awaitAll()
         }
 
-    /**
-     * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
-     * ML Kit OCR runs on the full-res image before this; Gemini benefits from higher res for handwriting.
-     */
-    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 2048): Bitmap {
-        val w = bitmap.width
-        val h = bitmap.height
-        if (w <= maxDim && h <= maxDim) return bitmap
-        val scale = maxDim.toFloat() / maxOf(w, h)
-        return Bitmap.createScaledBitmap(bitmap, (w * scale).toInt(), (h * scale).toInt(), true)
-    }
-
-    /** Process a captured camera image via ML Kit OCR + Gemini vision (dual extraction) */
+    /** Process a captured camera image via ML Kit OCR + AI vision (dual extraction) */
     fun processCapturedImage(imagePath: String) {
-        if (_uiState.value.isScanning) return
+        // Thread-safe scanning state check and update
+        synchronized(this) {
+            if (_uiState.value.isScanning) return
+            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imagePath, scanProgress = ScanProgress.READING_TEXT) }
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null, capturedImageUri = imagePath, scanProgress = ScanProgress.READING_TEXT) }
             try {
                 val bitmap = withContext(Dispatchers.IO) {
-                    BitmapFactory.decodeFile(imagePath)
+                    BitmapFactory.decodeFile(imagePath)?.also { loadedBitmap ->
+                        // Validate bitmap before proceeding
+                        if (loadedBitmap.width <= 0 || loadedBitmap.height <= 0) {
+                            throw IllegalArgumentException("Invalid image dimensions")
+                        }
+                    }
                 }
+
                 if (bitmap != null) {
-                    cachedBillBitmap = bitmap
+                    setCachedBitmap(bitmap)
 
                     // Step 1: Extract text using ML Kit (on-device OCR, full-res)
                     val ocrText = extractTextFromBitmap(bitmap)
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Resize for Gemini, then send image + OCR text for best accuracy
-                    val geminiImage = withContext(Dispatchers.Default) { resizeBitmapForGemini(bitmap) }
+                    // Step 2: Send original image + OCR text to AI service for best accuracy on handwritten text
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(geminiImage, ocrText)
+                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
                     } else {
-                        geminiService.parseBillImage(geminiImage)
+                        geminiService.parseBillImage(bitmap)
                     }
 
                     // Validate subtotal accuracy
@@ -177,43 +205,72 @@ class OcrViewModel @Inject constructor(
                         originalExtractedSubtotal = bill.subtotal
                     ) }
                 } else {
-                    _uiState.update { it.copy(error = "Failed to load captured image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                    _uiState.update { it.copy(
+                        error = "Unable to load the captured image. Please try taking the photo again.",
+                        isScanning = false,
+                        scanProgress = ScanProgress.IDLE
+                    ) }
                 }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(
+                    error = "The image appears to be corrupted. Please try scanning again.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
+            } catch (e: OutOfMemoryError) {
+                recycleCachedBitmap()
+                _uiState.update { it.copy(
+                    error = "Image too large to process. Please try with a smaller image.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to process bill image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                _uiState.update { it.copy(
+                    error = "Unable to process the bill image. Please ensure the image is clear and try again.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
             }
         }
     }
 
-    /** Process a gallery image via ML Kit OCR + Gemini vision (dual extraction) */
+    /** Process a gallery image via ML Kit OCR + AI vision (dual extraction) */
     fun processGalleryImage(context: Context, imageUri: Uri) {
-        if (_uiState.value.isScanning) return
+        // Thread-safe scanning state check and update
+        synchronized(this) {
+            if (_uiState.value.isScanning) return
+            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
             try {
                 val result = withContext(Dispatchers.IO) {
-                    val inputStream = context.contentResolver.openInputStream(imageUri)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream?.close()
-
-                    if (bitmap != null) {
-                        // Save a copy for bill photo reference
-                        val photoDir = File(context.filesDir, "bills")
-                        photoDir.mkdirs()
-                        val photoFile = File(photoDir, "${System.currentTimeMillis()}.jpg")
-                        photoFile.outputStream().use { out ->
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                        val bitmap = BitmapFactory.decodeStream(inputStream)?.also { loadedBitmap ->
+                            // Validate bitmap before proceeding
+                            if (loadedBitmap.width <= 0 || loadedBitmap.height <= 0) {
+                                throw IllegalArgumentException("Invalid image dimensions")
+                            }
                         }
-                        Pair(bitmap, photoFile.absolutePath)
-                    } else {
-                        null
+
+                        if (bitmap != null) {
+                            // Save a copy for bill photo reference
+                            val photoDir = File(context.filesDir, "bills")
+                            photoDir.mkdirs()
+                            val photoFile = File(photoDir, "${System.currentTimeMillis()}.jpg")
+                            photoFile.outputStream().use { out ->
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                            }
+                            Pair(bitmap, photoFile.absolutePath)
+                        } else {
+                            null
+                        }
                     }
                 }
 
                 if (result != null) {
                     val (bitmap, savedPath) = result
-                    cachedBillBitmap = bitmap
+                    setCachedBitmap(bitmap)
                     _uiState.update { it.copy(capturedImageUri = savedPath) }
 
                     // Step 1: Extract text using ML Kit (full-res bitmap)
@@ -221,12 +278,11 @@ class OcrViewModel @Inject constructor(
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Resize for Gemini, then send image + OCR text
-                    val geminiImage = withContext(Dispatchers.Default) { resizeBitmapForGemini(bitmap) }
+                    // Step 2: Send original image + OCR text to AI service for best accuracy
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(geminiImage, ocrText)
+                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
                     } else {
-                        geminiService.parseBillImage(geminiImage)
+                        geminiService.parseBillImage(bitmap)
                     }
 
                     // Validate subtotal accuracy
@@ -240,25 +296,67 @@ class OcrViewModel @Inject constructor(
                         originalExtractedSubtotal = bill.subtotal
                     ) }
                 } else {
-                    _uiState.update { it.copy(error = "Failed to load image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                    _uiState.update { it.copy(
+                        error = "Unable to load the selected image. Please try selecting a different image.",
+                        isScanning = false,
+                        scanProgress = ScanProgress.IDLE
+                    ) }
                 }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(
+                    error = "The selected image appears to be corrupted. Please try with a different image.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
+            } catch (e: OutOfMemoryError) {
+                recycleCachedBitmap()
+                _uiState.update { it.copy(
+                    error = "Image too large to process. Please try with a smaller image.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to process image.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                _uiState.update { it.copy(
+                    error = "Unable to process the selected image. Please ensure the image is clear and try again.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
             }
         }
     }
 
     /** Fallback: process raw OCR text (used when image capture fails) */
     fun onTextRecognized(rawText: String) {
-        if (_uiState.value.isScanning) return
+        // Thread-safe scanning state check and update
+        synchronized(this) {
+            if (_uiState.value.isScanning) return
+            _uiState.update { it.copy(isScanning = true, error = null) }
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null) }
             try {
+                if (rawText.trim().isEmpty()) {
+                    _uiState.update { it.copy(
+                        error = "No text could be extracted from the image. Please try with a clearer photo.",
+                        isScanning = false
+                    ) }
+                    return@launch
+                }
+
                 val bill = geminiService.parseOcrText(rawText)
-                _uiState.update { it.copy(scannedBill = bill, isScanning = false) }
+                val mismatch = validateSubtotal(bill)
+
+                _uiState.update { it.copy(
+                    scannedBill = bill,
+                    isScanning = false,
+                    subtotalMismatch = mismatch,
+                    originalExtractedSubtotal = bill.subtotal
+                ) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Parsing failed. Please try scanning again.", isScanning = false) }
+                _uiState.update { it.copy(
+                    error = "Unable to parse the extracted text. Please try scanning with a clearer image.",
+                    isScanning = false
+                ) }
             }
         }
     }
@@ -417,19 +515,34 @@ class OcrViewModel @Inject constructor(
         val itemsSum = bill.items.sumOf { it.total }
         val extractedSubtotal = bill.subtotal
 
-        // Only check if Gemini returned a subtotal > 0
-        if (extractedSubtotal <= 0) return null
+        // Skip validation if no items were extracted
+        if (bill.items.isEmpty()) return null
 
-        val difference = extractedSubtotal - itemsSum
+        // Check for mismatch if AI service provided a subtotal
+        if (extractedSubtotal > 0) {
+            val difference = extractedSubtotal - itemsSum
+            // Return mismatch if difference exceeds tolerance (₹0.50)
+            return if (kotlin.math.abs(difference) > 0.50) {
+                SubtotalMismatch(
+                    extractedSubtotal = extractedSubtotal,
+                    calculatedItemsSum = itemsSum,
+                    difference = difference
+                )
+            } else null
+        }
 
-        // Return mismatch if difference exceeds tolerance (₹0.50)
-        return if (kotlin.math.abs(difference) > 0.50) {
-            SubtotalMismatch(
-                extractedSubtotal = extractedSubtotal,
+        // Also validate when AI service didn't extract subtotal but we have items
+        // This catches cases where OCR partially succeeded
+        if (extractedSubtotal <= 0 && itemsSum > 0) {
+            // Indicate potential extraction issue (items found but no subtotal)
+            return SubtotalMismatch(
+                extractedSubtotal = 0.0,
                 calculatedItemsSum = itemsSum,
-                difference = difference
+                difference = -itemsSum
             )
-        } else null
+        }
+
+        return null
     }
 
     /**
@@ -459,8 +572,11 @@ class OcrViewModel @Inject constructor(
      * Updates discount percentage and recalculates totals.
      */
     fun updateDiscountPercent(percent: Double) {
+        // Validate input bounds
+        val validPercent = percent.coerceIn(0.0, 100.0)
+
         // Round to 2 decimal places to avoid confusing values like "5.263157894736842%"
-        val roundedPercent = (percent * 100).roundToInt() / 100.0
+        val roundedPercent = (validPercent * 100).roundToInt() / 100.0
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val subtotal = bill.items.sumOf { it.total }
@@ -482,14 +598,17 @@ class OcrViewModel @Inject constructor(
      * Updates tax percentage and recalculates totals.
      */
     fun updateTaxPercent(percent: Double) {
+        // Validate input bounds (GST can be up to 28% in India, allow some buffer)
+        val validPercent = percent.coerceIn(0.0, 50.0)
+
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val subtotal = bill.items.sumOf { it.total }
                 val afterDiscount = subtotal - bill.discountAmount
-                val taxAmount = afterDiscount * percent / 100.0
+                val taxAmount = afterDiscount * validPercent / 100.0
                 val total = afterDiscount + taxAmount
                 state.copy(scannedBill = bill.copy(
-                    taxPercent = percent,
+                    taxPercent = validPercent,
                     taxAmount = taxAmount,
                     totalAmount = total
                 ))
@@ -543,21 +662,33 @@ class OcrViewModel @Inject constructor(
 
     /** Process scanned pages from ML Kit Document Scanner with dual extraction */
     fun processScannedPages(context: Context, pageUris: List<Uri>) {
-        if (_uiState.value.isScanning) return
+        // Thread-safe scanning state check and update
+        synchronized(this) {
+            if (_uiState.value.isScanning) return
+            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true, error = null, scanProgress = ScanProgress.READING_TEXT) }
             try {
                 val bitmaps = withContext(Dispatchers.IO) {
                     pageUris.mapNotNull { uri ->
                         context.contentResolver.openInputStream(uri)?.use { stream ->
-                            BitmapFactory.decodeStream(stream)
+                            BitmapFactory.decodeStream(stream)?.also { bitmap ->
+                                // Validate bitmap before proceeding
+                                if (bitmap.width <= 0 || bitmap.height <= 0) {
+                                    throw IllegalArgumentException("Invalid image dimensions")
+                                }
+                            }
                         }
                     }
                 }
 
                 if (bitmaps.isEmpty()) {
-                    _uiState.update { it.copy(error = "Failed to load scanned pages.", isScanning = false, scanProgress = ScanProgress.IDLE) }
+                    _uiState.update { it.copy(
+                        error = "Unable to load the scanned pages. Please try scanning again.",
+                        isScanning = false,
+                        scanProgress = ScanProgress.IDLE
+                    ) }
                     return@launch
                 }
 
@@ -583,25 +714,14 @@ class OcrViewModel @Inject constructor(
                     scanProgress = ScanProgress.PARSING_ITEMS
                 ) }
 
-                cachedBillBitmap = bitmaps.first()
+                setCachedBitmap(bitmaps.first())
 
-                // Step 2: Resize for Gemini (OCR already done on full-res above), then send to Gemini
-                val geminiImages = withContext(Dispatchers.Default) {
-                    bitmaps.map { resizeBitmapForGemini(it) }
-                }
+                // Step 2: Always use multi-page API for consistency (handles single page too)
                 val hasOcrText = ocrTexts.any { it.isNotBlank() }
-                val bill = if (geminiImages.size == 1) {
-                    if (hasOcrText) {
-                        geminiService.parseBillImageWithOcr(geminiImages.first(), ocrTexts.first())
-                    } else {
-                        geminiService.parseBillImage(geminiImages.first())
-                    }
+                val bill = if (hasOcrText) {
+                    geminiService.parseMultiPageBillWithOcr(bitmaps, ocrTexts)
                 } else {
-                    if (hasOcrText) {
-                        geminiService.parseMultiPageBillWithOcr(geminiImages, ocrTexts)
-                    } else {
-                        geminiService.parseMultiPageBill(geminiImages)
-                    }
+                    geminiService.parseMultiPageBill(bitmaps)
                 }
 
                 // Validate subtotal accuracy
@@ -614,9 +734,22 @@ class OcrViewModel @Inject constructor(
                     subtotalMismatch = mismatch,
                     originalExtractedSubtotal = bill.subtotal
                 ) }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(
+                    error = "One or more scanned images appear to be corrupted. Please try scanning again.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
+            } catch (e: OutOfMemoryError) {
+                recycleCachedBitmap()
+                _uiState.update { it.copy(
+                    error = "Too many or too large images to process. Please try with fewer or smaller images.",
+                    isScanning = false,
+                    scanProgress = ScanProgress.IDLE
+                ) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
-                    error = "Failed to process scanned pages: ${e.localizedMessage}",
+                    error = "Unable to process the scanned pages. Please ensure the images are clear and try again.",
                     isScanning = false,
                     scanProgress = ScanProgress.IDLE
                 ) }

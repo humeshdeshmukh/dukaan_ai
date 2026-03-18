@@ -51,6 +51,11 @@ fun SettingsScreen(
     var showEditProfile by remember { mutableStateOf(false) }
     var pendingLanguageCode by remember(languageCode) { mutableStateOf(languageCode) }
 
+    // Sync pendingLanguageCode when languageCode changes (ensures UI updates after translation)
+    LaunchedEffect(languageCode) {
+        pendingLanguageCode = languageCode
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

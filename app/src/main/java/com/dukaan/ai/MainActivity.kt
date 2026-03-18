@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -21,9 +22,11 @@ import com.dukaan.ai.navigation.DukaanBottomBar
 import com.dukaan.ai.navigation.Screen
 import com.dukaan.ai.translation.TranslationManager
 import com.dukaan.core.db.dao.ShopProfileDao
+import com.dukaan.core.db.entity.ShopProfileEntity
 import com.dukaan.core.ui.theme.DukaanTheme
 import com.dukaan.core.ui.translation.LocalAppStrings
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -41,9 +44,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val coroutineScope = rememberCoroutineScope()
             val profile by shopProfileDao.getProfile().collectAsState(initial = null)
             val isDark = profile?.isDarkTheme ?: false
             val appStrings by translationManager.currentStrings.collectAsState()
+
+            // Ensure default profile exists on first app launch
+            LaunchedEffect(Unit) {
+                if (shopProfileDao.getProfileOnce() == null) {
+                    shopProfileDao.upsertProfile(ShopProfileEntity())
+                }
+            }
 
             // Load translation on startup — uses cache if fresh, re-translates if stale
             LaunchedEffect(profile?.languageCode) {
