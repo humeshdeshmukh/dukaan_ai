@@ -290,6 +290,13 @@ fun OcrResultScreen(
                 val hasBreakdown = bill.discountAmount > 0 || bill.taxAmount > 0 || bill.discountPercent > 0 || bill.taxPercent > 0
                 var showEditBreakdown by remember { mutableStateOf(false) }
 
+                // Calculate consistent values based on items sum
+                val itemsSubtotal = bill.items.sumOf { it.total }
+                val calculatedDiscountAmount = if (bill.discountPercent > 0) itemsSubtotal * bill.discountPercent / 100.0 else bill.discountAmount
+                val afterDiscount = (itemsSubtotal - calculatedDiscountAmount).coerceAtLeast(0.0)
+                val calculatedTaxAmount = if (bill.taxPercent > 0) afterDiscount * bill.taxPercent / 100.0 else bill.taxAmount
+                val calculatedTotal = afterDiscount + calculatedTaxAmount
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -311,7 +318,7 @@ fun OcrResultScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
                             Text(
-                                "₹${"%.2f".format(bill.items.sumOf { it.total })}",
+                                "₹${"%.2f".format(itemsSubtotal)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
@@ -328,7 +335,7 @@ fun OcrResultScreen(
                                 Text(
                                     "Discount",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (bill.discountAmount > 0) MaterialTheme.colorScheme.error
+                                    color = if (calculatedDiscountAmount > 0) MaterialTheme.colorScheme.error
                                            else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                                 )
                                 if (!showEditBreakdown) {
@@ -341,9 +348,9 @@ fun OcrResultScreen(
                                     }
                                 }
                             }
-                            if (bill.discountAmount > 0) {
+                            if (calculatedDiscountAmount > 0) {
                                 Text(
-                                    "- ₹${"%.2f".format(bill.discountAmount)}",
+                                    "- ₹${"%.2f".format(calculatedDiscountAmount)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -379,9 +386,9 @@ fun OcrResultScreen(
                                     }
                                 }
                             }
-                            if (bill.taxAmount > 0) {
+                            if (calculatedTaxAmount > 0) {
                                 Text(
-                                    "+ ₹${"%.2f".format(bill.taxAmount)}",
+                                    "+ ₹${"%.2f".format(calculatedTaxAmount)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                 )
@@ -471,7 +478,7 @@ fun OcrResultScreen(
                         ) {
                             Text(strings.totalAmount, style = MaterialTheme.typography.titleLarge)
                             Text(
-                                "₹${"%.2f".format(bill.totalAmount)}",
+                                "₹${"%.2f".format(calculatedTotal)}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer

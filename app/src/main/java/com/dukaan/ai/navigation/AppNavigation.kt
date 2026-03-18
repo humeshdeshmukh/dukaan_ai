@@ -687,17 +687,35 @@ fun AppNavigation(
                     onPreviewPdf = {
                         try {
                             val shopInfo = settingsState.toShopInfo()
+                            // Calculate sample bill amounts
+                            val itemSubtotal = 100.0 + 120.0 + 90.0 // 310.0
+                            val discountPercent = 5.0
+                            val discountAmount = itemSubtotal * discountPercent / 100.0 // 15.5
+                            val afterDiscount = itemSubtotal - discountAmount // 294.5
+                            val taxPercent = 18.0
+                            val taxAmount = afterDiscount * taxPercent / 100.0 // 53.01
+                            val totalAmount = afterDiscount + taxAmount // 347.51
+
                             val sampleBill = com.dukaan.core.network.model.Bill(
                                 id = 0,
                                 items = listOf(
-                                    com.dukaan.core.network.model.BillItem("Sample Item 1", 2.0, "kg", 50.0),
-                                    com.dukaan.core.network.model.BillItem("Sample Item 2", 1.0, "pc", 120.0),
-                                    com.dukaan.core.network.model.BillItem("Sample Item 3", 3.0, "pkt", 30.0)
+                                    com.dukaan.core.network.model.BillItem("Sample Product A", 2.0, "kg", 100.0, unitPrice = 50.0),
+                                    com.dukaan.core.network.model.BillItem("Sample Product B", 1.0, "pc", 120.0, unitPrice = 120.0),
+                                    com.dukaan.core.network.model.BillItem("Sample Product C", 3.0, "pkt", 90.0, unitPrice = 30.0)
                                 ),
-                                totalAmount = 310.0,
+                                subtotal = itemSubtotal,
+                                discountPercent = discountPercent,
+                                discountAmount = discountAmount,
+                                taxPercent = taxPercent,
+                                taxAmount = taxAmount,
+                                totalAmount = totalAmount,
+                                customerName = "Sample Customer",
+                                customerPhone = "9876543210",
+                                paymentMode = "CASH",
                                 sellerName = "",
                                 billNumber = "SAMPLE-001",
-                                timestamp = System.currentTimeMillis()
+                                timestamp = System.currentTimeMillis(),
+                                notes = "This is a sample invoice preview"
                             )
                             val file = PdfGenerator.generateBillPdf(context, shopInfo, sampleBill)
                             pdfPreviewFile = file
