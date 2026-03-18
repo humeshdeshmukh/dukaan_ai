@@ -170,7 +170,7 @@ fun BillScannerScreen(
                     CircularProgressIndicator(color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Opening scanner...",
+                        strings.openingScanner,
                         color = Color.White,
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -356,7 +356,7 @@ private fun FallbackCameraScreen(
                     ) {
                         Icon(
                             Icons.Default.PhotoLibrary,
-                            contentDescription = "Pick from gallery",
+                            contentDescription = strings.pickFromGallery,
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )
@@ -378,7 +378,7 @@ private fun FallbackCameraScreen(
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 Icons.Default.CameraAlt,
-                                contentDescription = "Capture",
+                                contentDescription = strings.capture,
                                 tint = if (isTextStable) Color.White else Color.Black,
                                 modifier = Modifier.size(32.dp)
                             )
@@ -395,7 +395,7 @@ private fun FallbackCameraScreen(
                     ) {
                         Icon(
                             if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                            contentDescription = "Toggle flash",
+                            contentDescription = strings.toggleFlash,
                             tint = if (isFlashOn) Color(0xFFFDE68A) else Color.White,
                             modifier = Modifier.size(28.dp)
                         )

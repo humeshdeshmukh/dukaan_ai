@@ -1500,7 +1500,8 @@ private fun SummaryRowWithInput(
     amountColor: Color
 ) {
     var text by remember(percent) {
-        mutableStateOf(if (percent == 0.0) "" else percent.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() })
+        // Format to show at most 2 decimal places, remove trailing zeros
+        mutableStateOf(if (percent == 0.0) "" else "%.2f".format(percent).trimEnd('0').trimEnd('.'))
     }
 
     Row(

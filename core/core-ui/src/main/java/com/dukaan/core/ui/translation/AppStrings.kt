@@ -109,6 +109,7 @@ class AppStrings {
     var addCustomer: String = "Add Customer"
     var customerNameLabel: String = "Customer Name"
     var phoneNumberLabel: String = "Phone Number"
+    var accountType: String = "Account Type"
 
     // === KHATA - Customer Detail ===
     var customer: String = "Customer"
@@ -281,6 +282,8 @@ class AppStrings {
     var processingBill: String = "Processing bill..."
     var cameraPermissionRequired: String = "Camera permission is required to scan bills."
     var grantPermission: String = "Grant Permission"
+    var readingTextFromBill: String = "Reading text from bill..."
+    var parsingItemsAndPrices: String = "Parsing items & prices..."
 
     // === OCR RESULT ===
     var verifyScannedBill: String = "Verify Scanned Bill"
@@ -299,6 +302,29 @@ class AppStrings {
     var qtyLabel: String = "Qty"
     var unitLabel: String = "Unit"
     var priceLabel: String = "Price (₹)"
+    var discountPercent: String = "Discount %"
+    var gstPercent: String = "GST %"
+    var phoneNumber: String = "Phone Number"
+    var searchName: String = "Search name..."
+    var addNewWholesaler: String = "Add New Wholesaler"
+    var noMatchingWholesalers: String = "No matching wholesalers"
+    var ratePerUnit: String = "Rate (per %s)"
+    var itemDiscountOptional: String = "Item Discount (optional)"
+    var itemsTotal: String = "Items Total"
+    var billSubtotal: String = "Bill Subtotal"
+    var difference: String = "Difference"
+    var ignore: String = "Ignore"
+    var useItemsTotal: String = "Use Items Total"
+    var subtotalMismatchWarning: String = "The extracted subtotal doesn't match the sum of items"
+    var openingScanner: String = "Opening scanner..."
+    var pickFromGallery: String = "Pick from gallery"
+    var capture: String = "Capture"
+    var toggleFlash: String = "Toggle flash"
+    var deleteBillQuestion: String = "Delete Bill?"
+    var deleteWholesalerQuestion: String = "Delete Wholesaler?"
+    var lineTotal: String = "Line Total"
+    var subtotalMismatch: String = "Subtotal Mismatch"
+    var itemsMayBeMissing: String = "Some items may be missing. Please verify against the bill image."
 
     // === SCANNED BILL HISTORY ===
     var searchWholesaler: String = "Search wholesaler..."

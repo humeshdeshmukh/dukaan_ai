@@ -24,12 +24,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dukaan.core.ui.translation.LocalAppStrings
 
 @Composable
 fun ZoomableImageViewer(
     imagePath: String,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val bitmap = remember(imagePath) {
         try {
             BitmapFactory.decodeFile(imagePath)
@@ -112,11 +114,11 @@ fun ZoomableImageViewer(
             ) {
                 // Close button
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = strings.close, tint = Color.White)
                 }
 
                 Text(
-                    "Pinch to zoom • Double tap to reset",
+                    strings.pinchToZoom,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.7f)
                 )
@@ -145,7 +147,7 @@ fun ZoomableImageViewer(
                 ) {
                     Icon(Icons.Default.RotateRight, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Rotate")
+                    Text(strings.rotate)
                 }
 
                 // Reset button
@@ -162,7 +164,7 @@ fun ZoomableImageViewer(
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Reset")
+                    Text(strings.reset)
                 }
             }
         }

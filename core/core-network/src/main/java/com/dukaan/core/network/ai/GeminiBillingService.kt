@@ -323,7 +323,13 @@ class GeminiBillingServiceImpl @Inject constructor(
             Return ONLY this JSON (no markdown, no explanation):
             {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","unitPrice":0.0,"lineTotal":0.0,"itemDiscount":0.0,"itemDiscountPercent":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            Rules:
+            CRITICAL RULES FOR HANDWRITTEN TEXT:
+            - CAREFULLY examine the entire image for handwritten text in blue, black, or red ink
+            - Check margins, empty rows, and spaces between printed items for handwritten additions
+            - Look for circled, underlined, or starred items — these are often important
+            - Handwritten numbers may be messy — try to interpret them (e.g., "7" vs "1", "5" vs "6")
+            - Include items with ONLY handwritten quantities or prices — they are valid
+            - NEVER skip an item just because parts are handwritten
             - ALWAYS extract unitPrice (per-unit rate) and lineTotal (line amount) separately
             - If only one value visible, put it in lineTotal and set unitPrice=lineTotal/quantity
             - Include handwritten items added by pen. Include ALL items. NEVER return empty items[] if bill has items.
@@ -378,7 +384,14 @@ class GeminiBillingServiceImpl @Inject constructor(
             Return ONLY this JSON (no markdown, no explanation):
             {"sellerName":"","billNumber":"","items":[{"name":"","quantity":1.0,"unit":"kg","unitPrice":0.0,"lineTotal":0.0,"itemDiscount":0.0,"itemDiscountPercent":0.0}],"subtotal":0.0,"discountAmount":0.0,"discountPercent":0.0,"taxAmount":0.0,"taxPercent":0.0,"totalAmount":0.0}
 
-            Rules: Extract unitPrice AND lineTotal for each item. Combine ALL pages. NEVER return empty items[] if bill has items.
+            CRITICAL RULES FOR HANDWRITTEN TEXT:
+            - CAREFULLY examine all pages for handwritten text in blue, black, or red ink
+            - Check margins, empty rows, and spaces between printed items for handwritten additions
+            - Look for circled, underlined, or starred items — these are often important
+            - Handwritten numbers may be messy — try to interpret them (e.g., "7" vs "1", "5" vs "6")
+            - Include items with ONLY handwritten quantities or prices — they are valid
+            - NEVER skip an item just because parts are handwritten
+            - Extract unitPrice AND lineTotal for each item. Combine ALL pages. NEVER return empty items[] if bill has items.
         """.trimIndent()
 
         try {

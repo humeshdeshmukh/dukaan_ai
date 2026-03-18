@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 
 enum class ScanProgress {
     IDLE,
@@ -129,9 +130,9 @@ class OcrViewModel @Inject constructor(
 
     /**
      * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
-     * ML Kit OCR runs on the full-res image before this; Gemini doesn't benefit from >1600px.
+     * ML Kit OCR runs on the full-res image before this; Gemini benefits from higher res for handwriting.
      */
-    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 1600): Bitmap {
+    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 2048): Bitmap {
         val w = bitmap.width
         val h = bitmap.height
         if (w <= maxDim && h <= maxDim) return bitmap
@@ -375,8 +376,10 @@ class OcrViewModel @Inject constructor(
     private fun Bill.withRecalculatedTotals(original: Bill): Bill {
         val newSubtotal = items.sumOf { it.total }
         val newTotal = (newSubtotal - original.discountAmount + original.taxAmount).coerceAtLeast(0.0)
-        val newDiscountPercent = if (newSubtotal > 0 && original.discountAmount > 0)
+        // Round discount percent to 2 decimal places to avoid confusing values
+        val calculatedDiscountPercent = if (newSubtotal > 0 && original.discountAmount > 0)
             (original.discountAmount / newSubtotal * 100) else original.discountPercent
+        val newDiscountPercent = (calculatedDiscountPercent * 100).roundToInt() / 100.0
         val taxableAmount = newSubtotal - original.discountAmount
         val newTaxPercent = if (taxableAmount > 0 && original.taxAmount > 0)
             (original.taxAmount / taxableAmount * 100) else original.taxPercent
@@ -456,15 +459,17 @@ class OcrViewModel @Inject constructor(
      * Updates discount percentage and recalculates totals.
      */
     fun updateDiscountPercent(percent: Double) {
+        // Round to 2 decimal places to avoid confusing values like "5.263157894736842%"
+        val roundedPercent = (percent * 100).roundToInt() / 100.0
         _uiState.update { state ->
             state.scannedBill?.let { bill ->
                 val subtotal = bill.items.sumOf { it.total }
-                val discountAmount = subtotal * percent / 100.0
+                val discountAmount = subtotal * roundedPercent / 100.0
                 val afterDiscount = subtotal - discountAmount
                 val taxAmount = afterDiscount * bill.taxPercent / 100.0
                 val total = afterDiscount + taxAmount
                 state.copy(scannedBill = bill.copy(
-                    discountPercent = percent,
+                    discountPercent = roundedPercent,
                     discountAmount = discountAmount,
                     taxAmount = taxAmount,
                     totalAmount = total

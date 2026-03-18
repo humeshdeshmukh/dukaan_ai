@@ -10,10 +10,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -144,150 +146,11 @@ fun OcrResultScreen(
                         }
                     }
 
-                    // Seller name field + existing wholesaler suggestions with search
                     item {
-                        // Filter suggestions based on typed text
-
-                        // Filter suggestions based on typed text
-                        val filteredSellers = remember(sellerName, existingSellerNames) {
-                            if (sellerName.isBlank()) {
-                                existingSellerNames.take(10)  // Show first 10 when empty
-                            } else {
-                                existingSellerNames.filter {
-                                    it.contains(sellerName, ignoreCase = true)
-                                }.take(10)
-                            }
-                        }
-
-                        // Check if typed name is new (not in existing list)
-                        val isNewWholesaler = remember(sellerName, existingSellerNames) {
-                            sellerName.isNotBlank() && existingSellerNames.none {
-                                it.equals(sellerName, ignoreCase = true)
-                            }
-                        }
-
-                        Column {
-                            OutlinedTextField(
-                                value = sellerName,
-                                onValueChange = {
-                                    sellerName = it
-                                    onSellerNameChanged(it)
-                                    showSuggestions = it.isNotBlank() || existingSellerNames.isNotEmpty()
-                                },
-                                label = { Text(strings.wholesalerSellerName) },
-                                leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
-                                trailingIcon = {
-                                    if (existingSellerNames.isNotEmpty()) {
-                                        IconButton(onClick = { showSuggestions = !showSuggestions }) {
-                                            Icon(
-                                                if (showSuggestions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                                contentDescription = "Show suggestions"
-                                            )
-                                        }
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
-                            // New wholesaler indicator
-                            if (isNewWholesaler) {
-                                Row(
-                                    modifier = Modifier.padding(start = 16.dp, top = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.PersonAdd,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = "New wholesaler will be added",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            // Existing wholesaler suggestions (filtered)
-                            if (showSuggestions && filteredSellers.isNotEmpty()) {
-                                Text(
-                                    text = if (sellerName.isBlank()) strings.selectExistingWholesaler
-                                           else "Matching wholesalers (${filteredSellers.size})",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 16.dp, top = 8.dp)
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(filteredSellers) { name ->
-                                        FilterChip(
-                                            selected = sellerName.equals(name, ignoreCase = true),
-                                            onClick = {
-                                                sellerName = name
-                                                onSellerNameChanged(name)
-                                                showSuggestions = false
-                                            },
-                                            label = { Text(name) },
-                                            leadingIcon = if (sellerName.equals(name, ignoreCase = true)) {
-                                                { Icon(Icons.Default.Check, contentDescription = null, Modifier.size(16.dp)) }
-                                            } else null
-                                        )
-                                    }
-                                    
-                                    if (existingSellerNames.size > 10) {
-                                        item {
-                                            FilterChip(
-                                                selected = false,
-                                                onClick = { showFullSearchDialog = true },
-                                                label = { 
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                        Spacer(Modifier.width(4.dp))
-                                                        Text("Search All")
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            } else if (existingSellerNames.isNotEmpty() && filteredSellers.isEmpty() && sellerName.isNotBlank()) {
-                                Text(
-                                    text = "No matching wholesalers found",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Wholesaler phone field
-                    item {
-                        var sellerPhone by remember(state.scannedBill) {
-                            mutableStateOf(state.scannedBill.sellerPhone)
-                        }
-
-                        OutlinedTextField(
-                            value = sellerPhone,
-                            onValueChange = {
-                                sellerPhone = it
-                                onSellerPhoneChanged(it)
-                            },
-                            label = { Text("Wholesaler Phone") },
-                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        WholesalerPickerRow(
+                            selectedName = sellerName,
+                            selectedPhone = state.scannedBill.sellerPhone,
+                            onClick = { showFullSearchDialog = true }
                         )
                     }
 
@@ -549,7 +412,7 @@ fun OcrResultScreen(
                         // Expandable edit fields
                         if (showEditBreakdown) {
                             var discountPercentText by remember(bill.discountPercent) {
-                                mutableStateOf(if (bill.discountPercent > 0) bill.discountPercent.toString() else "")
+                                mutableStateOf(if (bill.discountPercent > 0) "%.2f".format(bill.discountPercent).trimEnd('0').trimEnd('.') else "")
                             }
                             var taxPercentText by remember(bill.taxPercent) {
                                 mutableStateOf(if (bill.taxPercent > 0) bill.taxPercent.toString() else "")
@@ -565,7 +428,7 @@ fun OcrResultScreen(
                                         discountPercentText = it
                                         it.toDoubleOrNull()?.let { percent -> onDiscountPercentChanged(percent) }
                                     },
-                                    label = { Text("Discount %") },
+                                    label = { Text(strings.discountPercent) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     singleLine = true,
                                     modifier = Modifier.weight(1f),
@@ -580,7 +443,7 @@ fun OcrResultScreen(
                                         taxPercentText = it
                                         it.toDoubleOrNull()?.let { percent -> onTaxPercentChanged(percent) }
                                     },
-                                    label = { Text("GST %") },
+                                    label = { Text(strings.gstPercent) },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     singleLine = true,
                                     modifier = Modifier.weight(1f),
@@ -712,7 +575,12 @@ fun OcrResultScreen(
                 sellerName = name
                 onSellerNameChanged(name)
                 showFullSearchDialog = false
-                showSuggestions = false
+            },
+            onNewWholesaler = { name, phone ->
+                sellerName = name
+                onSellerNameChanged(name)
+                onSellerPhoneChanged(phone)
+                showFullSearchDialog = false
             },
             onDismiss = { showFullSearchDialog = false }
         )
@@ -724,47 +592,123 @@ fun OcrResultScreen(
 fun WholesalerSelectDialog(
     sellers: List<String>,
     onSelect: (String) -> Unit,
+    onNewWholesaler: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    var showNewForm by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newPhone by remember { mutableStateOf("") }
+    val strings = LocalAppStrings.current
+
     val filtered = remember(query, sellers) {
         if (query.isBlank()) sellers else sellers.filter { it.contains(query, ignoreCase = true) }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Search Wholesaler") },
+        title = { Text(if (showNewForm) "Add New Wholesaler" else "Search Wholesaler") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search name...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                
-                if (filtered.isEmpty()) {
-                    Box(modifier = Modifier.height(100.dp), contentAlignment = Alignment.Center) {
-                        Text("No matching wholesalers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                if (showNewForm) {
+                    // New Wholesaler Form
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text(strings.wholesalerSellerName) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Store, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPhone,
+                        onValueChange = { newPhone = it },
+                        label = { Text(strings.phoneNumber) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showNewForm = false },
+                            modifier = Modifier.weight(1f)
+                        ) { Text(strings.back) }
+                        Button(
+                            onClick = {
+                                if (newName.isNotBlank()) {
+                                    onNewWholesaler(newName.trim(), newPhone.trim())
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = newName.isNotBlank()
+                        ) { Text(strings.save) }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.heightIn(max = 300.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    // Search + List
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(strings.searchName) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Add New Wholesaler Button
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNewForm = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     ) {
-                        items(filtered) { name ->
-                            Card(
-                                onClick = { onSelect(name) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp)
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primary
                             ) {
-                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Store, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(name, fontWeight = FontWeight.Medium)
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(strings.addNewWholesaler, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    if (filtered.isEmpty()) {
+                        Box(modifier = Modifier.height(100.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text(strings.noMatchingWholesalers, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(filtered) { name ->
+                                Card(
+                                    onClick = { onSelect(name) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Store, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(name, fontWeight = FontWeight.Medium)
+                                    }
                                 }
                             }
                         }
@@ -773,7 +717,7 @@ fun WholesalerSelectDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { if (!showNewForm) TextButton(onClick = onDismiss) { Text(strings.cancel) } }
     )
 }
 
@@ -892,7 +836,7 @@ fun EditItemDialog(
                 OutlinedTextField(
                     value = unitPrice,
                     onValueChange = { unitPrice = it },
-                    label = { Text("Rate (per ${unit.ifBlank { "unit" }})") },
+                    label = { Text(strings.ratePerUnit.replace("%s", unit.ifBlank { "unit" })) },
                     prefix = { Text("₹") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -902,7 +846,7 @@ fun EditItemDialog(
                 OutlinedTextField(
                     value = itemDiscountPercent,
                     onValueChange = { itemDiscountPercent = it },
-                    label = { Text("Item Discount (optional)") },
+                    label = { Text(strings.itemDiscountOptional) },
                     suffix = { Text("%") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
@@ -924,7 +868,7 @@ fun EditItemDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Line Total",
+                            strings.lineTotal,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -980,6 +924,7 @@ private fun SubtotalMismatchBanner(
     onUseCalculated: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -999,7 +944,7 @@ private fun SubtotalMismatchBanner(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Subtotal Mismatch",
+                    strings.subtotalMismatch,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onErrorContainer
@@ -1007,15 +952,15 @@ private fun SubtotalMismatchBanner(
             }
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Items Total:", color = MaterialTheme.colorScheme.onErrorContainer)
+                Text("${strings.itemsTotal}:", color = MaterialTheme.colorScheme.onErrorContainer)
                 Text("₹${"%.2f".format(mismatch.calculatedItemsSum)}", fontWeight = FontWeight.Medium)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Bill Subtotal:", color = MaterialTheme.colorScheme.onErrorContainer)
+                Text("${strings.billSubtotal}:", color = MaterialTheme.colorScheme.onErrorContainer)
                 Text("₹${"%.2f".format(mismatch.extractedSubtotal)}", fontWeight = FontWeight.Medium)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Difference:", color = MaterialTheme.colorScheme.error)
+                Text("${strings.difference}:", color = MaterialTheme.colorScheme.error)
                 Text(
                     "₹${"%.2f".format(kotlin.math.abs(mismatch.difference))}",
                     fontWeight = FontWeight.Bold,
@@ -1024,7 +969,7 @@ private fun SubtotalMismatchBanner(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Some items may be missing. Please verify against the bill image.",
+                strings.itemsMayBeMissing,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
             )
@@ -1034,7 +979,7 @@ private fun SubtotalMismatchBanner(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onDismiss) {
-                    Text("Ignore")
+                    Text(strings.ignore)
                 }
                 Spacer(Modifier.width(8.dp))
                 Button(
@@ -1043,9 +988,68 @@ private fun SubtotalMismatchBanner(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Use Items Total")
+                    Text(strings.useItemsTotal)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WholesalerPickerRow(
+    selectedName: String,
+    selectedPhone: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Store,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = selectedName.ifBlank { "Select Wholesaler" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (selectedName.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                )
+                if (selectedPhone.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = selectedPhone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
         }
     }
 }

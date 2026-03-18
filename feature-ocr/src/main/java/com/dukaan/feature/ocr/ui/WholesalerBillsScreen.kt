@@ -36,7 +36,7 @@ fun WholesalerBillsScreen(
         AlertDialog(
             onDismissRequest = { billToDelete = null },
             icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete Bill?") },
+            title = { Text(strings.deleteBillQuestion) },
             text = {
                 Text(
                     "This purchase bill dated ${
@@ -52,11 +52,11 @@ fun WholesalerBillsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(strings.delete)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { billToDelete = null }) { Text("Cancel") }
+                TextButton(onClick = { billToDelete = null }) { Text(strings.cancel) }
             }
         )
     }
@@ -203,7 +203,7 @@ private fun BillCard(
             IconButton(onClick = onDeleteClick) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete bill",
+                    contentDescription = strings.deleteBill,
                     tint = MaterialTheme.colorScheme.error
                 )
             }

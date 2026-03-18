@@ -35,6 +35,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 
 enum class ScanListProgress { IDLE, READING_TEXT, PARSING_ITEMS, DONE }
 
@@ -259,7 +260,9 @@ class BillingViewModel @Inject constructor(
     }
 
     fun setDiscount(percent: Double) {
-        _uiState.update { it.copy(discountPercent = percent.coerceIn(0.0, 100.0)) }
+        // Round to 2 decimal places to avoid confusing values like "5.263157894736842%"
+        val rounded = (percent * 100).roundToInt() / 100.0
+        _uiState.update { it.copy(discountPercent = rounded.coerceIn(0.0, 100.0)) }
         recalculate()
     }
 
@@ -462,8 +465,9 @@ class BillingViewModel @Inject constructor(
 
     /**
      * Resize bitmap so the longest side is at most [maxDim] pixels before sending to Gemini.
+     * Higher resolution improves handwriting recognition accuracy.
      */
-    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 1600): Bitmap {
+    private fun resizeBitmapForGemini(bitmap: Bitmap, maxDim: Int = 2048): Bitmap {
         val w = bitmap.width
         val h = bitmap.height
         if (w <= maxDim && h <= maxDim) return bitmap

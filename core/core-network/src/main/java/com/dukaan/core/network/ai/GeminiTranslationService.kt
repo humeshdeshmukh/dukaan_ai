@@ -69,7 +69,7 @@ RULES:
 1. Translate ONLY the values, keep all JSON keys exactly the same
 2. Keep translations SHORT - these are mobile UI labels
 3. Use simple, everyday $targetLanguageName words a shopkeeper would understand
-4. Do NOT translate technical proper nouns (GSTIN, UPI, IFSC, PDF, AI, OCR). ALL OTHER terms (e.g., Speak, Tap, Sales, Accounts, Bills) MUST be translated to conversational $targetLanguageName.
+4. Do NOT translate technical proper nouns (GSTIN, UPI, IFSC, PDF, AI, OCR), BUT WRITE them in the target script (e.g. Devanagari for Hindi/Marathi) instead of English Latin script (e.g., write GST in Hindi as जीएसटी). ALL OTHER terms (e.g., Speak, Tap, Sales, Accounts, Bills) MUST be translated to conversational $targetLanguageName.
 5. Keep app name "Dukaan AI" as-is
 6. Return ONLY valid JSON — no markdown, no code fences, no explanation
 

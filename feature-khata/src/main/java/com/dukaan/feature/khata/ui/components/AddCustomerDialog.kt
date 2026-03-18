@@ -44,9 +44,9 @@ fun AddCustomerDialog(
                     singleLine = true
                 )
 
-                // Khata Type Selection
+                // Account Type Selection
                 Text(
-                    "Khata Type",
+                    strings.accountType,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)

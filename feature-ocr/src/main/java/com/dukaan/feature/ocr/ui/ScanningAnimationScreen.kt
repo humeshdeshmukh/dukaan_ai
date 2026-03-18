@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.dukaan.core.ui.translation.LocalAppStrings
+
 @Composable
 fun ScanningAnimationScreen(progress: ScanProgress) {
     Box(
@@ -183,9 +185,10 @@ private fun ScanningBillAnimation(modifier: Modifier = Modifier) {
 
 @Composable
 private fun ScanProgressSteps(currentStep: ScanProgress) {
+    val strings = LocalAppStrings.current
     val steps = listOf(
-        ScanProgress.READING_TEXT to "Reading text from bill...",
-        ScanProgress.PARSING_ITEMS to "Parsing items & prices..."
+        ScanProgress.READING_TEXT to strings.readingTextFromBill,
+        ScanProgress.PARSING_ITEMS to strings.parsingItemsAndPrices
     )
 
     Column(

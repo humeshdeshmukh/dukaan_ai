@@ -35,7 +35,7 @@ fun ScannedBillHistoryScreen(
         AlertDialog(
             onDismissRequest = { wholesalerToDelete = null },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Delete Wholesaler?") },
+            title = { Text(strings.deleteWholesalerQuestion) },
             text = { Text("All ${summary.billCount} purchase bills from ${summary.sellerName} will be permanently deleted.") },
             confirmButton = {
                 Button(
@@ -44,9 +44,9 @@ fun ScannedBillHistoryScreen(
                         wholesalerToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(strings.delete) }
             },
-            dismissButton = { TextButton(onClick = { wholesalerToDelete = null }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { wholesalerToDelete = null }) { Text(strings.cancel) } }
         )
     }
 
