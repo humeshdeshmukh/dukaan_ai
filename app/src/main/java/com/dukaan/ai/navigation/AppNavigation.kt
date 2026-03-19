@@ -319,7 +319,10 @@ fun AppNavigation(
                 val parentEntry = remember(entry) { navController.getBackStackEntry(Screen.OcrFlow.route) }
                 val ocrViewModel: OcrViewModel = hiltViewModel(parentEntry)
                 val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
+                val settingsVm: SettingsViewModel = hiltViewModel()
+                val settingsState by settingsVm.uiState.collectAsState()
                 val activity = context as? android.app.Activity
+
 
                 // Track when bill is saved to show interstitial
                 var billSavedTrigger by remember { mutableStateOf<Long?>(null) }
@@ -352,7 +355,8 @@ fun AppNavigation(
                     onAddItem = { item -> ocrViewModel.addItem(item) },
                     onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
                     onSellerPhoneChanged = { phone -> ocrViewModel.updateSellerPhone(phone) },
-                    onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) },
+                    onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message, settingsState.languageCode) },
+
                     onUseCalculatedSubtotal = { ocrViewModel.useCalculatedSubtotal() },
                     onDismissSubtotalMismatch = { ocrViewModel.dismissSubtotalMismatch() },
                     onDiscountPercentChanged = { percent -> ocrViewModel.updateDiscountPercent(percent) },
@@ -653,6 +657,8 @@ fun AppNavigation(
             val billId = backStackEntry.arguments?.getString("billId")?.toLongOrNull() ?: return@composable
             val ocrViewModel: OcrViewModel = hiltViewModel()
             val existingSellerNames by ocrViewModel.existingSellerNames.collectAsState()
+            val settingsVm: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsVm.uiState.collectAsState()
 
             LaunchedEffect(billId) {
                 ocrViewModel.loadBillForEditing(billId)
@@ -676,7 +682,8 @@ fun AppNavigation(
                 onAddItem = { item -> ocrViewModel.addItem(item) },
                 onSellerNameChanged = { name -> ocrViewModel.updateSellerName(name) },
                 onSellerPhoneChanged = { phone -> ocrViewModel.updateSellerPhone(phone) },
-                onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message) },
+                onSendChatMessage = { message -> ocrViewModel.sendChatMessage(message, settingsState.languageCode) },
+
                 onUseCalculatedSubtotal = { ocrViewModel.useCalculatedSubtotal() },
                 onDismissSubtotalMismatch = { ocrViewModel.dismissSubtotalMismatch() },
                 onDiscountPercentChanged = { percent -> ocrViewModel.updateDiscountPercent(percent) },
