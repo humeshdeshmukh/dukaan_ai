@@ -415,26 +415,7 @@ class BillingViewModel @Inject constructor(
         }
     }
 
-    /** Enhance image contrast to make handwritten text more visible */
-    private fun enhanceImageForHandwriting(bitmap: Bitmap): Bitmap {
-        val enhancedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(enhancedBitmap)
-        val paint = Paint()
 
-        // Increase contrast and slightly increase saturation to make pen marks stand out
-        val colorMatrix = ColorMatrix().apply {
-            // Contrast: 1.3x, Brightness: slight boost
-            set(floatArrayOf(
-                1.4f, 0f, 0f, 0f, -30f,  // Red
-                0f, 1.4f, 0f, 0f, -30f,  // Green
-                0f, 0f, 1.4f, 0f, -30f,  // Blue
-                0f, 0f, 0f, 1f, 0f       // Alpha
-            ))
-        }
-        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
-        canvas.drawBitmap(bitmap, 0f, 0f, paint)
-        return enhancedBitmap
-    }
 
     /** Run a single ML Kit recognizer on a bitmap, returning extracted text or "". */
     private suspend fun extractText(bitmap: Bitmap, recognizer: TextRecognizer): String =
@@ -485,14 +466,16 @@ class BillingViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                // Step 2: Enhance images and send to Gemini in parallel (original quality for best OCR)
+                // Step 2: Enhance images and send to Gemini in parallel (Resized + OpenCV)
                 val itemsList = withContext(Dispatchers.Default) {
                     bitmaps.mapIndexed { i, bitmap ->
                         async {
                             val ocrText = ocrTexts.getOrElse(i) { "" }
-                            val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                            val resizedBitmap = com.dukaan.feature.billing.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                            val enhancedBitmap = com.dukaan.feature.billing.util.ImageUtil.preprocessImageForOcr(resizedBitmap)
                             val items = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                            if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                            if (enhancedBitmap != bitmap && !enhancedBitmap.isRecycled) enhancedBitmap.recycle()
+                            if (resizedBitmap != bitmap && !resizedBitmap.isRecycled) resizedBitmap.recycle()
                             items
                         }
                     }.awaitAll()
@@ -544,11 +527,13 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image and send to Gemini at original quality
+                    // Enhance image and send to Gemini with OpenCV & Resize
                     val items = withContext(Dispatchers.Default) {
-                        val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                        val resizedBitmap = com.dukaan.feature.billing.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                        val enhancedBitmap = com.dukaan.feature.billing.util.ImageUtil.preprocessImageForOcr(resizedBitmap)
                         val result = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                        if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                        if (enhancedBitmap != bitmap && !enhancedBitmap.isRecycled) enhancedBitmap.recycle()
+                        if (resizedBitmap != bitmap && !resizedBitmap.isRecycled) resizedBitmap.recycle()
                         result
                     }
 
@@ -586,11 +571,13 @@ class BillingViewModel @Inject constructor(
                     val ocrText = extractTextFromBitmap(bitmap)
                     _uiState.update { it.copy(scanListProgress = ScanListProgress.PARSING_ITEMS) }
 
-                    // Enhance image and send to Gemini at original quality
+                    // Enhance image and send to Gemini with OpenCV & Resize
                     val items = withContext(Dispatchers.Default) {
-                        val enhancedBitmap = enhanceImageForHandwriting(bitmap)
+                        val resizedBitmap = com.dukaan.feature.billing.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                        val enhancedBitmap = com.dukaan.feature.billing.util.ImageUtil.preprocessImageForOcr(resizedBitmap)
                         val result = geminiService.parseCustomerListImage(enhancedBitmap, ocrText)
-                        if (enhancedBitmap != bitmap) enhancedBitmap.recycle()
+                        if (enhancedBitmap != bitmap && !enhancedBitmap.isRecycled) enhancedBitmap.recycle()
+                        if (resizedBitmap != bitmap && !resizedBitmap.isRecycled) resizedBitmap.recycle()
                         result
                     }
 

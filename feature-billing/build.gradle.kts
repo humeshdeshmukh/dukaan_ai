@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.mlkit.document.scanner)
     implementation(libs.mlkit.text.recognition)
     implementation(libs.mlkit.text.recognition.devanagari)
+    implementation(libs.opencv)
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
