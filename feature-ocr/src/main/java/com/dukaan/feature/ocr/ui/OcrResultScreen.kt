@@ -290,12 +290,12 @@ fun OcrResultScreen(
                 val hasBreakdown = bill.discountAmount > 0 || bill.taxAmount > 0 || bill.discountPercent > 0 || bill.taxPercent > 0
                 var showEditBreakdown by remember { mutableStateOf(false) }
 
-                // Calculate consistent values based on items sum
-                val itemsSubtotal = bill.items.sumOf { it.total }
-                val calculatedDiscountAmount = if (bill.discountPercent > 0) itemsSubtotal * bill.discountPercent / 100.0 else bill.discountAmount
+                // Use State values directly for breakdown display to match saved state
+                val itemsSubtotal = bill.subtotal
+                val calculatedDiscountAmount = bill.discountAmount
                 val afterDiscount = (itemsSubtotal - calculatedDiscountAmount).coerceAtLeast(0.0)
-                val calculatedTaxAmount = if (bill.taxPercent > 0) afterDiscount * bill.taxPercent / 100.0 else bill.taxAmount
-                val calculatedTotal = afterDiscount + calculatedTaxAmount
+                val calculatedTaxAmount = bill.taxAmount
+                val calculatedTotal = bill.totalAmount
 
                 Card(
                     modifier = Modifier

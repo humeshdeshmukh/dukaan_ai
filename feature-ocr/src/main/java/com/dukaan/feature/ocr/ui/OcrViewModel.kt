@@ -187,11 +187,15 @@ class OcrViewModel @Inject constructor(
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Send original image + OCR text to AI service for best accuracy on handwritten text
+                    // PREPROCESS & RESIZE FOR GEMINI: Resize to 1536px and apply OpenCV enhancement
+                    val resizedBitmap = com.dukaan.feature.ocr.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                    val geminiBitmap = com.dukaan.feature.ocr.util.ImageUtil.preprocessImageForOcr(resizedBitmap)
+
+                    // Step 2: Send resized & enhanced image + OCR text to AI service for best accuracy
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                        geminiService.parseBillImageWithOcr(geminiBitmap, ocrText)
                     } else {
-                        geminiService.parseBillImage(bitmap)
+                        geminiService.parseBillImage(geminiBitmap)
                     }
 
                     // Validate subtotal accuracy
@@ -278,11 +282,15 @@ class OcrViewModel @Inject constructor(
 
                     _uiState.update { it.copy(scanProgress = ScanProgress.PARSING_ITEMS) }
 
-                    // Step 2: Send original image + OCR text to AI service for best accuracy
+                    // PREPROCESS & RESIZE FOR GEMINI: Resize to 1536px and apply OpenCV enhancement
+                    val resizedBitmap = com.dukaan.feature.ocr.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                    val geminiBitmap = com.dukaan.feature.ocr.util.ImageUtil.preprocessImageForOcr(resizedBitmap)
+
+                    // Step 2: Send resized & enhanced image + OCR text to AI service for best accuracy
                     val bill = if (ocrText.isNotBlank()) {
-                        geminiService.parseBillImageWithOcr(bitmap, ocrText)
+                        geminiService.parseBillImageWithOcr(geminiBitmap, ocrText)
                     } else {
-                        geminiService.parseBillImage(bitmap)
+                        geminiService.parseBillImage(geminiBitmap)
                     }
 
                     // Validate subtotal accuracy
@@ -695,7 +703,7 @@ class OcrViewModel @Inject constructor(
                 // Step 1: Run ML Kit OCR on all bitmaps (on-device, fast)
                 val ocrTexts = extractTextsFromBitmaps(bitmaps)
 
-                // Save page images to internal storage
+                // Save page images to internal storage (unchanged)
                 val savedPaths = withContext(Dispatchers.IO) {
                     val photoDir = File(context.filesDir, "bills")
                     photoDir.mkdirs()
@@ -716,12 +724,18 @@ class OcrViewModel @Inject constructor(
 
                 setCachedBitmap(bitmaps.first())
 
+                // PREPROCESS & RESIZE FOR GEMINI: Process all pages
+                val geminiBitmaps = bitmaps.map { bitmap ->
+                    val resized = com.dukaan.feature.ocr.util.ImageUtil.resizeBitmap(bitmap, 1536)
+                    com.dukaan.feature.ocr.util.ImageUtil.preprocessImageForOcr(resized)
+                }
+
                 // Step 2: Always use multi-page API for consistency (handles single page too)
                 val hasOcrText = ocrTexts.any { it.isNotBlank() }
                 val bill = if (hasOcrText) {
-                    geminiService.parseMultiPageBillWithOcr(bitmaps, ocrTexts)
+                    geminiService.parseMultiPageBillWithOcr(geminiBitmaps, ocrTexts)
                 } else {
-                    geminiService.parseMultiPageBill(bitmaps)
+                    geminiService.parseMultiPageBill(geminiBitmaps)
                 }
 
                 // Validate subtotal accuracy

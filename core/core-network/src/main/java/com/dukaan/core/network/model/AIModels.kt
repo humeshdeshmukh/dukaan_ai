@@ -35,7 +35,11 @@ data class BillItem(
     val itemDiscountAmount: Double = 0.0    // Item-level discount ₹ (new)
 ) {
     /** Gross total before item discount */
-    val grossTotal: Double get() = if (unitPrice > 0) unitPrice * quantity else price
+    val grossTotal: Double get() = if (unitPrice > 0) unitPrice * quantity else {
+        if (itemDiscountPercent > 0) price / (1.0 - itemDiscountPercent / 100.0)
+        else if (itemDiscountAmount > 0) price + itemDiscountAmount
+        else price
+    }
 
     /** Net total after item discount */
     val total: Double get() {
@@ -46,13 +50,14 @@ data class BillItem(
         return (gross - discount).coerceAtLeast(0.0)
     }
 
-    /** Computed per-unit rate (derives from price if unitPrice not set) */
+    /** Computed per-unit rate (derives from grossTotal if unitPrice not set) */
     val effectiveUnitPrice: Double get() = when {
         unitPrice > 0 -> unitPrice
-        quantity > 0 -> price / quantity
-        else -> price
+        quantity > 0 -> grossTotal / quantity
+        else -> grossTotal
     }
 }
+
 
 data class Order(
     val id: String = UUID.randomUUID().toString(),

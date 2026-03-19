@@ -1,0 +1,482 @@
+﻿> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-billing:preBuild UP-TO-DATE
+> Task :feature-billing:preDebugBuild UP-TO-DATE
+> Task :feature-billing:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-dashboard:preBuild UP-TO-DATE
+> Task :feature-dashboard:preDebugBuild UP-TO-DATE
+> Task :feature-dashboard:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-inventory:preBuild UP-TO-DATE
+> Task :feature-inventory:preDebugBuild UP-TO-DATE
+> Task :feature-inventory:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-khata:preBuild UP-TO-DATE
+> Task :feature-khata:preDebugBuild UP-TO-DATE
+> Task :feature-khata:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-ocr:preBuild UP-TO-DATE
+> Task :feature-ocr:preDebugBuild UP-TO-DATE
+> Task :feature-ocr:writeDebugAarMetadata UP-TO-DATE
+> Task :feature-orders:preBuild UP-TO-DATE
+> Task :feature-orders:preDebugBuild UP-TO-DATE
+> Task :feature-orders:writeDebugAarMetadata UP-TO-DATE
+> Task :core:core-db:preBuild UP-TO-DATE
+> Task :core:core-db:preDebugBuild UP-TO-DATE
+> Task :core:core-db:writeDebugAarMetadata UP-TO-DATE
+> Task :core:core-network:preBuild UP-TO-DATE
+> Task :core:core-network:preDebugBuild UP-TO-DATE
+> Task :core:core-network:writeDebugAarMetadata UP-TO-DATE
+> Task :core:core-ui:preBuild UP-TO-DATE
+> Task :core:core-ui:preDebugBuild UP-TO-DATE
+> Task :core:core-ui:writeDebugAarMetadata UP-TO-DATE
+> Task :core:core-voice:preBuild UP-TO-DATE
+> Task :core:core-voice:preDebugBuild UP-TO-DATE
+> Task :core:core-voice:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :feature-billing:generateDebugResValues UP-TO-DATE
+> Task :feature-billing:generateDebugResources UP-TO-DATE
+> Task :feature-billing:packageDebugResources UP-TO-DATE
+> Task :feature-dashboard:generateDebugResValues UP-TO-DATE
+> Task :feature-dashboard:generateDebugResources UP-TO-DATE
+> Task :feature-dashboard:packageDebugResources UP-TO-DATE
+> Task :feature-inventory:generateDebugResValues UP-TO-DATE
+> Task :feature-inventory:generateDebugResources UP-TO-DATE
+> Task :feature-inventory:packageDebugResources UP-TO-DATE
+> Task :feature-khata:generateDebugResValues UP-TO-DATE
+> Task :feature-khata:generateDebugResources UP-TO-DATE
+> Task :feature-khata:packageDebugResources UP-TO-DATE
+> Task :feature-ocr:generateDebugResValues UP-TO-DATE
+> Task :feature-ocr:generateDebugResources UP-TO-DATE
+> Task :feature-ocr:packageDebugResources UP-TO-DATE
+> Task :feature-orders:generateDebugResValues UP-TO-DATE
+> Task :feature-orders:generateDebugResources UP-TO-DATE
+> Task :feature-orders:packageDebugResources UP-TO-DATE
+> Task :core:core-db:generateDebugResValues UP-TO-DATE
+> Task :core:core-db:generateDebugResources UP-TO-DATE
+> Task :core:core-db:packageDebugResources UP-TO-DATE
+> Task :core:core-network:generateDebugResValues UP-TO-DATE
+> Task :core:core-network:generateDebugResources UP-TO-DATE
+> Task :core:core-network:packageDebugResources UP-TO-DATE
+> Task :core:core-ui:generateDebugResValues UP-TO-DATE
+> Task :core:core-ui:generateDebugResources UP-TO-DATE
+> Task :core:core-ui:packageDebugResources UP-TO-DATE
+> Task :core:core-voice:generateDebugResValues UP-TO-DATE
+> Task :core:core-voice:generateDebugResources UP-TO-DATE
+> Task :core:core-voice:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-billing:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-billing:processDebugManifest UP-TO-DATE
+> Task :feature-dashboard:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-dashboard:processDebugManifest UP-TO-DATE
+> Task :feature-inventory:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-inventory:processDebugManifest UP-TO-DATE
+> Task :feature-khata:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-khata:processDebugManifest UP-TO-DATE
+> Task :feature-ocr:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-ocr:processDebugManifest UP-TO-DATE
+> Task :feature-orders:extractDeepLinksDebug UP-TO-DATE
+> Task :feature-orders:processDebugManifest UP-TO-DATE
+> Task :core:core-db:extractDeepLinksDebug UP-TO-DATE
+> Task :core:core-db:processDebugManifest UP-TO-DATE
+> Task :core:core-network:extractDeepLinksDebug UP-TO-DATE
+> Task :core:core-network:processDebugManifest UP-TO-DATE
+> Task :core:core-ui:extractDeepLinksDebug UP-TO-DATE
+> Task :core:core-ui:processDebugManifest UP-TO-DATE
+> Task :core:core-voice:extractDeepLinksDebug UP-TO-DATE
+> Task :core:core-voice:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :feature-billing:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-billing:parseDebugLocalResources UP-TO-DATE
+> Task :feature-billing:generateDebugRFile UP-TO-DATE
+> Task :feature-dashboard:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-dashboard:parseDebugLocalResources UP-TO-DATE
+> Task :feature-dashboard:generateDebugRFile UP-TO-DATE
+> Task :feature-inventory:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-inventory:parseDebugLocalResources UP-TO-DATE
+> Task :feature-inventory:generateDebugRFile UP-TO-DATE
+> Task :feature-khata:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-khata:parseDebugLocalResources UP-TO-DATE
+> Task :feature-khata:generateDebugRFile UP-TO-DATE
+> Task :feature-ocr:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-ocr:parseDebugLocalResources UP-TO-DATE
+> Task :feature-ocr:generateDebugRFile UP-TO-DATE
+> Task :feature-orders:compileDebugLibraryResources UP-TO-DATE
+> Task :feature-orders:parseDebugLocalResources UP-TO-DATE
+> Task :feature-orders:generateDebugRFile UP-TO-DATE
+> Task :core:core-db:compileDebugLibraryResources UP-TO-DATE
+> Task :core:core-db:parseDebugLocalResources UP-TO-DATE
+> Task :core:core-db:generateDebugRFile UP-TO-DATE
+> Task :core:core-network:compileDebugLibraryResources UP-TO-DATE
+> Task :core:core-network:parseDebugLocalResources UP-TO-DATE
+> Task :core:core-network:generateDebugRFile UP-TO-DATE
+> Task :core:core-ui:compileDebugLibraryResources UP-TO-DATE
+> Task :core:core-ui:parseDebugLocalResources UP-TO-DATE
+> Task :core:core-ui:generateDebugRFile UP-TO-DATE
+> Task :core:core-voice:compileDebugLibraryResources UP-TO-DATE
+> Task :core:core-voice:parseDebugLocalResources UP-TO-DATE
+> Task :core:core-voice:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :feature-billing:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-db:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-db:kspDebugKotlin UP-TO-DATE
+> Task :core:core-db:compileDebugKotlin UP-TO-DATE
+> Task :core:core-db:javaPreCompileDebug UP-TO-DATE
+> Task :core:core-db:compileDebugJavaWithJavac UP-TO-DATE
+> Task :core:core-db:transformDebugClassesWithAsm UP-TO-DATE
+> Task :core:core-db:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:core-network:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-network:generateDebugBuildConfig UP-TO-DATE
+> Task :core:core-network:kspDebugKotlin UP-TO-DATE
+> Task :core:core-network:compileDebugKotlin UP-TO-DATE
+> Task :core:core-network:javaPreCompileDebug UP-TO-DATE
+> Task :core:core-network:compileDebugJavaWithJavac UP-TO-DATE
+> Task :core:core-network:transformDebugClassesWithAsm UP-TO-DATE
+> Task :core:core-network:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:core-ui:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-ui:compileDebugKotlin UP-TO-DATE
+> Task :core:core-ui:javaPreCompileDebug UP-TO-DATE
+> Task :core:core-ui:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:core-ui:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:core-voice:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-voice:kspDebugKotlin UP-TO-DATE
+> Task :core:core-voice:compileDebugKotlin UP-TO-DATE
+> Task :core:core-voice:javaPreCompileDebug UP-TO-DATE
+> Task :core:core-voice:compileDebugJavaWithJavac UP-TO-DATE
+> Task :core:core-voice:transformDebugClassesWithAsm UP-TO-DATE
+> Task :core:core-voice:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-billing:kspDebugKotlin UP-TO-DATE
+> Task :feature-billing:compileDebugKotlin UP-TO-DATE
+> Task :feature-billing:javaPreCompileDebug UP-TO-DATE
+> Task :feature-billing:compileDebugJavaWithJavac UP-TO-DATE
+> Task :core:core-db:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:core-network:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:core-ui:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:core-voice:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-billing:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-billing:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-dashboard:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-dashboard:kspDebugKotlin UP-TO-DATE
+> Task :feature-dashboard:compileDebugKotlin UP-TO-DATE
+> Task :feature-dashboard:javaPreCompileDebug UP-TO-DATE
+> Task :feature-dashboard:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature-dashboard:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-dashboard:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-inventory:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-inventory:kspDebugKotlin UP-TO-DATE
+> Task :feature-inventory:compileDebugKotlin UP-TO-DATE
+> Task :feature-inventory:javaPreCompileDebug UP-TO-DATE
+> Task :feature-inventory:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature-inventory:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-inventory:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-khata:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-khata:kspDebugKotlin UP-TO-DATE
+> Task :feature-khata:compileDebugKotlin UP-TO-DATE
+> Task :feature-khata:javaPreCompileDebug UP-TO-DATE
+> Task :feature-khata:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature-khata:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-khata:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-billing:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-ocr:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-ocr:kspDebugKotlin UP-TO-DATE
+> Task :feature-ocr:compileDebugKotlin UP-TO-DATE
+> Task :feature-ocr:javaPreCompileDebug UP-TO-DATE
+> Task :feature-ocr:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature-ocr:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-ocr:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :feature-orders:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-orders:kspDebugKotlin UP-TO-DATE
+> Task :feature-orders:compileDebugKotlin UP-TO-DATE
+> Task :feature-orders:javaPreCompileDebug UP-TO-DATE
+> Task :feature-orders:compileDebugJavaWithJavac UP-TO-DATE
+> Task :feature-orders:transformDebugClassesWithAsm UP-TO-DATE
+> Task :feature-orders:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :feature-billing:mergeDebugShaders UP-TO-DATE
+> Task :feature-billing:compileDebugShaders NO-SOURCE
+> Task :feature-billing:generateDebugAssets UP-TO-DATE
+> Task :feature-billing:packageDebugAssets UP-TO-DATE
+> Task :feature-dashboard:mergeDebugShaders UP-TO-DATE
+> Task :feature-dashboard:compileDebugShaders NO-SOURCE
+> Task :feature-dashboard:generateDebugAssets UP-TO-DATE
+> Task :feature-dashboard:packageDebugAssets UP-TO-DATE
+> Task :feature-inventory:mergeDebugShaders UP-TO-DATE
+> Task :feature-inventory:compileDebugShaders NO-SOURCE
+> Task :feature-inventory:generateDebugAssets UP-TO-DATE
+> Task :feature-inventory:packageDebugAssets UP-TO-DATE
+> Task :feature-khata:mergeDebugShaders UP-TO-DATE
+> Task :feature-khata:compileDebugShaders NO-SOURCE
+> Task :feature-khata:generateDebugAssets UP-TO-DATE
+> Task :feature-khata:packageDebugAssets UP-TO-DATE
+> Task :feature-ocr:mergeDebugShaders UP-TO-DATE
+> Task :feature-ocr:compileDebugShaders NO-SOURCE
+> Task :feature-ocr:generateDebugAssets UP-TO-DATE
+> Task :feature-ocr:packageDebugAssets UP-TO-DATE
+> Task :feature-orders:mergeDebugShaders UP-TO-DATE
+> Task :feature-orders:compileDebugShaders NO-SOURCE
+> Task :feature-orders:generateDebugAssets UP-TO-DATE
+> Task :feature-orders:packageDebugAssets UP-TO-DATE
+> Task :core:core-db:mergeDebugShaders UP-TO-DATE
+> Task :core:core-db:compileDebugShaders NO-SOURCE
+> Task :core:core-db:generateDebugAssets UP-TO-DATE
+> Task :core:core-db:packageDebugAssets UP-TO-DATE
+> Task :core:core-network:mergeDebugShaders UP-TO-DATE
+> Task :core:core-network:compileDebugShaders NO-SOURCE
+> Task :core:core-network:generateDebugAssets UP-TO-DATE
+> Task :core:core-network:packageDebugAssets UP-TO-DATE
+> Task :core:core-ui:mergeDebugShaders UP-TO-DATE
+> Task :core:core-ui:compileDebugShaders NO-SOURCE
+> Task :core:core-ui:generateDebugAssets UP-TO-DATE
+> Task :core:core-ui:packageDebugAssets UP-TO-DATE
+> Task :core:core-voice:mergeDebugShaders UP-TO-DATE
+> Task :core:core-voice:compileDebugShaders NO-SOURCE
+> Task :core:core-voice:generateDebugAssets UP-TO-DATE
+> Task :core:core-voice:packageDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :feature-ocr:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-khata:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-dashboard:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-orders:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :feature-inventory:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :feature-billing:processDebugJavaRes UP-TO-DATE
+> Task :feature-dashboard:processDebugJavaRes UP-TO-DATE
+> Task :feature-inventory:processDebugJavaRes UP-TO-DATE
+> Task :feature-khata:processDebugJavaRes UP-TO-DATE
+> Task :feature-ocr:processDebugJavaRes UP-TO-DATE
+> Task :feature-orders:processDebugJavaRes UP-TO-DATE
+> Task :core:core-db:processDebugJavaRes UP-TO-DATE
+> Task :core:core-network:processDebugJavaRes UP-TO-DATE
+> Task :core:core-ui:processDebugJavaRes UP-TO-DATE
+> Task :core:core-voice:processDebugJavaRes UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :feature-ocr:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :feature-billing:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :feature-khata:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :feature-dashboard:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :feature-orders:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :feature-inventory:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core:core-ui:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core:core-db:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core:core-network:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :core:core-voice:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-billing:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-billing:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-billing:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-dashboard:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-dashboard:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-dashboard:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-inventory:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :feature-inventory:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-inventory:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-khata:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-khata:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-khata:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-ocr:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-ocr:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-ocr:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :feature-orders:mergeDebugJniLibFolders UP-TO-DATE
+> Task :feature-orders:mergeDebugNativeLibs NO-SOURCE
+> Task :feature-orders:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core:core-db:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:core-db:mergeDebugNativeLibs NO-SOURCE
+> Task :core:core-db:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core:core-network:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:core-network:mergeDebugNativeLibs NO-SOURCE
+> Task :core:core-network:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core:core-ui:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:core-ui:mergeDebugNativeLibs NO-SOURCE
+> Task :core:core-ui:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core:core-voice:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:core-voice:mergeDebugNativeLibs NO-SOURCE
+> Task :core:core-voice:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :feature-billing:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-billing:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-billing:extractDebugAnnotations UP-TO-DATE
+> Task :feature-billing:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-billing:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-billing:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-billing:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-billing:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-billing:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-billing:syncDebugLibJars UP-TO-DATE
+> Task :feature-billing:bundleDebugAar UP-TO-DATE
+> Task :feature-billing:assembleDebug UP-TO-DATE
+> Task :feature-dashboard:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-dashboard:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-dashboard:extractDebugAnnotations UP-TO-DATE
+> Task :feature-dashboard:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-dashboard:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-dashboard:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-dashboard:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-dashboard:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-dashboard:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-dashboard:syncDebugLibJars UP-TO-DATE
+> Task :feature-dashboard:bundleDebugAar UP-TO-DATE
+> Task :feature-dashboard:assembleDebug UP-TO-DATE
+> Task :feature-inventory:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-inventory:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-inventory:extractDebugAnnotations UP-TO-DATE
+> Task :feature-inventory:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-inventory:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-inventory:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-inventory:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-inventory:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-inventory:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-inventory:syncDebugLibJars UP-TO-DATE
+> Task :feature-inventory:bundleDebugAar UP-TO-DATE
+> Task :feature-inventory:assembleDebug UP-TO-DATE
+> Task :feature-khata:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-khata:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-khata:extractDebugAnnotations UP-TO-DATE
+> Task :feature-khata:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-khata:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-khata:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-khata:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-khata:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-khata:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-khata:syncDebugLibJars UP-TO-DATE
+> Task :feature-khata:bundleDebugAar UP-TO-DATE
+> Task :feature-khata:assembleDebug UP-TO-DATE
+> Task :feature-ocr:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-ocr:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-ocr:extractDebugAnnotations UP-TO-DATE
+> Task :feature-ocr:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-ocr:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-ocr:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-ocr:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-ocr:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-ocr:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-ocr:syncDebugLibJars UP-TO-DATE
+> Task :feature-ocr:bundleDebugAar UP-TO-DATE
+> Task :feature-ocr:assembleDebug UP-TO-DATE
+> Task :feature-orders:stripDebugDebugSymbols NO-SOURCE
+> Task :feature-orders:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :feature-orders:extractDebugAnnotations UP-TO-DATE
+> Task :feature-orders:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :feature-orders:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :feature-orders:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :feature-orders:prepareDebugArtProfile UP-TO-DATE
+> Task :feature-orders:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-orders:mergeDebugJavaResource UP-TO-DATE
+> Task :feature-orders:syncDebugLibJars UP-TO-DATE
+> Task :feature-orders:bundleDebugAar UP-TO-DATE
+> Task :feature-orders:assembleDebug UP-TO-DATE
+> Task :core:core-db:stripDebugDebugSymbols NO-SOURCE
+> Task :core:core-db:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:core-db:extractDebugAnnotations UP-TO-DATE
+> Task :core:core-db:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:core-db:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:core-db:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:core-db:prepareDebugArtProfile UP-TO-DATE
+> Task :core:core-db:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-db:mergeDebugJavaResource UP-TO-DATE
+> Task :core:core-db:syncDebugLibJars UP-TO-DATE
+> Task :core:core-db:bundleDebugAar UP-TO-DATE
+> Task :core:core-db:assembleDebug UP-TO-DATE
+> Task :core:core-network:stripDebugDebugSymbols NO-SOURCE
+> Task :core:core-network:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:core-network:extractDebugAnnotations UP-TO-DATE
+> Task :core:core-network:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:core-network:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:core-network:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:core-network:prepareDebugArtProfile UP-TO-DATE
+> Task :core:core-network:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-network:mergeDebugJavaResource UP-TO-DATE
+> Task :core:core-network:syncDebugLibJars UP-TO-DATE
+> Task :core:core-network:bundleDebugAar UP-TO-DATE
+> Task :core:core-network:assembleDebug UP-TO-DATE
+> Task :core:core-ui:stripDebugDebugSymbols NO-SOURCE
+> Task :core:core-ui:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:core-ui:extractDebugAnnotations UP-TO-DATE
+> Task :core:core-ui:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:core-ui:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:core-ui:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:core-ui:prepareDebugArtProfile UP-TO-DATE
+> Task :core:core-ui:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-ui:mergeDebugJavaResource UP-TO-DATE
+> Task :core:core-ui:syncDebugLibJars UP-TO-DATE
+> Task :core:core-ui:bundleDebugAar UP-TO-DATE
+> Task :core:core-ui:assembleDebug UP-TO-DATE
+> Task :core:core-voice:stripDebugDebugSymbols NO-SOURCE
+> Task :core:core-voice:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:core-voice:extractDebugAnnotations UP-TO-DATE
+> Task :core:core-voice:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:core-voice:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:core-voice:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:core-voice:prepareDebugArtProfile UP-TO-DATE
+> Task :core:core-voice:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-voice:mergeDebugJavaResource UP-TO-DATE
+> Task :core:core-voice:syncDebugLibJars UP-TO-DATE
+> Task :core:core-voice:bundleDebugAar UP-TO-DATE
+> Task :core:core-voice:assembleDebug UP-TO-DATE
+> Task :app:compileDebugKotlin
+./gradlew : e: file:///D:/dukaan_ai/app/src/main/java/com/d
+ukaan/ai/navigation/AppNavigation.kt:261:25 Unresolved 
+reference: pdfPreviewFile
+At line:1 char:1
++ ./gradlew assembleDebug > build_log.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: file:///D: 
+   /d... pdfPreviewFile:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:381:25 Unresolved reference: 
+pdfPreviewFile
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:414:25 Unresolved reference: 
+pdfPreviewFile
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:451:25 Unresolved reference: 
+pdfPreviewFile
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:503:21 Unresolved reference: 
+pdfPreviewFile
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:545:21 Unresolved reference: 
+pdfPreviewFile
+e: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/nav
+igation/AppNavigation.kt:588:21 Unresolved reference: 
+pdfPreviewFile
+
+> Task :app:compileDebugKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.c
+ompilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinC
+ompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 58s
+358 actionable tasks: 12 executed, 346 up-to-date

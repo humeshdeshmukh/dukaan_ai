@@ -322,6 +322,8 @@ class AppStrings {
     var toggleFlash: String = "Toggle flash"
     var deleteBillQuestion: String = "Delete Bill?"
     var deleteWholesalerQuestion: String = "Delete Wholesaler?"
+    var deleteWholesalerMessage: String = "All %1\$d purchase bills from %2\$s will be permanently deleted."
+    var unknownSeller: String = "Unknown Seller"
     var lineTotal: String = "Line Total"
     var subtotalMismatch: String = "Subtotal Mismatch"
     var itemsMayBeMissing: String = "Some items may be missing. Please verify against the bill image."

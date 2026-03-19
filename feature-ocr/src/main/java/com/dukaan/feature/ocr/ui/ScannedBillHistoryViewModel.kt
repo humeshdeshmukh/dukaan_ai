@@ -36,8 +36,11 @@ class ScannedBillHistoryViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun getBillsByWholesaler(name: String): Flow<List<Bill>> =
-        billingRepository.getBillsBySellerName(name)
+    fun getBillsByWholesaler(name: String): Flow<List<Bill>> {
+        val dbName = if (name == "Unknown Seller") "" else name
+        return billingRepository.getBillsBySellerName(dbName)
+    }
+
 
     fun deleteBill(id: Long) {
         viewModelScope.launch {
@@ -47,7 +50,8 @@ class ScannedBillHistoryViewModel @Inject constructor(
 
     fun deleteWholesaler(sellerName: String) {
         viewModelScope.launch {
-            billingRepository.deleteBillsBySellerName(sellerName)
+            val dbName = if (sellerName == "Unknown Seller") "" else sellerName
+            billingRepository.deleteBillsBySellerName(dbName)
         }
     }
 }

@@ -44,8 +44,7 @@ fun SettingsScreen(
     languageCode: String = "en",
     onLanguageChange: (String) -> Unit = {},
     onApplyLanguage: (String) -> Unit = {},
-    isTranslating: Boolean = false,
-    onPreviewPdf: () -> Unit = {}
+    isTranslating: Boolean = false
 ) {
     val strings = LocalAppStrings.current
     var showEditProfile by remember { mutableStateOf(false) }
@@ -275,18 +274,6 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // PDF Preview
-            OutlinedButton(
-                onClick = onPreviewPdf,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                enabled = shopName.isNotBlank()
-            ) {
-                Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(strings.previewInvoicePdf)
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

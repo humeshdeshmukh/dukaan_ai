@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.mlkit.text.recognition.devanagari)
     implementation(libs.mlkit.document.scanner)
+    implementation(libs.opencv)
+
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

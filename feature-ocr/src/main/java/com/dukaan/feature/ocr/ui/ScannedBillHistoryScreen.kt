@@ -36,7 +36,7 @@ fun ScannedBillHistoryScreen(
             onDismissRequest = { wholesalerToDelete = null },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(strings.deleteWholesalerQuestion) },
-            text = { Text("All ${summary.billCount} purchase bills from ${summary.sellerName} will be permanently deleted.") },
+            text = { Text(strings.deleteWholesalerMessage.format(summary.billCount, if (summary.sellerName == "Unknown Seller") strings.unknownSeller else summary.sellerName)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -169,7 +169,7 @@ private fun WholesalerSummaryCard(
             // Seller info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = summary.sellerName,
+                    text = if (summary.sellerName == "Unknown Seller") strings.unknownSeller else summary.sellerName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

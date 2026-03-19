@@ -66,7 +66,7 @@ fun WholesalerBillsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(sellerName, fontWeight = FontWeight.Bold)
+                        Text(if (sellerName == "Unknown Seller") strings.unknownSeller else sellerName, fontWeight = FontWeight.Bold)
                         Text(
                             "${bills.size} ${if (bills.size != 1) strings.bills else strings.bill}",
                             style = MaterialTheme.typography.bodySmall,

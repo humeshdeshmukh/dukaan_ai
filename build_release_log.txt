@@ -1,0 +1,618 @@
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :feature-billing:preBuild UP-TO-DATE
+> Task :feature-billing:preReleaseBuild UP-TO-DATE
+> Task :feature-dashboard:preBuild UP-TO-DATE
+> Task :feature-dashboard:preReleaseBuild UP-TO-DATE
+> Task :feature-inventory:preBuild UP-TO-DATE
+> Task :feature-inventory:preReleaseBuild UP-TO-DATE
+> Task :feature-khata:preBuild UP-TO-DATE
+> Task :feature-khata:preReleaseBuild UP-TO-DATE
+> Task :feature-ocr:preBuild UP-TO-DATE
+> Task :feature-ocr:preReleaseBuild UP-TO-DATE
+> Task :feature-orders:preBuild UP-TO-DATE
+> Task :feature-orders:preReleaseBuild UP-TO-DATE
+> Task :core:core-db:preBuild UP-TO-DATE
+> Task :core:core-db:preReleaseBuild UP-TO-DATE
+> Task :core:core-network:preBuild UP-TO-DATE
+> Task :feature-orders:writeReleaseAarMetadata
+> Task :core:core-network:preReleaseBuild UP-TO-DATE
+> Task :feature-ocr:writeReleaseAarMetadata
+> Task :feature-khata:writeReleaseAarMetadata
+> Task :feature-inventory:writeReleaseAarMetadata
+> Task :core:core-db:writeReleaseAarMetadata
+> Task :feature-dashboard:writeReleaseAarMetadata
+> Task :feature-billing:writeReleaseAarMetadata
+> Task :core:core-ui:preBuild UP-TO-DATE
+> Task :core:core-ui:preReleaseBuild UP-TO-DATE
+> Task :core:core-network:writeReleaseAarMetadata
+> Task :core:core-voice:preBuild UP-TO-DATE
+> Task :core:core-voice:preReleaseBuild UP-TO-DATE
+> Task :core:core-ui:writeReleaseAarMetadata
+> Task :core:core-voice:writeReleaseAarMetadata
+> Task :app:generateReleaseResValues
+> Task :feature-billing:generateReleaseResValues
+> Task :feature-billing:generateReleaseResources
+> Task :app:checkReleaseAarMetadata
+> Task :feature-billing:packageReleaseResources
+> Task :feature-dashboard:generateReleaseResValues
+> Task :feature-dashboard:generateReleaseResources
+> Task :feature-dashboard:packageReleaseResources
+> Task :feature-inventory:generateReleaseResValues
+> Task :feature-inventory:generateReleaseResources
+> Task :feature-inventory:packageReleaseResources
+> Task :feature-khata:generateReleaseResValues
+> Task :feature-khata:generateReleaseResources
+> Task :feature-khata:packageReleaseResources
+> Task :feature-ocr:generateReleaseResValues
+> Task :feature-ocr:generateReleaseResources
+> Task :feature-ocr:packageReleaseResources
+> Task :feature-orders:generateReleaseResValues
+> Task :feature-orders:generateReleaseResources
+> Task :feature-orders:packageReleaseResources
+> Task :core:core-db:generateReleaseResValues
+> Task :core:core-db:generateReleaseResources
+> Task :core:core-db:packageReleaseResources
+> Task :core:core-network:generateReleaseResValues
+> Task :core:core-network:generateReleaseResources
+> Task :core:core-network:packageReleaseResources
+> Task :core:core-ui:generateReleaseResValues
+> Task :core:core-ui:generateReleaseResources
+> Task :core:core-ui:packageReleaseResources
+> Task :core:core-voice:generateReleaseResValues
+> Task :core:core-voice:generateReleaseResources
+> Task :core:core-voice:packageReleaseResources
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :feature-billing:extractDeepLinksRelease
+> Task :feature-dashboard:extractDeepLinksRelease
+> Task :feature-inventory:extractDeepLinksRelease
+> Task :feature-khata:extractDeepLinksRelease
+> Task :feature-ocr:extractDeepLinksRelease
+> Task :feature-orders:extractDeepLinksRelease
+> Task :core:core-db:extractDeepLinksRelease
+> Task :core:core-network:extractDeepLinksRelease
+> Task :core:core-ui:extractDeepLinksRelease
+> Task :core:core-voice:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+> Task :feature-billing:compileReleaseLibraryResources
+> Task :feature-billing:parseReleaseLocalResources
+> Task :feature-inventory:processReleaseManifest
+> Task :core:core-network:processReleaseManifest
+> Task :core:core-ui:processReleaseManifest
+> Task :feature-dashboard:processReleaseManifest
+> Task :core:core-voice:processReleaseManifest
+> Task :feature-orders:processReleaseManifest
+> Task :feature-khata:processReleaseManifest
+> Task :core:core-db:processReleaseManifest
+> Task :feature-dashboard:compileReleaseLibraryResources
+> Task :feature-billing:processReleaseManifest
+> Task :feature-inventory:compileReleaseLibraryResources
+> Task :feature-dashboard:parseReleaseLocalResources
+> Task :feature-inventory:parseReleaseLocalResources
+> Task :feature-khata:compileReleaseLibraryResources
+> Task :feature-ocr:processReleaseManifest
+> Task :feature-khata:parseReleaseLocalResources
+> Task :feature-ocr:compileReleaseLibraryResources
+> Task :feature-dashboard:generateReleaseRFile
+> Task :feature-inventory:generateReleaseRFile
+> Task :feature-billing:generateReleaseRFile
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :feature-ocr:parseReleaseLocalResources
+> Task :feature-orders:compileReleaseLibraryResources
+> Task :feature-khata:generateReleaseRFile
+> Task :feature-orders:parseReleaseLocalResources
+> Task :core:core-db:compileReleaseLibraryResources
+> Task :feature-ocr:generateReleaseRFile
+> Task :core:core-network:compileReleaseLibraryResources
+> Task :feature-orders:generateReleaseRFile
+> Task :core:core-db:parseReleaseLocalResources
+> Task :core:core-network:parseReleaseLocalResources
+> Task :app:processReleaseManifestForPackage
+> Task :core:core-db:generateReleaseRFile
+> Task :core:core-voice:compileReleaseLibraryResources
+> Task :feature-billing:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-db:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-voice:parseReleaseLocalResources
+> Task :core:core-ui:parseReleaseLocalResources
+> Task :core:core-ui:compileReleaseLibraryResources
+> Task :core:core-network:generateReleaseRFile
+> Task :app:mergeReleaseResources
+> Task :core:core-network:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-ui:generateReleaseRFile
+> Task :core:core-voice:generateReleaseRFile
+> Task :core:core-network:generateReleaseBuildConfig
+> Task :core:core-db:javaPreCompileRelease
+> Task :core:core-ui:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-network:javaPreCompileRelease
+> Task :core:core-voice:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-ui:javaPreCompileRelease
+> Task :feature-dashboard:checkKotlinGradlePluginConfigurationErrors
+> Task :core:core-voice:javaPreCompileRelease
+> Task :feature-inventory:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-khata:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-billing:javaPreCompileRelease
+> Task :feature-dashboard:javaPreCompileRelease
+> Task :feature-ocr:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-inventory:javaPreCompileRelease
+> Task :feature-orders:checkKotlinGradlePluginConfigurationErrors
+> Task :feature-khata:javaPreCompileRelease
+> Task :feature-ocr:javaPreCompileRelease
+> Task :app:javaPreCompileRelease
+> Task :feature-orders:javaPreCompileRelease
+> Task :app:extractProguardFiles
+> Task :feature-billing:extractProguardFiles
+> Task :core:core-db:extractProguardFiles
+> Task :core:core-db:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-network:extractProguardFiles
+> Task :core:core-network:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-ui:extractProguardFiles
+> Task :core:core-ui:prepareLintJarForPublish UP-TO-DATE
+> Task :core:core-voice:extractProguardFiles
+> Task :core:core-voice:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-billing:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-dashboard:extractProguardFiles
+> Task :feature-dashboard:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-inventory:extractProguardFiles
+> Task :feature-inventory:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-khata:extractProguardFiles
+> Task :feature-khata:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-ocr:extractProguardFiles
+> Task :feature-ocr:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-orders:extractProguardFiles
+> Task :feature-orders:prepareLintJarForPublish UP-TO-DATE
+> Task :feature-ocr:mergeReleaseJniLibFolders
+> Task :feature-ocr:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-ocr:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-ocr:extractDeepLinksForAarRelease
+> Task :feature-ocr:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-ocr:mergeReleaseShaders
+> Task :feature-ocr:compileReleaseShaders NO-SOURCE
+> Task :feature-ocr:generateReleaseAssets UP-TO-DATE
+> Task :feature-ocr:packageReleaseAssets
+> Task :feature-ocr:prepareReleaseArtProfile
+> Task :feature-billing:mergeReleaseJniLibFolders
+> Task :feature-billing:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-billing:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-billing:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-billing:extractDeepLinksForAarRelease
+> Task :feature-billing:mergeReleaseShaders
+> Task :feature-billing:compileReleaseShaders NO-SOURCE
+> Task :feature-billing:generateReleaseAssets UP-TO-DATE
+> Task :feature-billing:packageReleaseAssets
+> Task :feature-billing:prepareReleaseArtProfile
+> Task :feature-khata:mergeReleaseJniLibFolders
+> Task :feature-khata:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-khata:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-khata:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-khata:extractDeepLinksForAarRelease
+> Task :feature-khata:mergeReleaseShaders
+> Task :feature-khata:compileReleaseShaders NO-SOURCE
+> Task :feature-khata:generateReleaseAssets UP-TO-DATE
+> Task :feature-khata:packageReleaseAssets
+> Task :feature-khata:prepareReleaseArtProfile
+> Task :feature-dashboard:mergeReleaseJniLibFolders
+> Task :feature-dashboard:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-dashboard:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-dashboard:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-dashboard:extractDeepLinksForAarRelease
+> Task :feature-dashboard:mergeReleaseShaders
+> Task :feature-dashboard:compileReleaseShaders NO-SOURCE
+> Task :feature-dashboard:generateReleaseAssets UP-TO-DATE
+> Task :feature-dashboard:packageReleaseAssets
+> Task :feature-dashboard:prepareReleaseArtProfile
+> Task :feature-orders:mergeReleaseJniLibFolders
+> Task :feature-orders:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-orders:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-orders:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-orders:extractDeepLinksForAarRelease
+> Task :feature-orders:mergeReleaseShaders
+> Task :feature-orders:compileReleaseShaders NO-SOURCE
+> Task :feature-orders:generateReleaseAssets UP-TO-DATE
+> Task :feature-orders:packageReleaseAssets
+> Task :feature-orders:prepareReleaseArtProfile
+> Task :feature-inventory:mergeReleaseJniLibFolders
+> Task :feature-inventory:mergeReleaseNativeLibs NO-SOURCE
+> Task :feature-inventory:stripReleaseDebugSymbols NO-SOURCE
+> Task :feature-inventory:copyReleaseJniLibsProjectAndLocalJars
+> Task :feature-inventory:extractDeepLinksForAarRelease
+> Task :feature-inventory:mergeReleaseShaders
+> Task :feature-inventory:compileReleaseShaders NO-SOURCE
+> Task :feature-inventory:generateReleaseAssets UP-TO-DATE
+> Task :feature-inventory:packageReleaseAssets
+> Task :feature-inventory:prepareReleaseArtProfile
+> Task :core:core-ui:mergeReleaseJniLibFolders
+> Task :core:core-ui:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:core-ui:stripReleaseDebugSymbols NO-SOURCE
+> Task :core:core-ui:extractDeepLinksForAarRelease
+> Task :core:core-ui:copyReleaseJniLibsProjectAndLocalJars
+> Task :core:core-ui:mergeReleaseShaders
+> Task :core:core-ui:compileReleaseShaders NO-SOURCE
+> Task :core:core-ui:generateReleaseAssets UP-TO-DATE
+> Task :core:core-ui:packageReleaseAssets
+> Task :core:core-ui:prepareReleaseArtProfile
+> Task :core:core-db:mergeReleaseJniLibFolders
+> Task :core:core-db:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:core-db:stripReleaseDebugSymbols NO-SOURCE
+> Task :core:core-db:copyReleaseJniLibsProjectAndLocalJars
+> Task :core:core-db:extractDeepLinksForAarRelease
+> Task :core:core-db:mergeReleaseShaders
+> Task :core:core-db:compileReleaseShaders NO-SOURCE
+> Task :core:core-db:generateReleaseAssets UP-TO-DATE
+> Task :core:core-db:packageReleaseAssets
+> Task :core:core-db:prepareReleaseArtProfile
+> Task :core:core-network:mergeReleaseJniLibFolders
+> Task :core:core-network:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:core-network:stripReleaseDebugSymbols NO-SOURCE
+> Task :core:core-network:copyReleaseJniLibsProjectAndLocalJars
+> Task :core:core-network:extractDeepLinksForAarRelease
+> Task :core:core-network:mergeReleaseShaders
+> Task :core:core-network:compileReleaseShaders NO-SOURCE
+> Task :core:core-network:generateReleaseAssets UP-TO-DATE
+> Task :core:core-network:packageReleaseAssets
+> Task :core:core-network:prepareReleaseArtProfile
+> Task :core:core-voice:mergeReleaseJniLibFolders
+> Task :core:core-voice:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:core-voice:stripReleaseDebugSymbols NO-SOURCE
+> Task :core:core-voice:copyReleaseJniLibsProjectAndLocalJars
+> Task :core:core-voice:extractDeepLinksForAarRelease
+> Task :core:core-voice:mergeReleaseShaders
+> Task :core:core-voice:compileReleaseShaders NO-SOURCE
+> Task :core:core-voice:generateReleaseAssets UP-TO-DATE
+> Task :core:core-voice:packageReleaseAssets
+> Task :core:core-voice:prepareReleaseArtProfile
+> Task :core:core-db:writeReleaseLintModelMetadata
+> Task :core:core-network:writeReleaseLintModelMetadata
+> Task :core:core-ui:writeReleaseLintModelMetadata
+> Task :core:core-voice:writeReleaseLintModelMetadata
+> Task :feature-billing:writeReleaseLintModelMetadata
+> Task :feature-dashboard:writeReleaseLintModelMetadata
+> Task :feature-inventory:writeReleaseLintModelMetadata
+> Task :feature-khata:writeReleaseLintModelMetadata
+> Task :feature-ocr:writeReleaseLintModelMetadata
+> Task :feature-orders:writeReleaseLintModelMetadata
+> Task :app:mergeReleaseJniLibFolders
+> Task :feature-billing:copyReleaseJniLibsProjectOnly
+> Task :feature-dashboard:copyReleaseJniLibsProjectOnly
+> Task :feature-inventory:copyReleaseJniLibsProjectOnly
+> Task :feature-khata:copyReleaseJniLibsProjectOnly
+> Task :feature-ocr:copyReleaseJniLibsProjectOnly
+> Task :feature-orders:copyReleaseJniLibsProjectOnly
+> Task :core:core-db:copyReleaseJniLibsProjectOnly
+> Task :core:core-network:copyReleaseJniLibsProjectOnly
+> Task :core:core-ui:copyReleaseJniLibsProjectOnly
+> Task :core:core-voice:copyReleaseJniLibsProjectOnly
+> Task :app:desugarReleaseFileDependencies
+> Task :app:mergeReleaseStartupProfile
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:processReleaseResources
+> Task :app:mergeReleaseArtProfile
+> Task :app:mergeReleaseNativeLibs
+> Task :core:core-voice:kspReleaseKotlin
+> Task :core:core-db:kspReleaseKotlin
+> Task :core:core-network:kspReleaseKotlin
+> Task :core:core-ui:compileReleaseKotlin
+> Task :app:mergeExtDexRelease
+> Task :core:core-ui:compileReleaseJavaWithJavac NO-SOURCE
+> Task :core:core-ui:bundleLibCompileToJarRelease
+> Task :core:core-ui:processReleaseJavaRes
+> Task :core:core-ui:bundleLibRuntimeToJarRelease
+> Task :core:core-ui:generateReleaseLintModel
+> Task :core:core-ui:createFullJarRelease
+> Task :core:core-ui:extractReleaseAnnotations
+> Task :core:core-ui:mergeReleaseGeneratedProguardFiles
+
+> Task :core:core-ui:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\core\core-ui\consumer-rules.pro
+
+> Task :core:core-ui:mergeReleaseJavaResource
+> Task :core:core-ui:syncReleaseLibJars
+> Task :core:core-ui:bundleReleaseLocalLintAar
+> Task :core:core-ui:generateReleaseLintVitalModel
+> Task :core:core-voice:compileReleaseKotlin
+> Task :app:mergeReleaseShaders
+> Task :core:core-voice:compileReleaseJavaWithJavac
+> Task :core:core-voice:processReleaseJavaRes
+> Task :core:core-ui:bundleLibRuntimeToDirRelease
+> Task :core:core-voice:transformReleaseClassesWithAsm
+> Task :app:stripReleaseDebugSymbols
+> Task :core:core-db:compileReleaseKotlin
+> Task :core:core-voice:generateReleaseLintModel
+> Task :core:core-network:compileReleaseKotlin
+> Task :core:core-db:compileReleaseJavaWithJavac
+> Task :core:core-network:compileReleaseJavaWithJavac
+> Task :core:core-db:processReleaseJavaRes
+> Task :core:core-voice:bundleLibRuntimeToJarRelease
+> Task :core:core-voice:bundleLibCompileToJarRelease
+> Task :core:core-db:generateReleaseLintModel
+> Task :core:core-network:processReleaseJavaRes
+> Task :core:core-db:transformReleaseClassesWithAsm
+> Task :core:core-network:transformReleaseClassesWithAsm
+> Task :core:core-network:generateReleaseLintModel
+> Task :core:core-network:bundleLibCompileToJarRelease
+> Task :core:core-network:bundleLibRuntimeToJarRelease
+> Task :core:core-db:bundleLibCompileToJarRelease
+> Task :core:core-db:bundleLibRuntimeToJarRelease
+> Task :core:core-voice:createFullJarRelease
+> Task :core:core-db:createFullJarRelease
+> Task :core:core-network:createFullJarRelease
+> Task :core:core-db:extractReleaseAnnotations
+> Task :core:core-db:mergeReleaseGeneratedProguardFiles
+
+> Task :core:core-db:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\core\core-db\consumer-rules.pro
+
+> Task :core:core-db:mergeReleaseJavaResource
+> Task :core:core-network:extractReleaseAnnotations
+> Task :core:core-db:syncReleaseLibJars
+> Task :core:core-db:bundleReleaseLocalLintAar
+> Task :core:core-network:mergeReleaseGeneratedProguardFiles
+
+> Task :core:core-network:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\core\core-network\consumer-rules.pro
+
+> Task :core:core-ui:lintVitalAnalyzeRelease
+> Task :core:core-voice:extractReleaseAnnotations
+> Task :core:core-network:mergeReleaseJavaResource
+> Task :core:core-voice:mergeReleaseGeneratedProguardFiles
+> Task :core:core-network:syncReleaseLibJars
+> Task :core:core-network:bundleReleaseLocalLintAar
+> Task :core:core-voice:mergeReleaseConsumerProguardFiles
+> Task :core:core-voice:mergeReleaseJavaResource
+> Task :core:core-voice:syncReleaseLibJars
+> Task :core:core-voice:bundleReleaseLocalLintAar
+> Task :core:core-db:generateReleaseLintVitalModel
+> Task :core:core-network:generateReleaseLintVitalModel
+> Task :core:core-voice:generateReleaseLintVitalModel
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :feature-billing:kspReleaseKotlin
+> Task :core:core-voice:bundleLibRuntimeToDirRelease
+> Task :feature-dashboard:kspReleaseKotlin
+> Task :core:core-network:bundleLibRuntimeToDirRelease
+> Task :feature-khata:kspReleaseKotlin
+> Task :app:mergeReleaseAssets
+> Task :feature-orders:kspReleaseKotlin
+> Task :core:core-db:bundleLibRuntimeToDirRelease
+> Task :feature-inventory:kspReleaseKotlin
+> Task :core:core-db:lintVitalAnalyzeRelease
+> Task :core:core-network:lintVitalAnalyzeRelease
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:compressReleaseAssets
+> Task :core:core-voice:lintVitalAnalyzeRelease
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :feature-billing:mapReleaseSourceSetPaths
+> Task :feature-billing:compileReleaseKotlin
+> Task :feature-inventory:compileReleaseKotlin
+> Task :feature-dashboard:compileReleaseKotlin
+> Task :feature-khata:compileReleaseKotlin
+> Task :feature-orders:compileReleaseKotlin
+> Task :app:optimizeReleaseResources
+
+> Task :feature-dashboard:compileReleaseKotlin
+w: file:///D:/dukaan_ai/feature-dashboard/src/main/java/com/dukaan/feature/dashboard/DashboardViewModel.kt:47:37 Elvis operator (?:) always returns the left operand of non-nullable type Double
+w: file:///D:/dukaan_ai/feature-dashboard/src/main/java/com/dukaan/feature/dashboard/DashboardViewModel.kt:48:36 Elvis operator (?:) always returns the left operand of non-nullable type Int
+w: file:///D:/dukaan_ai/feature-dashboard/src/main/java/com/dukaan/feature/dashboard/DashboardViewModel.kt:49:63 Elvis operator (?:) always returns the left operand of non-nullable type Double
+w: file:///D:/dukaan_ai/feature-dashboard/src/main/java/com/dukaan/feature/dashboard/DashboardViewModel.kt:50:43 Elvis operator (?:) always returns the left operand of non-nullable type Int
+w: file:///D:/dukaan_ai/feature-dashboard/src/main/java/com/dukaan/feature/dashboard/SettingsScreen.kt:45:5 Parameter 'onLanguageChange' is never used
+
+> Task :feature-billing:mergeReleaseResources
+
+> Task :feature-orders:compileReleaseKotlin
+w: file:///D:/dukaan_ai/feature-orders/src/main/java/com/dukaan/feature/orders/ui/OrderDetailScreen.kt:77:30 Parameter 'o' is never used, could be renamed to _
+
+> Task :feature-dashboard:compileReleaseJavaWithJavac
+> Task :feature-inventory:compileReleaseJavaWithJavac
+> Task :feature-dashboard:transformReleaseClassesWithAsm
+> Task :feature-khata:compileReleaseJavaWithJavac
+> Task :feature-dashboard:bundleLibCompileToJarRelease
+> Task :feature-inventory:transformReleaseClassesWithAsm
+> Task :feature-orders:compileReleaseJavaWithJavac
+> Task :feature-inventory:bundleLibCompileToJarRelease
+> Task :feature-dashboard:processReleaseJavaRes
+> Task :feature-dashboard:bundleLibRuntimeToJarRelease
+> Task :feature-inventory:bundleLibRuntimeToJarRelease
+> Task :feature-khata:transformReleaseClassesWithAsm
+> Task :feature-dashboard:generateReleaseLintModel
+> Task :feature-dashboard:createFullJarRelease
+> Task :feature-khata:bundleLibCompileToJarRelease
+> Task :feature-khata:bundleLibRuntimeToJarRelease
+> Task :feature-inventory:processReleaseJavaRes
+> Task :feature-inventory:createFullJarRelease
+> Task :feature-inventory:generateReleaseLintModel
+> Task :feature-orders:transformReleaseClassesWithAsm
+> Task :feature-khata:processReleaseJavaRes
+> Task :feature-orders:bundleLibRuntimeToJarRelease
+> Task :feature-orders:bundleLibCompileToJarRelease
+> Task :feature-khata:createFullJarRelease
+> Task :feature-khata:generateReleaseLintModel
+> Task :feature-orders:processReleaseJavaRes
+> Task :feature-orders:createFullJarRelease
+> Task :feature-orders:generateReleaseLintModel
+> Task :feature-khata:extractReleaseAnnotations
+> Task :feature-khata:mergeReleaseGeneratedProguardFiles
+
+> Task :feature-khata:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\feature-khata\consumer-rules.pro
+
+> Task :feature-dashboard:extractReleaseAnnotations
+> Task :feature-dashboard:mergeReleaseGeneratedProguardFiles
+
+> Task :feature-dashboard:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\feature-dashboard\consumer-rules.pro
+
+> Task :feature-khata:mergeReleaseJavaResource
+> Task :feature-dashboard:mergeReleaseJavaResource
+> Task :feature-khata:syncReleaseLibJars
+> Task :feature-khata:bundleReleaseLocalLintAar
+> Task :feature-dashboard:syncReleaseLibJars
+> Task :feature-dashboard:bundleReleaseLocalLintAar
+> Task :feature-orders:extractReleaseAnnotations
+> Task :feature-orders:mergeReleaseGeneratedProguardFiles
+> Task :feature-orders:mergeReleaseConsumerProguardFiles
+> Task :feature-inventory:extractReleaseAnnotations
+> Task :feature-orders:mergeReleaseJavaResource
+> Task :feature-inventory:mergeReleaseGeneratedProguardFiles
+> Task :feature-orders:syncReleaseLibJars
+> Task :feature-orders:bundleReleaseLocalLintAar
+> Task :feature-inventory:mergeReleaseConsumerProguardFiles
+> Task :feature-inventory:mergeReleaseJavaResource
+> Task :feature-inventory:syncReleaseLibJars
+> Task :feature-inventory:bundleReleaseLocalLintAar
+> Task :feature-dashboard:generateReleaseLintVitalModel
+> Task :feature-inventory:generateReleaseLintVitalModel
+> Task :feature-khata:generateReleaseLintVitalModel
+> Task :feature-orders:generateReleaseLintVitalModel
+> Task :feature-inventory:bundleLibRuntimeToDirRelease
+> Task :feature-dashboard:bundleLibRuntimeToDirRelease
+
+> Task :feature-billing:compileReleaseKotlin
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/BillingViewModel.kt:420:93 Elvis operator (?:) always returns the left operand of non-nullable type Bitmap.Config
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/VoiceBillingScreen.kt:58:5 Parameter 'onShareClick' is never used
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/VoiceBillingScreen.kt:59:5 Parameter 'onShareToPhone' is never used
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/VoiceBillingScreen.kt:626:9 Variable 'rangeTotal' is never used
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/VoiceBillingScreen.kt:627:9 Variable 'rangeSummaryLabel' is never used
+w: file:///D:/dukaan_ai/feature-billing/src/main/java/com/dukaan/feature/billing/ui/VoiceBillingScreen.kt:945:5 Parameter 'showDate' is never used
+
+> Task :feature-orders:bundleLibRuntimeToDirRelease
+> Task :feature-khata:bundleLibRuntimeToDirRelease
+> Task :feature-dashboard:bundleReleaseAar
+> Task :feature-billing:compileReleaseJavaWithJavac
+> Task :feature-inventory:lintVitalAnalyzeRelease
+> Task :feature-billing:processReleaseJavaRes
+> Task :feature-dashboard:lintVitalAnalyzeRelease
+> Task :feature-khata:lintVitalAnalyzeRelease
+> Task :feature-billing:verifyReleaseResources
+> Task :feature-billing:transformReleaseClassesWithAsm
+> Task :feature-billing:generateReleaseLintModel
+> Task :feature-billing:extractReleaseAnnotations
+> Task :feature-billing:mergeReleaseGeneratedProguardFiles
+
+> Task :feature-billing:mergeReleaseConsumerProguardFiles
+Supplied consumer proguard configuration does not exist: D:\dukaan_ai\feature-billing\consumer-rules.pro
+
+> Task :feature-billing:mergeReleaseJavaResource
+> Task :feature-billing:bundleLibCompileToJarRelease
+> Task :feature-billing:bundleLibRuntimeToJarRelease
+> Task :feature-billing:syncReleaseLibJars
+> Task :feature-billing:createFullJarRelease
+> Task :feature-billing:bundleReleaseLocalLintAar
+> Task :feature-billing:generateReleaseLintVitalModel
+> Task :feature-billing:bundleReleaseAar
+> Task :feature-billing:assembleRelease
+> Task :feature-dashboard:mapReleaseSourceSetPaths
+> Task :feature-billing:bundleLibRuntimeToDirRelease
+> Task :feature-ocr:kspReleaseKotlin
+> Task :feature-dashboard:mergeReleaseResources
+> Task :feature-inventory:bundleReleaseAar
+> Task :feature-inventory:mapReleaseSourceSetPaths
+> Task :feature-billing:lintVitalAnalyzeRelease
+> Task :feature-orders:lintVitalAnalyzeRelease
+> Task :feature-dashboard:verifyReleaseResources
+> Task :feature-inventory:mergeReleaseResources
+> Task :feature-dashboard:assembleRelease
+> Task :feature-khata:bundleReleaseAar
+> Task :feature-khata:mapReleaseSourceSetPaths
+> Task :feature-inventory:verifyReleaseResources
+> Task :feature-ocr:compileReleaseKotlin
+> Task :feature-khata:mergeReleaseResources
+> Task :feature-inventory:assembleRelease
+> Task :feature-ocr:mapReleaseSourceSetPaths
+> Task :feature-khata:verifyReleaseResources
+
+> Task :feature-ocr:compileReleaseKotlin
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/BillScannerScreen.kt:64:9 Variable 'haptic' is never used
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/BillScannerScreen.kt:198:5 Parameter 'onBillDetected' is never used
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/OcrResultScreen.kt:65:9 Variable 'showSuggestions' is never used
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/OcrResultScreen.kt:133:49 Parameter 'index' is never used, could be renamed to _
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/OcrResultScreen.kt:289:45 Unnecessary non-null assertion (!!) on a non-null receiver of type Bill
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/ui/OcrResultScreen.kt:290:21 Variable 'hasBreakdown' is never used
+w: file:///D:/dukaan_ai/feature-ocr/src/main/java/com/dukaan/feature/ocr/util/ImageUtil.kt:21:44 'initDebug(): Boolean' is deprecated. Deprecated in Java
+
+> Task :feature-ocr:mergeReleaseResources
+> Task :feature-ocr:compileReleaseJavaWithJavac
+> Task :feature-ocr:processReleaseJavaRes
+> Task :feature-ocr:transformReleaseClassesWithAsm
+> Task :feature-ocr:generateReleaseLintModel
+> Task :feature-ocr:extractReleaseAnnotations
+> Task :feature-ocr:mergeReleaseGeneratedProguardFiles
+> Task :feature-ocr:mergeReleaseConsumerProguardFiles
+> Task :feature-ocr:mergeReleaseJavaResource
+> Task :feature-ocr:bundleLibRuntimeToJarRelease
+> Task :feature-ocr:bundleLibCompileToJarRelease
+> Task :feature-ocr:createFullJarRelease
+> Task :feature-ocr:syncReleaseLibJars
+> Task :feature-ocr:bundleReleaseLocalLintAar
+> Task :feature-ocr:generateReleaseLintVitalModel
+> Task :feature-khata:assembleRelease
+> Task :feature-ocr:bundleReleaseAar
+> Task :feature-orders:bundleReleaseAar
+> Task :feature-orders:mapReleaseSourceSetPaths
+> Task :feature-ocr:bundleLibRuntimeToDirRelease
+> Task :app:kspReleaseKotlin
+> Task :feature-orders:mergeReleaseResources
+> Task :feature-ocr:verifyReleaseResources
+> Task :feature-ocr:assembleRelease
+> Task :core:core-db:bundleReleaseAar
+> Task :core:core-db:mapReleaseSourceSetPaths
+> Task :feature-ocr:lintVitalAnalyzeRelease
+> Task :feature-orders:verifyReleaseResources
+> Task :core:core-db:mergeReleaseResources
+> Task :feature-orders:assembleRelease
+> Task :core:core-network:bundleReleaseAar
+> Task :core:core-network:mapReleaseSourceSetPaths
+> Task :core:core-network:mergeReleaseResources
+> Task :core:core-ui:bundleReleaseAar
+> Task :core:core-ui:mapReleaseSourceSetPaths
+> Task :core:core-db:verifyReleaseResources
+> Task :core:core-network:verifyReleaseResources
+> Task :app:compileReleaseKotlin
+> Task :core:core-ui:mergeReleaseResources
+> Task :core:core-db:assembleRelease
+> Task :core:core-network:assembleRelease
+> Task :core:core-voice:bundleReleaseAar
+> Task :core:core-voice:mapReleaseSourceSetPaths
+
+> Task :app:compileReleaseKotlin
+w: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/MainActivity.kt:47:17 Variable 'coroutineScope' is never used
+w: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/navigation/AppNavigation.kt:307:21 Name shadowed: activity
+w: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/navigation/AppNavigation.kt:359:21 Name shadowed: activity
+w: file:///D:/dukaan_ai/app/src/main/java/com/dukaan/ai/util/PdfGenerator.kt:300:13 Variable 'smallBody' is never used
+
+> Task :core:core-voice:mergeReleaseResources
+> Task :core:core-ui:verifyReleaseResources
+> Task :app:compileReleaseJavaWithJavac
+> Task :core:core-ui:assembleRelease
+> Task :app:hiltAggregateDepsRelease
+> Task :core:core-voice:verifyReleaseResources
+> Task :app:hiltJavaCompileRelease
+> Task :app:generateReleaseLintVitalReportModel
+> Task :app:processReleaseJavaRes
+> Task :core:core-voice:assembleRelease
+> Task :app:transformReleaseClassesWithAsm
+> Task :app:dexBuilderRelease
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:mergeReleaseJavaResource
+> Task :app:mergeReleaseGlobalSynthetics
+> Task :app:lintVitalReportRelease
+> Task :app:lintVitalRelease
+> Task :app:mergeDexRelease
+> Task :app:compileReleaseArtProfile
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+BUILD SUCCESSFUL in 8m 39s
+482 actionable tasks: 472 executed, 10 up-to-date

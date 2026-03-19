@@ -273,7 +273,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             IMPORTANT:
             - "totalAmount" must be the FINAL amount after discount and tax
             - Extract BOTH unitPrice (rate) AND lineTotal (amount) for each item
-            - If only one value available, use it as lineTotal and compute unitPrice = lineTotal / quantity
+            - If Rate (unitPrice) is not visible, use 0. Do NOT derive it from lineTotal.
         """.trimIndent()
 
         try {
@@ -394,7 +394,7 @@ class GeminiBillingServiceImpl @Inject constructor(
             - Include items with ONLY handwritten quantities or prices — they are valid
             - NEVER skip an item just because parts are handwritten
             - ALWAYS extract unitPrice (per-unit rate) and lineTotal (line amount) separately
-            - If only one value visible, put it in lineTotal and set unitPrice=lineTotal/quantity
+            - If Rate (unitPrice) is not visible, use 0. Do NOT derive it from lineTotal.
             - Include handwritten items added by pen. Include ALL items. NEVER return empty items[] if bill has items.
         """.trimIndent()
     }
