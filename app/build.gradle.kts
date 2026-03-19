@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.dukaan.ai"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.dukaan.ai"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 2
         versionName = "1.0"
 

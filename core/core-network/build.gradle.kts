@@ -16,7 +16,7 @@ if (localPropsFile.exists()) {
 
 android {
     namespace = "com.dukaan.core.network"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24

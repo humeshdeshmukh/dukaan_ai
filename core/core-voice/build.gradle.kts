@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.dukaan.core.voice"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24

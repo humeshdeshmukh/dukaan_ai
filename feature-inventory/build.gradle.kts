@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.dukaan.feature.inventory"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
